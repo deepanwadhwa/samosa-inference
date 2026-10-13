@@ -85,6 +85,8 @@ existing control contract. Other fields remain intact, including unknown fields
 that the underlying validator must reject. Identical operation IDs on different
 providers are independent. Cross-provider session/operation handles do not grant
 access. Owners come from private host configuration, never public JSON.
+Embedding `embed_text` also removes the routing field before its strict legacy
+validator; its normalized identity uses the selected trusted provider ID.
 
 Results preserve the existing adapter DTOs, receipts, request budgets, scoped
 cancellation, replay identity and last-good session semantics. A control result
@@ -100,7 +102,7 @@ sanitize-registry-modalities test-registry-cli sanitize-registry-cli` tests real
 namespaced state and separate native processes. CLI qualification uses the
 existing summary framing, retained offline results, exact selected-engine
 cancellation and a surviving subsequent run. In-process modality qualification
-links all six current adapter kinds together; it does not claim model quality.
+links all seven current adapter kinds together; it does not claim model quality.
 
 The existing actual T5 qualification also accepts a fifth `--registry` argument:
 `build/test-summary-real PROVIDERS_CLI PACKAGED_T5_ENGINE PINNED_T5_MODEL --registry`.
