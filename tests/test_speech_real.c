@@ -52,7 +52,6 @@ int main(int argc, char **argv) {
         if (!e) e = speech_package_loader_verify(package_fd, argv[2], argv[3], &policy, NULL, NULL, receipt);
         if (!e) puts("PASS actual speech native loader graph and host compatibility");
         if (!e) e = speech_package_options(receipt, &o, &references[0], &references[1]);
-        if (!e && !o.pocket) e = "actual_gate_requires_pocket";
         if (e) { fprintf(stderr, "%s\n", e); if (package_fd >= 0) close(package_fd); free(receipt); return 1; }
         printf("PASS actual speech package: %zu files, %llu bytes, model_identity=%s\n",
             receipt->count, (unsigned long long)receipt->total_bytes, receipt->model_identity);
@@ -60,30 +59,34 @@ int main(int argc, char **argv) {
     SpeechRuntime *r = NULL;
     e = speech_runtime_open(&o, &r);
     if (e) { fprintf(stderr, "%s\n", e); if (package_fd >= 0) close(package_fd); free(receipt); return 1; }
-    for (size_t i = 0; i < 2; ++i) {
+    const char *pocket_voices[]={"caro","stuart"};
+    const char *kokoro_voices[]={"bella","sarah","nicole","adam","michael","emma"};
+    const char *const *voices=o.pocket?pocket_voices:kokoro_voices;
+    const char *kind=o.pocket?"Pocket":"Kokoro";
+    for (size_t i = 0; i < (o.pocket?2u:6u); ++i) {
         Capture c = {0}; sha256_init(&c.hash);
         SpeechRuntimeResult result;
         e = speech_runtime_generate(r, "The meeting starts at nine. Please bring your notes.",
-            i ? "stuart" : "caro", references[i], capture, &c, &result);
+            voices[i], o.pocket?references[i]:NULL, capture, &c, &result);
         unsigned char digest[32]; char hex[65]; sha256_final(&c.hash, digest); sha256_hex(digest, hex);
         if (e || c.bytes != result.samples * 2 || c.rate != result.sample_rate ||
             c.bytes < (size_t)c.rate || !c.nonzero || c.calls < 2 || strcmp(hex, result.pcm_sha256)) {
-            fprintf(stderr, "actual Pocket failed: %s (%zu bytes, %zu chunks)\n", e ? e : "invalid_pcm", c.bytes, c.calls);
+            fprintf(stderr, "actual %s failed: %s (%zu bytes, %zu chunks)\n", kind, e ? e : "invalid_pcm", c.bytes, c.calls);
             speech_runtime_close(r); if (package_fd >= 0) close(package_fd); free(receipt); return 1;
         }
-        printf("PASS actual Pocket %s: rate=%d samples=%zu chunks=%zu callbacks=%zu pcm_sha256=%s\n",
-            i ? "stuart" : "caro", result.sample_rate, result.samples, c.calls, result.callbacks, hex);
+        printf("PASS actual %s %s: rate=%d samples=%zu chunks=%zu callbacks=%zu pcm_sha256=%s\n",
+            kind, voices[i], result.sample_rate, result.samples, c.calls, result.callbacks, hex);
         fflush(stdout);
         if (i == 0) {
             Capture cancelled = {.cancel_after = 2}; sha256_init(&cancelled.hash);
             e = speech_runtime_generate(r, "The meeting starts at nine. Please bring your notes.",
-                "caro", references[0], capture, &cancelled, &result);
+                voices[0], o.pocket?references[0]:NULL, capture, &cancelled, &result);
             if (!e || strcmp(e, "operation_cancelled") || cancelled.calls != 2 ||
                 !cancelled.bytes || result.samples || result.pcm_sha256[0]) {
-                fprintf(stderr, "actual Pocket cancellation failed\n");
+                fprintf(stderr, "actual %s cancellation failed\n",kind);
                 speech_runtime_close(r); if (package_fd >= 0) close(package_fd); free(receipt); return 1;
             }
-            puts("PASS actual Pocket cancellation after partial PCM; no successful receipt");
+            printf("PASS actual %s cancellation after partial PCM; no successful receipt\n",kind);
         }
     }
     speech_runtime_close(r);

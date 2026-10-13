@@ -51,6 +51,10 @@ Limits: manifest at most 1 MiB, 8,192 JSON tokens, 512 regular payload files,
 512 descendant directories, 8 GiB total payload, relative names at most 255 bytes
 and eight path components. Components use ASCII letters, numbers, `-_.`, do not
 begin with a dot, and cannot be empty; absolute/traversal/alias spelling refuses.
+For `kokoro_data` only, direct files under `<data_dir>/voices/!v/` preserve
+eSpeak's literal `!v` component and its exact filename `Mr serious`. All other
+space-containing names, nested variant files and `!` spelling refuse. Libraries,
+metadata, Pocket files and `data_dir` itself do not receive this exception.
 Every payload is nonempty. Root paths are canonical and at most 3,800 bytes.
 Model identity is SHA-256 of `sherpa-speech-package-v1:` plus the manifest hash.
 
@@ -73,7 +77,8 @@ verified receipt. They remain valid while that host-owned receipt exists. This
 function alone does not recheck disk state. `make test-speech-package
 sanitize-speech-package` tests the private contract. Optional actual-model
 `test-speech-real --package ROOT MANIFEST_SHA256` verifies the package, generates
-both Pocket voices with cancellation/recovery, and rechecks retained identity.
+both Pocket voices or all six Kokoro voices with cancellation/recovery, and
+rechecks retained identity.
 
 Native loader prerequisite: `speech_package_loader_verify` now inspects all
 pinned `library`/`dependency` entries and validates the closed sibling-loader

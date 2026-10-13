@@ -28,7 +28,7 @@ static void manifest(int fd, char pin[65], const char *platform, const char *abi
         const char *name=i==0&&special_name?special_name:names[duplicate&&i==1?0:i];
         const char *role=i==0&&special_role?special_role:roles[i];
         if(kokoro) { const char *kn[]={"runtime/api","model/flow","model/main","model/encoder","data/resource"};
-            const char *kr[]={"library","kokoro_model","kokoro_voices","kokoro_tokens","kokoro_data"};name=kn[i];role=kr[i]; }
+            const char *kr[]={"library","kokoro_model","kokoro_voices","kokoro_tokens","kokoro_data"};name=i==4&&special_name?special_name:kn[i];role=i==4&&special_role?special_role:kr[i]; }
         fprintf(f,"%s{\"name\":\"%s\",\"role\":\"%s\",\"bytes\":8,\"sha256\":\"%s\"}",i?",":"",name,role,hash);
     }
     fputs("]}",f);CHECK(fclose(f)==0);hash_bytes(body,length,pin);write_file(fd,"manifest.json",body);free(body);
@@ -117,6 +117,18 @@ int main(void) {
     CHECK(!speech_package_verify(fd,root,pin,NULL,NULL,r,0));CHECK(!r->pocket&&r->threads==6&&r->count==5);
     CHECK(!speech_package_options(r,&o,&caro,&stuart));CHECK(!o.pocket&&!caro&&!stuart&&strstr(o.data_dir,"/data"));
     CHECK(!speech_package_verify(fd,root,pin,NULL,NULL,r,1));
+    CHECK(mkdirat(fd,"data/voices",0700)==0);CHECK(mkdirat(fd,"data/voices/!v",0700)==0);
+    CHECK(renameat(fd,"data/resource",fd,"data/voices/!v/bella")==0);
+    manifest(fd,pin,speech_package_platform(),"1.13.4","",5,0,"data/voices/!v/bella",NULL,1);
+    CHECK(!speech_package_verify(fd,root,pin,NULL,NULL,r,0));CHECK(!speech_package_verify(fd,root,pin,NULL,NULL,r,1));
+    const char *variants[]={"data/!v/bella","data/voices/!v2/bella","data/voices/!v/../bella","data/voices/!v/sub/bella","data/voices/!v/!bella","data/voices/!v/.bella","data/voices/!v/","data/voices/!v/Another voice"};
+    for(unsigned i=0;i<sizeof(variants)/sizeof(*variants);i++){manifest(fd,pin,speech_package_platform(),"1.13.4","",5,0,variants[i],NULL,1);fail(fd,root,pin,r,"invalid_speech_package");}
+    manifest(fd,pin,speech_package_platform(),"1.13.4","",5,0,"data/voices/!v/bella","metadata",1);fail(fd,root,pin,r,"invalid_speech_package");
+    CHECK(renameat(fd,"data/voices/!v/bella",fd,"data/voices/!v/Mr serious")==0);
+    manifest(fd,pin,speech_package_platform(),"1.13.4","",5,0,"data/voices/!v/Mr serious",NULL,1);
+    CHECK(!speech_package_verify(fd,root,pin,NULL,NULL,r,0));CHECK(!speech_package_verify(fd,root,pin,NULL,NULL,r,1));
+    CHECK(renameat(fd,"data/voices/!v/Mr serious",fd,"data/resource")==0);
+    CHECK(unlinkat(fd,"data/voices/!v",AT_REMOVEDIR)==0);CHECK(unlinkat(fd,"data/voices",AT_REMOVEDIR)==0);
     for(size_t i=0;i<4;i++)CHECK(unlinkat(fd,names[i],0)==0);
     CHECK(unlinkat(fd,"data/resource",0)==0);CHECK(unlinkat(fd,"manifest.json",0)==0);
     CHECK(unlinkat(fd,"runtime",AT_REMOVEDIR)==0);CHECK(unlinkat(fd,"model",AT_REMOVEDIR)==0);CHECK(unlinkat(fd,"data",AT_REMOVEDIR)==0);

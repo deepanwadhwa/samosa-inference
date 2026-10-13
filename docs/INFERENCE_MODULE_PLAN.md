@@ -142,3 +142,10 @@ range hashes and saved receipts pass normal/sanitizer public tests. See
 [public speech evidence](SPEECH_PUBLIC_VERIFICATION.md). Authenticated service,
 streaming, persistent lifecycle, global scheduling, immutable staging and all
 remaining acceptance gates stay open; original Chat voice paths are retained.
+
+Kokoro package checkpoint: complete existing eSpeak data is now accepted with
+role-scoped literal native variant names and negative path tests. All six native
+voices pass actual package/loader/PCM/cancellation/recovery checks. See
+[Kokoro evidence](KOKORO_VERIFICATION.md); fresh PCM variability is documented
+and exact per-request integrity/replay remains required. Other area1 and full
+release gates remain open.

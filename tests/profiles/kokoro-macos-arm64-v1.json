@@ -1,0 +1,46 @@
+{
+  "kind": "Kokoro",
+  "platform": "macos-arm64",
+  "manifest_sha256": "8d3ce27844a7147201dbb0520d7407d861de52b9c729e7140175484a7a848aa7",
+  "phrase": "The meeting starts at nine. Please bring your notes.",
+  "voices": [
+    {
+      "voice": "bella",
+      "sample_rate": 24000,
+      "samples": 55591,
+      "pcm_sha256": "54cc87932eaa0f01f187f74b58f876951f61ee8d54bf2f0d929a037b14a97dd5"
+    },
+    {
+      "voice": "sarah",
+      "sample_rate": 24000,
+      "samples": 59112,
+      "pcm_sha256": "4e4ab4e6c7f3d09ec9eea54b110f356831c3b805cbb7033eb19f6fd0ac7bbaa2"
+    },
+    {
+      "voice": "nicole",
+      "sample_rate": 24000,
+      "samples": 67188,
+      "pcm_sha256": "248bb1b5a6560e9849a626036ec8e27e9095ba0d1d0672bd25725cf7b840d255"
+    },
+    {
+      "voice": "adam",
+      "sample_rate": 24000,
+      "samples": 56676,
+      "pcm_sha256": "8868a29ea117f8df04ac238fe387bc95e8208288c13ecb146f65fca00b77a157"
+    },
+    {
+      "voice": "michael",
+      "sample_rate": 24000,
+      "samples": 59983,
+      "pcm_sha256": "ccbed35295e28326c277e44c4f2faca7a453797d1d5d9cd56c0d55463cca8488"
+    },
+    {
+      "voice": "emma",
+      "sample_rate": 24000,
+      "samples": 60158,
+      "pcm_sha256": "d6e28cbe9d3cde577ec0c321ce070429a25b08e7a674f237abe5503dcd346813"
+    }
+  ],
+  "fresh_generation": "variable_pcm",
+  "sample_count_relative_tolerance": 0.01
+}

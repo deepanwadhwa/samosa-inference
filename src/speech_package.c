@@ -31,7 +31,13 @@ static int relative(const char *s) {
     for (const char *p = s; *p;) {
         const char *begin = p;
         if (++components > 8 || *p == '.') return 0;
-        while (*p && *p != '/') {
+        /* eSpeak's literal variant directory is handled as one component.
+         * Manifest roles below constrain it to Kokoro data/voices/!v files. */
+        if (p[0] == '!' && p[1] == 'v' && (!p[2] || p[2] == '/')) p += 2;
+        /* Preserve the upstream variant's one space-containing filename. */
+        else if (p - s >= 3 && !memcmp(p - 3, "!v/", 3) &&
+                 !strncmp(p, "Mr serious", 10) && (!p[10] || p[10] == '/')) p += 10;
+        else while (*p && *p != '/') {
             unsigned char c = (unsigned char)*p++;
             if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
                   (c >= '0' && c <= '9') || strchr("-_.", c))) return 0;
@@ -223,7 +229,7 @@ const char *speech_package_verify(int directory, const char *path, const char *p
         if (!e && next->pocket && json_get(j, 0, "data_dir") >= 0) e = "invalid_speech_package";
         if (!e && !next->pocket) {
             char *data = json_string(j, json_get(j, 0, "data_dir"));
-            if (!relative(data)) e = "invalid_speech_package";
+            if (!relative(data) || strchr(data, '!')) e = "invalid_speech_package";
             else strcpy(next->data_dir, data);
             free(data);
         }
@@ -237,6 +243,15 @@ const char *speech_package_verify(int directory, const char *path, const char *p
             !digest(hash) || !role || slot == 17 || slot == 13 ||
             !json_uint(j, json_get(j, t, "bytes"), &bytes) || !bytes || bytes > PACKAGE_BYTES ||
             next->total_bytes > PACKAGE_BYTES - bytes) e = "invalid_speech_package";
+        if (!e && strchr(name, '!')) {
+            char prefix[256];
+            int n = snprintf(prefix, sizeof(prefix), "%s/voices/!v/", next->data_dir);
+            /* Preserve the complete native data tree without admitting ! in
+             * libraries, other data paths, nested variants or Pocket packages. */
+            if (next->pocket || slot != 16 || n < 0 || (size_t)n >= sizeof(prefix) ||
+                strncmp(name, prefix, (size_t)n) || !name[n] ||
+                strchr(name + n, '/') || strchr(name + n, '!')) e = "invalid_speech_package";
+        }
         for (size_t k = 0; !e && k < next->count; ++k)
             if (!strcmp(name, next->files[k].name)) e = "invalid_speech_package";
         if (!e && ((next->pocket && slot >= 10 && slot <= 12) ||
