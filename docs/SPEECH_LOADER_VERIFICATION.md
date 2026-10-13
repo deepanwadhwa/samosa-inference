@@ -86,3 +86,31 @@ to ARM64. The next fix extends catalog detection, setup fixtures and managed
 provider/session identity to the real compiled x86-64 platform. Local catalog
 normal/sanitizer passes 951 checks, setup passes 40 and managed CLI passes 41.
 No production x86-64 model recipe or actual-model readiness is inferred.
+
+## Passing independent macOS/Linux CI
+
+[Run 38454301972](https://github.com/deepanwadhwa/samosa-inference/actions/runs/38454301972)
+is terminal `success` at source commit
+`9df7ae0f3d29668812c9b9795c3e04b79900865a`. Both jobs succeed after exporting
+`git archive HEAD` outside checkout:
+
+- macOS14 ARM64: Darwin23.6.0, Apple clang15.0.0 / Xcode15.4 SDK.
+- Ubuntu24.04 x86-64: Linux6.17.0-1022-azure, clang18.1.3.
+
+All configured normal/sanitizer commands pass: `test sanitize`,
+`test-registry-modalities sanitize-registry-modalities`,
+`test-registry-cli sanitize-registry-cli`, `test-native sanitize-native`,
+`test-summary sanitize-summary`, `test-whisper sanitize-whisper`,
+`test-vision sanitize-vision`. This covers core sessions/operations/admission,
+artifact acquisition/install, guardian/activation/managed transport, catalog,
+combined routing and existing controlled modality adapters. Speech primitive
+checks remain 324; package 2,330; image parser 4,360; graph 2,713; engine loader99;
+catalog951; combined registry202 on both jobs, normally and sanitized.
+
+The complete job logs were inspected, not inferred from a check badge. Native
+registry CLI checks are427/430 on macOS and430/508 on Linux. Additional loop/read
+assertions can vary with instrumented binary size and process timing; both run
+the same contract/control cases. Actual-model qualification is still separate.
+The hosted native C-ABI speech fixture does not qualify actual Linux Pocket,
+Kokoro, temporal packages, streaming public ingress or final release/retirement.
+Later documentation-only receipts preserve this exact tested code revision.

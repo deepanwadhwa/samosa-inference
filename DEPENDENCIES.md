@@ -66,3 +66,8 @@ Source/test archives may contain that harness without making it a runtime
 dependency. The pinned evaluation build recipe is in
 `tests/embeddinggemma2-candidate.json`; its CPU-only system-runtime build does
 not require Metal shaders or a media projector.
+
+2026-10-13 independent CI qualification additionally covers macOS14 ARM64 with
+Apple clang15/Xcode15.4 and Ubuntu24.04 x86-64 with clang18.1.3, system SQLite and
+libcurl. Exact source/run scope and remaining actual-model platform requirements
+are recorded in [native qualification](docs/SPEECH_LOADER_VERIFICATION.md).

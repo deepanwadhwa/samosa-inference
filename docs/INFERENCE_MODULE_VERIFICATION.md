@@ -55,3 +55,12 @@ and product pin were established on 2026-10-13; they do not close other release 
 Next: extract existing Pocket/Kokoro native speech implementation, using its
 pinned Sherpa ABI, existing voice configuration and bounded progress semantics.
 Keep it behind the same public provider/operation boundary and guardian controls.
+
+2026-10-13 update: the previously open controlled Linux registry gate now passes
+from the independent repository on Ubuntu24.04/x86-64, alongside macOS14/ARM64.
+[CI run 38454301972](https://github.com/deepanwadhwa/samosa-inference/actions/runs/38454301972)
+qualifies source `9df7ae0f3d29668812c9b9795c3e04b79900865a`, including normal and
+sanitized combined registry/CLI and controlled adapter gates. See
+[speech loader/platform evidence](SPEECH_LOADER_VERIFICATION.md) for precise
+commands, portability fixes and limits. This supersedes the controlled Linux
+registry gap recorded above, not the actual-model, public speech or release gaps.

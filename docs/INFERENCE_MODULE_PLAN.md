@@ -121,3 +121,10 @@ compatibility and loaded ABI checks. Normal/sanitizer format and transitive grap
 gates cover both Mach-O/ELF and ARM64/x86-64 under explicit private test policies.
 See [loader evidence](SPEECH_LOADER_VERIFICATION.md). Guardian/staging, public
 speech routing, actual Linux/Kokoro and final release gates remain open.
+
+Independent native platform checkpoint: CI run38454301972 passes every configured
+normal/sanitizer controlled gate on macOS14/ARM64 and Ubuntu24.04/x86-64 at source
+9df7ae0f3d29668812c9b9795c3e04b79900865a. Older SDK locale declarations and x86-64
+publication/catalog/provider identity gaps were fixed with explicit foreign-host
+refusal retained. This closes the controlled Linux registry build gap; it does
+not close actual-model platform coverage, public speech or any full numbered area.
