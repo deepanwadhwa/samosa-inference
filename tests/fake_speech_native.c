@@ -1,0 +1,73 @@
+/* A tiny native Sherpa-ONNX C-ABI stand-in for the gateway contract test.
+ * It proves that Samosa dlopens a C runtime, configures legacy Kokoro or
+ * streaming Pocket, and forwards float PCM without Python or a voice server. */
+#include <string.h>
+#include <math.h>
+#include <stdlib.h>
+
+#include "sherpa_abi.h"
+
+struct SamosaSherpaOfflineTts { int pocket; };
+static struct SamosaSherpaOfflineTts tts;
+static const float samples[] = {0.0f, 0.30f, -0.30f, 0.0f};
+static const SamosaSherpaGeneratedAudio audio = {samples, 4, 24000};
+
+const SamosaSherpaOfflineTts *SherpaOnnxCreateOfflineTts(const SamosaSherpaTtsConfig *config) {
+    if (!config || !config->model.provider || strcmp(config->model.provider, "cpu")) return NULL;
+    if (config->model.pocket.lm_flow) {
+        if (!config->model.pocket.lm_main || !config->model.pocket.encoder ||
+            !config->model.pocket.decoder || !config->model.pocket.text_conditioner ||
+            !config->model.pocket.vocab_json || !config->model.pocket.token_scores_json ||
+            config->model.pocket.voice_embedding_cache_capacity != 4 ||
+            config->model.num_threads != 2)
+            return NULL;
+        tts.pocket = 1;
+    } else {
+        if (!config->model.kokoro.model || !config->model.kokoro.voices ||
+            !config->model.kokoro.tokens || !config->model.kokoro.data_dir ||
+            config->model.num_threads != 6 || config->max_num_sentences != 1)
+            return NULL;
+        tts.pocket = 0;
+    }
+    return &tts;
+}
+
+void SherpaOnnxDestroyOfflineTts(const SamosaSherpaOfflineTts *value) { (void)value; }
+
+int32_t SherpaOnnxOfflineTtsSampleRate(const SamosaSherpaOfflineTts *value) {
+    return value == &tts ? 24000 : 0;
+}
+
+const SamosaSherpaGeneratedAudio *SherpaOnnxOfflineTtsGenerateWithConfig(
+    const SamosaSherpaOfflineTts *value, const char *text,
+    const SamosaSherpaGenerationConfig *config,
+    SamosaSherpaGeneratedAudioProgressCallbackWithArg callback, void *arg) {
+    if (value != &tts || !text || !text[0] || !config)
+        return NULL;
+    if (tts.pocket ? (!config->reference_audio || config->reference_audio_len <= 0 ||
+                   config->reference_sample_rate != 16000 || config->num_steps != 5 ||
+                      config->speed != 1.0f || config->silence_scale != 1.0f)
+                   : (config->sid != 3 || config->speed != 1.15f))
+        return NULL;
+    static float bad[] = {NAN, 0, 0, 0};
+    static float clipped[] = {2, -2, 0, 0};
+    static SamosaSherpaGeneratedAudio result;
+    result = audio;
+    if (!strcmp(text, "nan")) result.samples = bad;
+    if (!strcmp(text, "clip")) result.samples = clipped;
+    if (!strcmp(text, "bad-rate")) result.sample_rate = 1;
+    if (!strcmp(text, "empty")) result.n = 0;
+    if (!strcmp(text, "null")) return NULL;
+    if (!strcmp(text, "limit")) {
+        if (callback) callback(samples, 24000 * 46, .5f, arg);
+        return NULL;
+    }
+    if (callback && strcmp(text, "final-only")) {
+        if (!callback(result.samples, 2, .5f, arg)) return NULL;
+        if (strcmp(text, "partial") && !callback(result.samples + 2, 2, 1, arg)) return NULL;
+    }
+    if (!strcmp(text, "mismatch")) result.samples = clipped;
+    return &result;
+}
+
+void SherpaOnnxDestroyOfflineTtsGeneratedAudio(const SamosaSherpaGeneratedAudio *value) { (void)value; }

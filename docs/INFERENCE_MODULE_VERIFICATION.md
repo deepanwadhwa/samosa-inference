@@ -49,7 +49,8 @@ TEMPORAL_METADATA and refused; the configured normal/sanitizer runs above pass.
 Linux registry qualification is open. Docker Desktop was launched; actual
 `docker ps` calls on API1.52 and1.41 return500 from its Unix-socket API. Historical
 Linux adapter evidence does not qualify this changed registry. No Linux pass,
-area closure, independent repository pin or legacy retirement is claimed here.
+area closure or legacy retirement is claimed here. The independent repository
+and product pin were established on 2026-10-13; they do not close other release gates.
 
 Next: extract existing Pocket/Kokoro native speech implementation, using its
 pinned Sherpa ABI, existing voice configuration and bounded progress semantics.

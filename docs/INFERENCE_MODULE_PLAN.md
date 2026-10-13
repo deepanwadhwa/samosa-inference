@@ -102,3 +102,10 @@ native process/control, sanitizer and actual T5 map/reduce/replay gates pass on
 macOS. See [current qualification](INFERENCE_MODULE_VERIFICATION.md). Speech output
 and the remaining acceptance rows stay open; Docker Linux qualification is not
 currently available. Do not close area1 from the registry subset.
+
+2026-10-13: independent repository is established at
+https://github.com/deepanwadhwa/samosa-inference.git and Samosa Chat pins it as a
+submodule. The private speech runtime now reuses the existing native ABI and
+PCM streaming implementation; see [speech evidence](SPEECH_RUNTIME_VERIFICATION.md).
+Public speech provider/package/guardian/artifact gates and all remaining areas
+stay open. Repository creation alone does not close area 7.

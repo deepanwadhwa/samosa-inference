@@ -195,3 +195,11 @@ setup is built/tested with the optional native curl target.
 Native summarization reuses the monolith T5 engine through the optional public
 `samosa-inference-summary` adapter. See [summary-v1](contracts/summary-v1.md)
 for host pins, request controls, bounded coverage and qualification commands.
+
+Native speech extraction now provides the private `speech_runtime` primitive,
+reusing the existing Pocket/Kokoro C ABI, voice settings and bounded PCM progress.
+`make test-speech-runtime sanitize-speech-runtime` qualifies controlled native
+behavior; optional actual Pocket tests and limitations are recorded in
+[Speech runtime verification](docs/SPEECH_RUNTIME_VERIFICATION.md). Public speech
+routing, verified package installation, guardian isolation and owner-bound audio
+artifacts remain pending.
