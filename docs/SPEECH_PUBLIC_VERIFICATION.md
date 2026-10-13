@@ -40,6 +40,20 @@ legacy guardian/control regressions pass after the fix. Initial new-test compila
 also exposed a shadowed `read` identifier and missing stdio declaration; corrected
 before the passing runs.
 
+Independent source archive CI passes all configured gates on macOS14/ARM64 and
+Ubuntu24.04/x86-64 at `1e8ffe8e9b33a7f5328123b63f4f2fb0e29fcc24`:
+[run38460361119](https://github.com/deepanwadhwa/samosa-inference/actions/runs/38460361119).
+Both platforms pass audio-store406 checks in normal/sanitizer builds. Public speech
+passes91/89 on Linux and89/91 on macOS; the count varies with operation-status
+polling, while all work/control assertions execute. Actual Pocket55-check runs
+were also repeated locally with the final published binaries in both build modes.
+
+Existing Kokoro assets were found under `~/.samosa/voice/kokoro`. Its complete
+eSpeak data includes `espeak-ng-data/voices/!v` and104 files below it, which the
+current package path character rule rejects. A narrowly scoped native data path
+rule and negative path tests are needed before qualifying that complete package.
+The original assets were inspected only; they were not modified or filtered.
+
 Open gates include common authenticated service, incremental events, persistent
 engine lifecycle/readiness, immutable package staging, coordinated orphan retention,
 global memory/disk scheduling, actual other-model/platform tests and Chat replacement
