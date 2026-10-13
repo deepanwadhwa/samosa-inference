@@ -69,12 +69,17 @@ static int fixture(const char *model) {
     char *workspace = strdup(image), *slash = strrchr(workspace, '/');
     CHECK(slash);
     *slash = 0;
-    FILE *f = fopen(marker, "w");
+    /* Publish readiness only after the complete JSON is closed. The observing
+     * parent must never see a newly created but partially written marker. */
+    char temporary[1200];
+    CHECK(snprintf(temporary, sizeof(temporary), "%s.pending", marker) > 0);
+    FILE *f = fopen(temporary, "w");
     CHECK(f);
     fprintf(f, "{\"pid\":%ld,\"workspace\":", (long)getpid());
     json_quote(f, workspace, strlen(workspace));
     fputc('}', f);
     CHECK(!fclose(f));
+    CHECK(!rename(temporary, marker));
     free(workspace);
     free(marker);
     if (!strcmp(prompt, "stall")) {
