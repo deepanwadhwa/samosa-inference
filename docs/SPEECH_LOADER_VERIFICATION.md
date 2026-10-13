@@ -77,3 +77,12 @@ Wrong-architecture publication still refuses without changing permissions.
 Local native install normal/sanitizer passes 267/269 checks; engine-loader
 normal/sanitizer passes 99. Existing registry and controlled native text/acquisition
 CLI gates pass after the portability changes. Hosted results remain pending.
+
+CI run 38453770595 passes every configured macOS14 job step, including the clean
+export, core/speech normal/sanitizer, combined registry/CLI normal/sanitizer and
+controlled text/acquisition/summary/Whisper/vision gates. Linux progresses beyond
+publication/guardian/runtime checks but exposes catalog host detection limited
+to ARM64. The next fix extends catalog detection, setup fixtures and managed
+provider/session identity to the real compiled x86-64 platform. Local catalog
+normal/sanitizer passes 951 checks, setup passes 40 and managed CLI passes 41.
+No production x86-64 model recipe or actual-model readiness is inferred.

@@ -44,6 +44,15 @@ int main(void) {
     CHECK(provider_catalog_qualify(&os_entry,"26.1.1"));CHECK(!provider_catalog_qualify(&os_entry,"26.1.2"));
     CHECK(!provider_catalog_qualify(&os_entry,"26.2"));CHECK(!provider_catalog_qualify(&os_entry,"27"));CHECK(provider_catalog_qualify(&os_entry,"25.99.99"));
     char platform[65],os[65];CHECK(!provider_catalog_host(platform,os));CHECK(provider_os_version(os,parts));
+#if defined(__APPLE__) && defined(__x86_64__)
+    CHECK(!strcmp(platform,"macos-x86_64"));
+#elif defined(__APPLE__)
+    CHECK(!strcmp(platform,"macos-arm64"));
+#elif defined(__linux__) && defined(__x86_64__)
+    CHECK(!strcmp(platform,"linux-x86_64"));
+#elif defined(__linux__)
+    CHECK(!strcmp(platform,"linux-arm64"));
+#endif
     const char *needles[]={"https://example.invalid/engine","26.0","20513984","system-runtime-v1","Fixture license notice","fixture"};
     const char *invalid[][6]={
         {"http://example.invalid/engine","file:///engine","https://user@example.invalid/engine","https://example.invalid/engine#fragment","https://example.invalid/a b","https://example.invalid/a\\n"},

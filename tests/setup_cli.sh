@@ -10,7 +10,7 @@ server_pid=
 worker=
 cleanup(){ if [ -n "$worker" ]; then kill "$worker" 2>/dev/null || true; wait "$worker" 2>/dev/null || true; fi; if [ -n "$server_pid" ]; then kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true; fi; }
 trap cleanup EXIT HUP INT TERM
-case "$(uname -s)-$(uname -m)" in Darwin-arm64) platform=macos-arm64; other=linux-arm64;; Linux-aarch64) platform=linux-arm64; other=macos-arm64;; *) exit 1;; esac
+case "$(uname -s)-$(uname -m)" in Darwin-arm64) platform=macos-arm64; other=linux-arm64;; Darwin-x86_64) platform=macos-x86_64; other=linux-arm64;; Linux-aarch64) platform=linux-arm64; other=macos-arm64;; Linux-x86_64) platform=linux-x86_64; other=macos-arm64;; *) exit 1;; esac
 mkdir "$fixture/web"
 printf abc > "$fixture/web/artifact.bin"
 "$openssl_bin" req -x509 -newkey rsa:2048 -nodes -keyout "$fixture/key.pem" -out "$fixture/cert.pem" -days 1 \

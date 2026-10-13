@@ -45,10 +45,17 @@ const char *managed_provider_identity(const ActivationConfig *a,const InferenceC
     for(unsigned n=0;n<64;n++)if(!((a->engine_sha[n]>='0'&&a->engine_sha[n]<='9')||(a->engine_sha[n]>='a'&&a->engine_sha[n]<='f'))||
         !((a->model_sha[n]>='0'&&a->model_sha[n]<='9')||(a->model_sha[n]>='a'&&a->model_sha[n]<='f')))return "invalid_managed_configuration";
     char binding[512],digest[65];
-#ifdef __APPLE__
+/* Provider/session identity includes the real compiled architecture. */
+#if defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))
     const char *platform="macos-arm64";
-#else
+#elif defined(__APPLE__) && defined(__x86_64__)
+    const char *platform="macos-x86_64";
+#elif defined(__linux__) && defined(__aarch64__)
     const char *platform="linux-arm64";
+#elif defined(__linux__) && defined(__x86_64__)
+    const char *platform="linux-x86_64";
+#else
+    return "unsupported_provider_host";
 #endif
     int n=snprintf(binding,sizeof(binding),"llama-static-system-v1:%s:system-runtime-v1:llama-native-template-v1:%s:%llu:%s:%llu:%zu:%s",platform,
         a->engine_sha,(unsigned long long)a->engine_size,a->model_sha,(unsigned long long)a->model_size,i->context_tokens,i->model_alias);

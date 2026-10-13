@@ -30,15 +30,24 @@ const char *provider_catalog_qualify(const ProviderEntry *entry,const char *host
     return NULL;
 }
 const char *provider_catalog_host(char platform[65],char os[65]) {
-#if defined(__APPLE__) && (defined(__arm64__) || defined(__aarch64__))
+#if defined(__APPLE__) && (defined(__arm64__) || defined(__aarch64__) || defined(__x86_64__))
     size_t n=65;
     if(sysctlbyname("kern.osproductversion",os,&n,NULL,0)||!n||n>65||os[n-1])return "unsupported_provider_host";
+#if defined(__x86_64__)
+    strcpy(platform,"macos-x86_64");
+#else
     strcpy(platform,"macos-arm64");
-#elif defined(__linux__) && defined(__aarch64__)
+#endif
+#elif defined(__linux__) && (defined(__aarch64__) || defined(__x86_64__))
     struct utsname u;if(uname(&u))return "unsupported_provider_host";
     size_t n=0;while(u.release[n]&&((u.release[n]>='0'&&u.release[n]<='9')||u.release[n]=='.'))n++;
     if(!n||n>=65)return "unsupported_provider_host";
-    memcpy(os,u.release,n);os[n]=0;strcpy(platform,"linux-arm64");
+    memcpy(os,u.release,n);os[n]=0;
+#if defined(__x86_64__)
+    strcpy(platform,"linux-x86_64");
+#else
+    strcpy(platform,"linux-arm64");
+#endif
 #else
     (void)platform;(void)os;return "unsupported_provider_host";
 #endif
