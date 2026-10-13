@@ -44,6 +44,13 @@ The tolerance applies only to fresh model output;
 retrieval and replay require exact bytes. This is execution/integrity and duration
 regression evidence, not listening or intelligibility qualification.
 
+Independent archive CI passes all configured normal/sanitizer gates on
+macOS14/ARM64 and Ubuntu24.04/x86-64 at
+`518239bfed66943a0c92485e9c14afacdceef205`:
+[run38462074317](https://github.com/deepanwadhwa/samosa-inference/actions/runs/38462074317).
+Both job logs confirm package2423 and public speech91 checks in each build mode.
+CI validates controlled fixtures, while the actual Kokoro evidence above is local.
+
 Module/harness sanitizer builds do not rebuild external Sherpa/ORT libraries.
 Actual Linux/x86-64 Kokoro execution, listening quality, authenticated service,
 persistent readiness/model residency and legacy Chat replacement remain open.
