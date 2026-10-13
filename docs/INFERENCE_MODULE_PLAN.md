@@ -135,3 +135,10 @@ retained shutdown ownership and cancellation/requester-death cleanup. See
 [worker evidence](SPEECH_WORKER_VERIFICATION.md). Public speech routing, immutable
 package staging, persistent lifecycle/readiness and the remaining acceptance
 gates stay open.
+
+Public speech checkpoint: native speech generation and owner/provider-scoped PCM
+range/release operations now share the public provider registry. Actual Pocket
+range hashes and saved receipts pass normal/sanitizer public tests. See
+[public speech evidence](SPEECH_PUBLIC_VERIFICATION.md). Authenticated service,
+streaming, persistent lifecycle, global scheduling, immutable staging and all
+remaining acceptance gates stay open; original Chat voice paths are retained.

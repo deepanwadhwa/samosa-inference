@@ -3,10 +3,12 @@
 #define _DARWIN_C_SOURCE
 #include "registry_host.h"
 #include "engine_process.h"
+#include "speech_worker.h"
 #include <limits.h>
 #include <signal.h>
 
 int main(int argc,char **argv) {
+    int worker=speech_worker_dispatch(argc,argv);if(worker>=0)return worker;
     int bridge=summary_bridge_dispatch(argc,argv);if(bridge>=0)return bridge;
     bridge=vision_bridge_dispatch(argc,argv);if(bridge>=0)return bridge;
     int guardian=engine_guardian_dispatch(argc,argv);if(guardian>=0)return guardian;

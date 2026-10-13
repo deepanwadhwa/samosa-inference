@@ -8,6 +8,9 @@
 #include "json.h"
 #include "sha256.h"
 #include "budget.h"
+#ifdef SAMOSA_WITH_SPEECH
+#include "speech.h"
+#endif
 #ifdef SAMOSA_WITH_VISION
 #include "vision.h"
 #endif
@@ -63,6 +66,9 @@ static int dispatch_core(const InferenceConfig *cfg,const char *input,size_t len
 #endif
     #ifdef SAMOSA_WITH_SUMMARY
     if(cfg&&cfg->summary)return summary_dispatch(cfg,&request,out);
+#endif
+    #ifdef SAMOSA_WITH_SPEECH
+    if(cfg&&cfg->speech)return speech_dispatch(cfg,&request,out);
 #endif
     if(cfg&&cfg->embedding){char *embedding_op=json_string(&request,json_get(&request,0,"op"));int selected=embedding_op&&!strcmp(embedding_op,"embed_text"),descriptor=embedding_op&&!strcmp(embedding_op,"describe");free(embedding_op);if(descriptor)return embedding_describe(cfg,&request,out);if(selected)return embedding_dispatch(cfg,&request,out);}
     char *op=json_string(&request,json_get(&request,0,"op"));if(!op)return fail(out,"invalid_request");
@@ -138,6 +144,9 @@ static int dispatch_core(const InferenceConfig *cfg,const char *input,size_t len
     free(provider);free(prompt);free(op);free(session);free(answer);return error?fail(out,error):0;
 }
 static char *normalized(const InferenceConfig *cfg,const Json *j,const char *op){
+#ifdef SAMOSA_WITH_SPEECH
+    if(!strcmp(op,"speech_generate")&&cfg&&cfg->speech)return speech_normalized(cfg,j);
+#endif
     if(!strcmp(op,"embed_text")&&cfg&&cfg->embedding)return embedding_normalized(cfg,j);
 #ifdef SAMOSA_WITH_SUMMARY
     if((!strcmp(op,"summarize")||!strcmp(op,"summarize_opening"))&&cfg&&cfg->summary)return summary_normalized(cfg,j);
@@ -178,7 +187,11 @@ int inference_dispatch_config(const InferenceConfig *cfg,const char *input,size_
     if(!json_parse(&j,input,length)||j.tokens[0].type!=JT_OBJECT||!json_uint(&j,json_get(&j,0,"contract_version"),&version)||version!=1)return dispatch_core(cfg,input,length,out);
     char *op=json_string(&j,json_get(&j,0,"op")),*id=json_string(&j,json_get(&j,0,"operation_id"));
     size_t budget=0;int budget_token=json_get(&j,0,"timeout_ms");InferenceConfig scoped={.provider_id=PROVIDER,.context_tokens=CONTEXT,.owner="local"};if(cfg)scoped=*cfg;
-    int transcription=0,visual=0,summarization=0,temporal=0;
+    int transcription=0,visual=0,summarization=0,temporal=0,speech=0;
+#ifdef SAMOSA_WITH_SPEECH
+    speech=cfg&&cfg->speech&&op&&!strcmp(op,"speech_generate");
+    if(speech&&budget_token<0){if(received<0){free(op);free(id);return fail(out,"state_unavailable");}double deadline=received+60;if(!scoped.deadline_monotonic||deadline<scoped.deadline_monotonic)scoped.deadline_monotonic=deadline;cfg=&scoped;}
+#endif
     int embedding=cfg&&cfg->embedding&&op&&!strcmp(op,"embed_text");
     if(embedding&&budget_token<0){if(received<0){free(op);free(id);return fail(out,"state_unavailable");}double deadline=received+60;if(!scoped.deadline_monotonic||deadline<scoped.deadline_monotonic)scoped.deadline_monotonic=deadline;cfg=&scoped;}
 #ifdef SAMOSA_WITH_SUMMARY
@@ -197,14 +210,14 @@ int inference_dispatch_config(const InferenceConfig *cfg,const char *input,size_
     temporal=cfg&&cfg->temporal&&op&&!strcmp(op,"analyze_video_frames");
     if(temporal&&budget_token<0){if(received<0){free(op);free(id);return fail(out,"state_unavailable");}double deadline=received+120;if(!scoped.deadline_monotonic||deadline<scoped.deadline_monotonic)scoped.deadline_monotonic=deadline;cfg=&scoped;}
 #endif
-    if(budget_token>=0){if(!op||(strcmp(op,"generate")&&strcmp(op,"count_tokens")&&!transcription&&!visual&&!summarization&&!embedding&&!temporal)||!json_uint(&j,budget_token,&budget)||!budget||budget>(temporal?120000u:60000u)){free(op);free(id);return fail(out,"invalid_request");}if(received<0){free(op);free(id);return fail(out,"state_unavailable");}double deadline=received+(double)budget/1000;if(!scoped.deadline_monotonic||deadline<scoped.deadline_monotonic)scoped.deadline_monotonic=deadline;cfg=&scoped;}
+    if(budget_token>=0){if(!op||(strcmp(op,"generate")&&strcmp(op,"count_tokens")&&!transcription&&!visual&&!summarization&&!embedding&&!temporal&&!speech)||!json_uint(&j,budget_token,&budget)||!budget||budget>(temporal?120000u:60000u)){free(op);free(id);return fail(out,"invalid_request");}if(received<0){free(op);free(id);return fail(out,"state_unavailable");}double deadline=received+(double)budget/1000;if(!scoped.deadline_monotonic||deadline<scoped.deadline_monotonic)scoped.deadline_monotonic=deadline;cfg=&scoped;}
     if(op&&(!strcmp(op,"operation_get")||!strcmp(op,"operation_cancel"))){
         int valid=j.tokens[0].count==3&&id;
         int rc=valid?operation_public(cfg,op,id,out):fail(out,"invalid_request");free(op);free(id);return rc;
     }
     if(json_get(&j,0,"parent_operation_id")>=0&&json_get(&j,0,"operation_id")<0){free(op);free(id);return fail(out,"invalid_request");}
     if(!op||json_get(&j,0,"operation_id")<0){free(op);free(id);return dispatch_core(cfg,input,length,out);}
-    if(!id||(strcmp(op,"generate")&&strcmp(op,"count_tokens")&&!transcription&&!visual&&!summarization&&!embedding&&!temporal)){free(op);free(id);return fail(out,"invalid_request");}
+    if(!id||(strcmp(op,"generate")&&strcmp(op,"count_tokens")&&!transcription&&!visual&&!summarization&&!embedding&&!temporal&&!speech)){free(op);free(id);return fail(out,"invalid_request");}
     char *request=normalized(cfg,&j,op);free(op);
     if(!request){free(id);return fail(out,"invalid_request");}
     char digest[65];hash_bytes(request,strlen(request),digest);free(request);

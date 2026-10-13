@@ -6,6 +6,7 @@ typedef struct VisionConfig VisionConfig;
 typedef struct SummaryConfig SummaryConfig;
 typedef struct EmbeddingConfig EmbeddingConfig;
 typedef struct TemporalConfig TemporalConfig;
+typedef struct SpeechConfig SpeechConfig;
 typedef struct { const char *endpoint,*provider_id,*admission_state;size_t context_tokens;const char *model_alias,*owner;
     size_t queue_capacity,admission_wait_ms;
     int (*cancelled)(void *);void *cancellation;
@@ -18,6 +19,7 @@ typedef struct { const char *endpoint,*provider_id,*admission_state;size_t conte
     const SummaryConfig *summary;
     const EmbeddingConfig *embedding;
     const TemporalConfig *temporal;
+    const SpeechConfig *speech;
 } InferenceConfig;
 const char *llama_embed(const InferenceConfig *,const char *,size_t,float **,size_t *);
 const char *llama_count(const InferenceConfig *,const char *,size_t *);

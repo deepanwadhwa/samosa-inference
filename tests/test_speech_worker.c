@@ -73,7 +73,8 @@ int main(int argc,char **argv) {
         Control control={.fd=h.output,.marker=argv[5]};SpeechRuntimeResult result;
         return speech_process_run(&h.c,active,&control,&result)?3:0;
     }
-    CHECK(argc==2&&argv[0][0]=='/');
+    int export_only=argc==3&&!strcmp(argv[1],"--export-package");
+    CHECK((argc==2||export_only)&&argv[0][0]=='/');
 #ifdef __APPLE__
     char base[]="/private/tmp/samosa-speech-worker.XXXXXX";
 #else
@@ -81,11 +82,12 @@ int main(int argc,char **argv) {
 #endif
     CHECK(mkdtemp(base)!=NULL);char package[4096];CHECK(snprintf(package,sizeof(package),"%s/package",base)>0);CHECK(!mkdir(package,0700));
     int root=open(package,O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(root>=0);
-    int library=open(argv[1],O_RDONLY|O_NOFOLLOW),copy=openat(root,"native.so",O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(library>=0&&copy>=0);
+    int library=open(argv[export_only?2:1],O_RDONLY|O_NOFOLLOW),copy=openat(root,"native.so",O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(library>=0&&copy>=0);
     unsigned char block[65536];ssize_t n;while((n=read(library,block,sizeof(block)))>0)CHECK(write(copy,block,(size_t)n)==n);CHECK(n==0);CHECK(!close(library)&&!close(copy));
     for(unsigned i=1;i<8;i++)bytes(root,names[i],"artifact",8);
     unsigned char wav[]={ 'R','I','F','F',40,0,0,0,'W','A','V','E','f','m','t',' ',16,0,0,0,1,0,1,0,128,62,0,0,0,125,0,0,2,0,16,0,'d','a','t','a',4,0,0,0,0,64,0,192 };
     bytes(root,"caro.wav",wav,sizeof(wav));bytes(root,"stuart.wav",wav,sizeof(wav));char pin[65];manifest(root,pin);
+    if(export_only){printf("{\"base\":\"%s\",\"package\":\"%s\",\"manifest_sha256\":\"%s\"}\n",base,package,pin);close(root);return 0;}
     Host h;SpeechRuntimeResult result;
     const char *requests[]={"{\"text\":\"hello\",\"voice\":\"caro\"}","{\"text\":\"final-only\",\"voice\":\"stuart\"}"};
     for(unsigned i=0;i<2;i++) {

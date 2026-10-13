@@ -24,6 +24,7 @@ static int path(const char *s) {
     return s[strlen(s)-1]!='/';
 }
 static const char *kind(const InferenceConfig *c) {
+    if(c->speech)return "speech_output";
     if(c->whisper)return "transcription";
     if(c->vision)return "image_analysis";
     if(c->temporal)return "video_analysis";
@@ -33,6 +34,9 @@ static const char *kind(const InferenceConfig *c) {
 }
 static int compiled(const InferenceConfig *c) {
     (void)c;
+#ifndef SAMOSA_WITH_SPEECH
+    if(c->speech)return 0;
+#endif
 #ifndef SAMOSA_WITH_WHISPER
     if(c->whisper)return 0;
 #endif
@@ -54,7 +58,7 @@ const char *inference_registry_validate(const InferenceRegistry *r) {
     if(!r||!r->providers||!r->count||r->count>INFERENCE_PROVIDERS_MAX)return "invalid_registry_configuration";
     for(size_t i=0;i<r->count;i++){
         const InferenceConfig *c=&r->providers[i];
-        unsigned modalities=!!c->whisper+!!c->vision+!!c->temporal+!!c->summary+!!c->embedding;
+        unsigned modalities=!!c->whisper+!!c->vision+!!c->temporal+!!c->summary+!!c->embedding+!!c->speech;
         if(!identity(c->provider_id,128)||!identity(c->owner,64)||!path(c->admission_state)||
            c->context_tokens<128||c->context_tokens>131072||c->queue_capacity>8||
            c->admission_wait_ms>60000||modalities>1||
@@ -73,6 +77,7 @@ const char *inference_registry_validate(const InferenceRegistry *r) {
     return NULL;
 }
 static int work(const InferenceConfig *c,const char *op) {
+    if(c->speech)return !strcmp(op,"speech_generate")||!strcmp(op,"audio_read")||!strcmp(op,"audio_delete");
     if(c->whisper)return !strcmp(op,"transcribe");
     if(c->vision)return !strcmp(op,"analyze_image");
     if(c->temporal)return !strcmp(op,"analyze_video_frames");
@@ -82,6 +87,7 @@ static int work(const InferenceConfig *c,const char *op) {
            !strcmp(op,"provider_status")||!strcmp(op,"session_create")||!strcmp(op,"session_get");
 }
 static const char *operations(const InferenceConfig *c) {
+    if(c->speech)return "\"speech_generate\",\"audio_read\",\"audio_delete\"";
     if(c->whisper)return "\"transcribe\"";
     if(c->vision)return "\"analyze_image\"";
     if(c->temporal)return "\"analyze_video_frames\"";

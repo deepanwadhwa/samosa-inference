@@ -41,6 +41,7 @@ jobs:
         run: |
           make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-registry-modalities sanitize-registry-modalities
           make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-registry-cli sanitize-registry-cli
+          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-speech-public sanitize-speech-public
       - name: Controlled text, acquisition and modality adapters
         shell: bash
         run: |

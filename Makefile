@@ -17,15 +17,15 @@ test-registry: build/test-registry
 sanitize-registry: | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_registry.c $(SOURCES) $(LIBS) -o build/test-registry-sanitize
 	./build/test-registry-sanitize
-REGISTRY_FLAGS = $(NATIVE_FLAGS) -DSAMOSA_WITH_WHISPER -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -DSAMOSA_WITH_SUMMARY
-REGISTRY_SOURCES = $(SOURCES) src/llama.c src/whisper.c src/vision.c src/visual_bridge.c src/temporal.c src/temporal_input.c src/temporal_package.c src/summary.c src/summary_protocol.c src/artifact.c
-REGISTRY_HEADERS = $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
+REGISTRY_FLAGS = $(NATIVE_FLAGS) -DSAMOSA_WITH_SPEECH -DSAMOSA_WITH_WHISPER -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -DSAMOSA_WITH_SUMMARY
+REGISTRY_SOURCES = src/speech.c src/audio_store.c src/speech_worker.c src/speech_runtime.c src/speech_package.c src/speech_package_loader.c src/library_runtime.c src/engine_runtime.c $(SOURCES) src/llama.c src/whisper.c src/vision.c src/visual_bridge.c src/temporal.c src/temporal_input.c src/temporal_package.c src/summary.c src/summary_protocol.c src/artifact.c
+REGISTRY_HEADERS = src/speech.h src/audio_store.h $(SPEECH_WORKER_HEADERS) $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
 .PHONY: providers
 providers: build/samosa-inference-providers
 build/samosa-inference-providers: src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(REGISTRY_HEADERS) | build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(REGISTRY_FLAGS) src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(LIBS) $(CURL_LIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(REGISTRY_FLAGS) src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
 build/samosa-inference-providers-sanitize: src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(REGISTRY_HEADERS) | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(REGISTRY_FLAGS) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(LIBS) $(CURL_LIBS) -o $@
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(REGISTRY_FLAGS) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
 .PHONY: test-registry-cli sanitize-registry-cli
 build/test-registry-cli: tests/test_registry_cli.c tests/whisper_fixture.h src/json.h src/sha256.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc tests/test_registry_cli.c -o $@
@@ -36,11 +36,11 @@ test-registry-cli: build/samosa-inference-providers build/test-registry-cli
 sanitize-registry-cli: build/samosa-inference-providers-sanitize build/test-registry-cli-sanitize
 	$(abspath build/test-registry-cli-sanitize) $(abspath build/samosa-inference-providers-sanitize)
 build/test-registry-modalities: tests/test_registry.c tests/whisper_fixture.h $(REGISTRY_SOURCES) $(HEADERS) | build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(REGISTRY_FLAGS) -Isrc tests/test_registry.c $(REGISTRY_SOURCES) $(LIBS) $(CURL_LIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(REGISTRY_FLAGS) -Isrc tests/test_registry.c $(REGISTRY_SOURCES) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
 test-registry-modalities: build/test-registry-modalities
 	./build/test-registry-modalities
 sanitize-registry-modalities: | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(REGISTRY_FLAGS) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_registry.c $(REGISTRY_SOURCES) $(LIBS) $(CURL_LIBS) -o build/test-registry-modalities-sanitize
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(REGISTRY_FLAGS) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_registry.c $(REGISTRY_SOURCES) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o build/test-registry-modalities-sanitize
 	./build/test-registry-modalities-sanitize
 test: test-registry
 sanitize: sanitize-registry
@@ -277,7 +277,7 @@ test-native: test-setup
 sanitize-native: sanitize-setup
 
 build/test-llama-sanitize: tests/test_llama.c $(SOURCES) src/llama.c $(HEADERS) | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(NATIVE_FLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc tests/test_llama.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) -o $@
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(NATIVE_FLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc tests/test_llama.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
 
 SUMMARY_SOURCES = src/summary_main.c src/summary.c src/summary_protocol.c src/artifact.c $(SOURCES)
 .PHONY: summary
@@ -388,3 +388,21 @@ build/test-speech-process-real: tests/test_speech_process_real.c $(SPEECH_WORKER
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc $< $(SPEECH_WORKER_SOURCES) $(DL_LIBS) -o $@
 build/test-speech-process-real-sanitize: tests/test_speech_process_real.c $(SPEECH_WORKER_SOURCES) $(SPEECH_WORKER_HEADERS) | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $< $(SPEECH_WORKER_SOURCES) $(DL_LIBS) -o $@
+
+AUDIO_STORE_SOURCES = src/audio_store.c $(SPEECH_WORKER_SOURCES)
+.PHONY: test-audio-store sanitize-audio-store
+build/test-audio-store: tests/test_audio_store.c $(AUDIO_STORE_SOURCES) src/audio_store.h $(SPEECH_WORKER_HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc $< $(AUDIO_STORE_SOURCES) $(DL_LIBS) -lsqlite3 -o $@
+test-audio-store: build/test-audio-store
+	./build/test-audio-store
+sanitize-audio-store: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_audio_store.c $(AUDIO_STORE_SOURCES) $(DL_LIBS) -lsqlite3 -o build/test-audio-store-sanitize
+	./build/test-audio-store-sanitize
+test: test-audio-store
+sanitize: sanitize-audio-store
+
+.PHONY: test-speech-public sanitize-speech-public
+test-speech-public: build/samosa-inference-providers build/test-speech-worker build/speech-worker-fixture.so
+	python3 tests/test_speech_public.py $(abspath build/samosa-inference-providers) $(abspath build/test-speech-worker) $(abspath build/speech-worker-fixture.so)
+sanitize-speech-public: build/samosa-inference-providers-sanitize build/test-speech-worker build/speech-worker-fixture.so
+	python3 tests/test_speech_public.py $(abspath build/samosa-inference-providers-sanitize) $(abspath build/test-speech-worker) $(abspath build/speech-worker-fixture.so)

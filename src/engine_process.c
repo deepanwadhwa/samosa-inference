@@ -237,10 +237,18 @@ const char *engine_process_start_bound_protocol_sized(const char *self,const cha
     if(!workspace||workspace[0]!='/'||directory<0||residency<0||model<0||input<0||result<0||!result_limit||result_limit>16777216)return "invalid_engine_configuration";
     return start(self,argv,lifetime,limit,residency,model,workspace,directory,input,result,result_limit,p);
 }
+/* Returned terminal errors outlive the caller-owned process record. The
+ * guardian protocol is closed; unknown terminal words refuse generically. */
+static const char *terminal_error(const EngineProcess *p) {
+    static const char *const errors[]={"engine_failed","clock_failed","lifetime_exceeded","log_failed","log_limit","poll_failed","protocol_limit","wait_failed","engine_guardian_failed"};
+    if(!strcmp(p->reason,"stopped")||!strcmp(p->reason,"completed"))return NULL;
+    for(size_t i=0;i<sizeof(errors)/sizeof(*errors);i++)if(!strcmp(p->reason,errors[i]))return errors[i];
+    return "engine_guardian_failed";
+}
 const char *engine_process_stop(EngineProcess *p) {
     if(p->control>=0){close(p->control);p->control=-1;}
     if(p->guardian<=0){if(p->response>=0)close(p->response);p->response=-1;
-        return p->terminal && strcmp(p->reason,"stopped") && strcmp(p->reason,"completed")?p->reason:NULL;}
+        return p->terminal?terminal_error(p):NULL;}
     char reply[64];double now=monotonic();int observed=p->reason[0]!=0;
     if(!observed && now>=0 && line(p->response,reply,now+2)){
         snprintf(p->reason,sizeof(p->reason),"%s",reply);observed=1;
@@ -255,5 +263,5 @@ const char *engine_process_stop(EngineProcess *p) {
     }
     close(p->response);p->response=-1;p->guardian=-1;p->terminal=1;
     if(reaped<0 || !observed)snprintf(p->reason,sizeof(p->reason),"engine_guardian_failed");
-    return !strcmp(p->reason,"stopped")||!strcmp(p->reason,"completed")?NULL:p->reason;
+    return terminal_error(p);
 }

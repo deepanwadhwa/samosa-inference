@@ -50,6 +50,7 @@ Common entry fields: `provider_id`, `kind`, `state`; optional `context_tokens`
 | `transcription` | Same engine/model pins | `transcribe` |
 | `image_analysis` | Engine/model pins plus `config_sha256`, `tokenizer_sha256`, `weights_sha256` | `analyze_image` |
 | `video_analysis` | Engine/model pins plus `manifest_sha256` | `analyze_video_frames` |
+| `speech_output` | `package`, `manifest_sha256` | `speech_generate`, `audio_read`, `audio_delete` |
 | `fake_text` | No engine/model fields; explicit contract fixture only | Same text operations, fake outputs and ready=false |
 
 Image and video package identities must equal the existing adapters' computed
@@ -107,7 +108,9 @@ Its original scalar/large-input/map-reduce/provenance/replay assertions remain.
 Use sanitized CLI/harness builds for the corresponding native adapter gate; the
 packaged model engine itself is not sanitizer-built.
 
-Speech output, owned multi-engine activation/residency, global scheduling,
+Speech output is described in [speech-output-v1.md](speech-output-v1.md). Its
+owner-scoped retained audio store and public controls are now linked here. Owned
+multi-engine activation/residency, global scheduling,
 incremental public events and authenticated network service remain separate
 unfinished acceptance gates. Per-provider state/queues do not prove global
 memory admission or fairness. This interface does not close area1 or release7.
