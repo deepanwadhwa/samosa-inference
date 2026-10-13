@@ -1,5 +1,10 @@
 #define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE 700
+#define _DARWIN_C_SOURCE
 #include "speech_runtime.h"
+#include "speech_package.h"
+#include <fcntl.h>
+#include <unistd.h>
 #include "sha256.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,9 +23,11 @@ static const char *capture(void *arg, const unsigned char *pcm, size_t bytes, in
     return NULL;
 }
 /* Optional actual-model ABI/PCM gate. Models/runtime are supplied explicitly;
- * this does not qualify package provenance or intelligibility. */
+ * --package also verifies a host-pinned closed tree. Neither mode qualifies
+ * arbitrary dynamic dependencies or intelligibility. */
 int main(int argc, char **argv) {
-    if (argc != 3) { fprintf(stderr, "usage: %s library model-directory\n", argv[0]); return 2; }
+    int package = argc == 4 && !strcmp(argv[1], "--package");
+    if (!package && argc != 3) { fprintf(stderr, "usage: %s library model-directory | --package root manifest-sha256\n", argv[0]); return 2; }
     const char *names[] = {"lm_flow.int8.onnx", "lm_main.int8.onnx", "encoder.onnx", "decoder.int8.onnx",
         "text_conditioner.onnx", "vocab.json", "token_scores.json", "voices/caro_davy.wav", "voices/stuart_bell.wav"};
     char paths[9][4096];
@@ -31,19 +38,33 @@ int main(int argc, char **argv) {
     SpeechRuntimeOptions o = {.library = argv[1], .threads = 2, .pocket = 1,
         .lm_flow = paths[0], .lm_main = paths[1], .encoder = paths[2], .decoder = paths[3],
         .text_conditioner = paths[4], .vocab = paths[5], .token_scores = paths[6]};
+    SpeechPackageReceipt *receipt = NULL; int package_fd = -1;
+    const char *references[] = {paths[7], paths[8]};
+    const char *e = NULL;
+    if (package) {
+        receipt = calloc(1, sizeof(*receipt));
+        if (!receipt) return 1;
+        package_fd = open(argv[2], O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+        e = speech_package_verify(package_fd, argv[2], argv[3], NULL, NULL, receipt, 0);
+        if (!e) e = speech_package_options(receipt, &o, &references[0], &references[1]);
+        if (!e && !o.pocket) e = "actual_gate_requires_pocket";
+        if (e) { fprintf(stderr, "%s\n", e); if (package_fd >= 0) close(package_fd); free(receipt); return 1; }
+        printf("PASS actual speech package: %zu files, %llu bytes, model_identity=%s\n",
+            receipt->count, (unsigned long long)receipt->total_bytes, receipt->model_identity);
+    }
     SpeechRuntime *r = NULL;
-    const char *e = speech_runtime_open(&o, &r);
-    if (e) { fprintf(stderr, "%s\n", e); return 1; }
+    e = speech_runtime_open(&o, &r);
+    if (e) { fprintf(stderr, "%s\n", e); if (package_fd >= 0) close(package_fd); free(receipt); return 1; }
     for (size_t i = 0; i < 2; ++i) {
         Capture c = {0}; sha256_init(&c.hash);
         SpeechRuntimeResult result;
         e = speech_runtime_generate(r, "The meeting starts at nine. Please bring your notes.",
-            i ? "stuart" : "caro", paths[7+i], capture, &c, &result);
+            i ? "stuart" : "caro", references[i], capture, &c, &result);
         unsigned char digest[32]; char hex[65]; sha256_final(&c.hash, digest); sha256_hex(digest, hex);
         if (e || c.bytes != result.samples * 2 || c.rate != result.sample_rate ||
             c.bytes < (size_t)c.rate || !c.nonzero || c.calls < 2 || strcmp(hex, result.pcm_sha256)) {
             fprintf(stderr, "actual Pocket failed: %s (%zu bytes, %zu chunks)\n", e ? e : "invalid_pcm", c.bytes, c.calls);
-            speech_runtime_close(r); return 1;
+            speech_runtime_close(r); if (package_fd >= 0) close(package_fd); free(receipt); return 1;
         }
         printf("PASS actual Pocket %s: rate=%d samples=%zu chunks=%zu callbacks=%zu pcm_sha256=%s\n",
             i ? "stuart" : "caro", result.sample_rate, result.samples, c.calls, result.callbacks, hex);
@@ -51,15 +72,21 @@ int main(int argc, char **argv) {
         if (i == 0) {
             Capture cancelled = {.cancel_after = 2}; sha256_init(&cancelled.hash);
             e = speech_runtime_generate(r, "The meeting starts at nine. Please bring your notes.",
-                "caro", paths[7], capture, &cancelled, &result);
+                "caro", references[0], capture, &cancelled, &result);
             if (!e || strcmp(e, "operation_cancelled") || cancelled.calls != 2 ||
                 !cancelled.bytes || result.samples || result.pcm_sha256[0]) {
                 fprintf(stderr, "actual Pocket cancellation failed\n");
-                speech_runtime_close(r); return 1;
+                speech_runtime_close(r); if (package_fd >= 0) close(package_fd); free(receipt); return 1;
             }
             puts("PASS actual Pocket cancellation after partial PCM; no successful receipt");
         }
     }
     speech_runtime_close(r);
+    if (package) {
+        e = speech_package_verify(package_fd, argv[2], argv[3], NULL, NULL, receipt, 1);
+        close(package_fd); free(receipt);
+        if (e) { fprintf(stderr, "%s\n", e); return 1; }
+        puts("PASS actual speech package retained identity after generation/cancellation/recovery");
+    }
     return 0;
 }

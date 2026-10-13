@@ -109,3 +109,9 @@ submodule. The private speech runtime now reuses the existing native ABI and
 PCM streaming implementation; see [speech evidence](SPEECH_RUNTIME_VERIFICATION.md).
 Public speech provider/package/guardian/artifact gates and all remaining areas
 stay open. Repository creation alone does not close area 7.
+
+Speech package checkpoint: the private closed-tree verifier reuses existing
+artifact hashing/identity primitives and passes controlled normal/sanitizer and
+actual pinned-package Pocket generation/recheck gates. See
+[package evidence](SPEECH_PACKAGE_VERIFICATION.md). This does not close public
+speech routing, production acquisition, loader compatibility or engine ownership.

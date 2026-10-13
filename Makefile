@@ -302,6 +302,8 @@ build/test-summary-real-sanitize: tests/test_summary_real.c tests/summary_fixtur
 
 # Speech keeps the existing Sherpa C ABI and has no linker-time model/runtime
 # dependency. The host verifies and isolates the external package separately.
+SPEECH_PACKAGE_SOURCES = src/speech_package.c src/artifact.c
+SPEECH_PACKAGE_HEADERS = src/speech_package.h src/speech_runtime.h src/artifact.h src/json.h src/sha256.h
 SPEECH_RUNTIME_SOURCES = src/speech_runtime.c src/engine_runtime.c
 SPEECH_RUNTIME_HEADERS = src/speech_runtime.h src/sherpa_abi.h src/engine_runtime.h src/json.h src/sha256.h
 DL_LIBS = $(if $(filter Linux,$(shell uname -s)),-ldl,)
@@ -316,10 +318,21 @@ sanitize-speech-runtime: | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -shared -fPIC tests/fake_speech_native.c -o build/fake-speech-native-sanitize.so
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_speech_runtime.c $(SPEECH_RUNTIME_SOURCES) $(DL_LIBS) -o build/test-speech-runtime-sanitize
 	./build/test-speech-runtime-sanitize $(abspath build/fake-speech-native-sanitize.so)
-build/test-speech-real: tests/test_speech_real.c $(SPEECH_RUNTIME_SOURCES) $(SPEECH_RUNTIME_HEADERS) | build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc $< $(SPEECH_RUNTIME_SOURCES) $(DL_LIBS) -o $@
-build/test-speech-real-sanitize: tests/test_speech_real.c $(SPEECH_RUNTIME_SOURCES) $(SPEECH_RUNTIME_HEADERS) | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $< $(SPEECH_RUNTIME_SOURCES) $(DL_LIBS) -o $@
+build/test-speech-real: tests/test_speech_real.c $(SPEECH_RUNTIME_SOURCES) $(SPEECH_RUNTIME_HEADERS) $(SPEECH_PACKAGE_SOURCES) $(SPEECH_PACKAGE_HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc $< $(SPEECH_RUNTIME_SOURCES) $(SPEECH_PACKAGE_SOURCES) $(DL_LIBS) -o $@
+build/test-speech-real-sanitize: tests/test_speech_real.c $(SPEECH_RUNTIME_SOURCES) $(SPEECH_RUNTIME_HEADERS) $(SPEECH_PACKAGE_SOURCES) $(SPEECH_PACKAGE_HEADERS) | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -DJSON_TOKENS_MAX=8192 $< $(SPEECH_RUNTIME_SOURCES) $(SPEECH_PACKAGE_SOURCES) $(DL_LIBS) -o $@
 
 test: test-speech-runtime
 sanitize: sanitize-speech-runtime
+
+.PHONY: test-speech-package sanitize-speech-package
+build/test-speech-package: tests/test_speech_package.c $(SPEECH_PACKAGE_SOURCES) $(SPEECH_PACKAGE_HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc $< $(SPEECH_PACKAGE_SOURCES) -o $@
+test-speech-package: build/test-speech-package
+	./build/test-speech-package
+sanitize-speech-package: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_speech_package.c $(SPEECH_PACKAGE_SOURCES) -o build/test-speech-package-sanitize
+	./build/test-speech-package-sanitize
+test: test-speech-package
+sanitize: sanitize-speech-package

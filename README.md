@@ -203,3 +203,10 @@ behavior; optional actual Pocket tests and limitations are recorded in
 [Speech runtime verification](docs/SPEECH_RUNTIME_VERIFICATION.md). Public speech
 routing, verified package installation, guardian isolation and owner-bound audio
 artifacts remain pending.
+
+The private speech package verifier now binds complete nested runtime/model/voice
+contents to a host-pinned manifest and retains identities for rechecks. See
+[its contract](contracts/speech-package-v1.md) and
+[qualification](docs/SPEECH_PACKAGE_VERIFICATION.md). Actual pinned-package Pocket
+generation and cancellation/recovery pass on macOS ARM64. Production catalog
+provenance, loader compatibility and owned guardian execution remain open.
