@@ -22,7 +22,37 @@ static inline void file_sha(const char *path,char sha[65]){int fd=open(path,O_RD
 static inline void file_copy(const char *source,const char *target){int input=open(source,O_RDONLY),output=open(target,O_WRONLY|O_CREAT|O_EXCL,0700);CHECK(input>=0&&output>=0);unsigned char bytes[65536];for(;;){ssize_t n=read(input,bytes,sizeof(bytes));if(n<0&&errno==EINTR)continue;CHECK(n>=0);if(!n)break;write_all(output,bytes,(size_t)n);}CHECK(!close(input));CHECK(!close(output));}
 static inline Invocation spawn_request(char *const argv[],const char *request){int input[2],output[2];CHECK(!pipe(input));CHECK(!pipe(output));pid_t pid=fork();CHECK(pid>=0);if(!pid){close(input[1]);close(output[0]);if(dup2(input[0],STDIN_FILENO)<0||dup2(output[1],STDOUT_FILENO)<0)_exit(2);close(input[0]);close(output[1]);execv(argv[0],argv);_exit(2);}close(input[0]);close(output[1]);write_all(input[1],request,strlen(request));CHECK(!close(input[1]));return (Invocation){pid,output[0]};}
 static inline char *finish(Invocation p,int expected){char *body=read_all(p.output,2097152);CHECK(!close(p.output));int status;CHECK(waitpid(p.pid,&status,0)==p.pid);if(!WIFEXITED(status)||WEXITSTATUS(status)!=expected)fprintf(stderr,"child status: %d; response: %s\n",status,body);CHECK(WIFEXITED(status)&&WEXITSTATUS(status)==expected);return body;}
-static inline Invocation launch(const FixtureConfig *c,const char *request){char *args[]={(char*)c->cli,"--whisper-cli",(char*)c->engine,"--whisper-model",(char*)c->model,"--whisper-cli-sha256",(char*)c->engine_sha,"--whisper-model-sha256",(char*)c->model_sha,"--admission-state",(char*)c->state,"--owner",(char*)c->owner,NULL};return spawn_request(args,request);}
+/* Actual-model gates may select the common registry without replacing their
+ * quality/provenance assertions or the legacy standalone fixture transport. */
+static inline Invocation registry_launch(const FixtureConfig *c,const char *request,const char *provider){
+    const char *path=getenv("SAMOSA_TEST_REGISTRY_CONFIG");CHECK(path);
+    Json j;CHECK(json_parse(&j,request,strlen(request)));
+    char *forward=NULL;const char *body=request;
+    if(json_get(&j,0,"provider_id")<0){size_t length=strlen(request);CHECK(length&&request[length-1]=='}');
+        forward=malloc(length+strlen(provider)+32);CHECK(forward);
+        snprintf(forward,length+strlen(provider)+32,"%.*s,\"provider_id\":\"%s\"}",(int)length-1,request,provider);body=forward;}
+    char *args[]={(char*)c->cli,"--config",(char*)path,NULL};Invocation result=spawn_request(args,body);free(forward);return result;
+}
+static inline void actual_registry(const FixtureConfig *c,const char *root,const char *provider,const char *kind,const char *extra){
+    char path[1024];snprintf(path,sizeof(path),"%s/registry.json",root);
+    char *body=NULL;size_t bytes=0;FILE *f=open_memstream(&body,&bytes);CHECK(f);
+    fputs("{\"contract_version\":1,\"owner\":",f);json_quote(f,c->owner,strlen(c->owner));
+    fprintf(f,",\"providers\":[{\"kind\":\"%s\",\"provider_id\":\"%s\",\"state\":",kind,provider);json_quote(f,c->state,strlen(c->state));
+    fputs(",\"engine\":",f);json_quote(f,c->engine,strlen(c->engine));fputs(",\"model\":",f);json_quote(f,c->model,strlen(c->model));
+    fprintf(f,",\"engine_sha256\":\"%s\",\"model_sha256\":\"%s\"%s},{\"kind\":\"fake_text\",\"provider_id\":\"contract-text\",\"state\":\"%s/text-state\"}]}",c->engine_sha,c->model_sha,extra?extra:"",root);
+    CHECK(!fclose(f));file_write(path,body);free(body);CHECK(!setenv("SAMOSA_TEST_REGISTRY_CONFIG",path,1));
+    char *args[]={(char*)c->cli,"--config",path,NULL};
+    char *discovery=finish(spawn_request(args,"{\"contract_version\":1,\"op\":\"describe\"}"),0);CHECK(strstr(discovery,provider)&&strstr(discovery,"contract-text"));free(discovery);
+    char *text=finish(spawn_request(args,"{\"contract_version\":1,\"op\":\"count_tokens\",\"provider_id\":\"contract-text\",\"prompt\":\"hello\"}"),0);CHECK(strstr(text,"fake-utf8-byte-v1"));free(text);
+}
+static inline void actual_arguments(const FixtureConfig *c,const char *path){
+    const char *registry=getenv("SAMOSA_TEST_REGISTRY_CONFIG");
+    const char *legacy[]={"--whisper-cli",c->engine,"--whisper-model",c->model,"--whisper-cli-sha256",c->engine_sha,"--whisper-model-sha256",c->model_sha,"--admission-state",c->state,"--owner",c->owner};
+    const char *r[]={"--config",registry};const char *const *values=registry?r:legacy;size_t count=registry?2:12;
+    char *body=NULL;size_t n=0;FILE *f=open_memstream(&body,&n);CHECK(f);fputc('[',f);
+    for(size_t i=0;i<count;i++){if(i)fputc(',',f);json_quote(f,values[i],strlen(values[i]));}fputc(']',f);CHECK(!fclose(f));file_write(path,body);free(body);
+}
+static inline Invocation launch(const FixtureConfig *c,const char *request){if(getenv("SAMOSA_TEST_REGISTRY_CONFIG"))return registry_launch(c,request,"whisper-base-en-v1");char *args[]={(char*)c->cli,"--whisper-cli",(char*)c->engine,"--whisper-model",(char*)c->model,"--whisper-cli-sha256",(char*)c->engine_sha,"--whisper-model-sha256",(char*)c->model_sha,"--admission-state",(char*)c->state,"--owner",(char*)c->owner,NULL};return spawn_request(args,request);}
 static inline void parse(const char *body,Json *j){CHECK(json_parse(j,body,strlen(body)));}
 static inline char *string_field(const char *body,const char *field){Json j;parse(body,&j);char *value=json_string(&j,json_get(&j,0,field));CHECK(value);return value;}
 static inline void error_check(const char *body,const char *error){Json j;parse(body,&j);char *value=json_string(&j,json_get(&j,json_get(&j,0,"error"),"code"));if(!value||strcmp(value,error))fprintf(stderr,"response: %s\n",body);CHECK(value&&!strcmp(value,error));free(value);}

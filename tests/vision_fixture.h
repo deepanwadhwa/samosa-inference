@@ -7,6 +7,7 @@ typedef struct {
     char config[65], tokenizer[65], weights[65];
 } VisionFixture;
 static inline Invocation vlaunch(const VisionFixture *c, const char *request) {
+    if(getenv("SAMOSA_TEST_REGISTRY_CONFIG"))return registry_launch(&c->base,request,"visionpsy-native-v1");
     char *args[] = {(char *)c->base.cli,        "--vision-engine",
                     (char *)c->base.engine,     "--vision-model",
                     (char *)c->base.model,      "--vision-engine-sha256",

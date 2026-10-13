@@ -51,10 +51,11 @@ static int full_duration(char **argv){
     CHECK(data_offset&&data_bytes>=66000u*32u);
     snprintf(state,sizeof(state),"%s/sources",root);snprintf(inference,sizeof(inference),"%s/inference",root);
     FixtureConfig cfg={.cli=argv[1],.engine=argv[3],.model=argv[4],.state=inference,.owner="actual-whisper-test"};
-    file_sha(cfg.engine,cfg.engine_sha);file_sha(cfg.model,cfg.model_sha);create_store(root);
+    file_sha(cfg.engine,cfg.engine_sha);file_sha(cfg.model,cfg.model_sha);
+    if(getenv("SAMOSA_TEST_USE_REGISTRY"))actual_registry(&cfg,root,"whisper-base-en-v1","transcription",NULL);
+    create_store(root);
     snprintf(arguments,sizeof(arguments),"%s/arguments.json",root);
-    FILE *out=fopen(arguments,"w");CHECK(out);CHECK(!chmod(arguments,0600));const char *values[]={"--whisper-cli",cfg.engine,"--whisper-model",cfg.model,"--whisper-cli-sha256",cfg.engine_sha,"--whisper-model-sha256",cfg.model_sha,"--admission-state",cfg.state,"--owner",cfg.owner};
-    fputc('[',out);for(size_t i=0;i<12;i++){if(i)fputc(',',out);json_quote(out,values[i],strlen(values[i]));}fputc(']',out);CHECK(!fclose(out));
+    actual_arguments(&cfg,arguments);
     char *registered=source_call(argv[2],files,state,media_helper?"{\"contract_version\":1,\"op\":\"register_media\",\"path\":\"speech.wav\"}":"{\"contract_version\":1,\"op\":\"register_audio\",\"path\":\"speech.wav\"}");
     char *source=string_field(registered,"source_id"),*version=string_field(registered,"version");free(registered);
     snprintf(request,sizeof(request),"{\"contract_version\":1,\"op\":\"audio_index_create\",\"source_id\":\"%s\",\"version\":\"%s\",\"start_ms\":0,\"end_ms\":66000}",source,version);
@@ -94,13 +95,13 @@ int main(int argc,char **argv){
     char request[1024];snprintf(request,sizeof(request),"{\"contract_version\":1,\"op\":\"prepare_audio\",\"source_id\":\"%s\",\"version\":\"%s\",\"start_ms\":0,\"end_ms\":%zu}",source,version,duration);
     char *prepared=source_call(argv[2],files,source_state,request);CHECK(strstr(prepared,"prepared_audio")&&strstr(prepared,"derived"));char *audio=string_field(prepared,"data");free(prepared);
     FixtureConfig cfg={.cli=argv[1],.engine=argv[3],.model=argv[4],.state=inference_state,.owner="actual-whisper-test"};file_sha(cfg.engine,cfg.engine_sha);file_sha(cfg.model,cfg.model_sha);
+    if(getenv("SAMOSA_TEST_USE_REGISTRY"))actual_registry(&cfg,root,"whisper-base-en-v1","transcription",NULL);
+    else CHECK(!getenv("SAMOSA_TEST_REGISTRY_CONFIG"));
     char *transcript_request=transcribe(audio,"actual-transcript",60000),*result=invoke(&cfg,transcript_request,NULL),*text=string_field(result,"text"),*input_sha=string_field(result,"input_sha256");CHECK(!strcmp(input_sha,expected_sha));free(input_sha);CHECK(strstr(text,"coriander")&&strstr(text,"sample"));CHECK(strstr(result,"speech_recognition_uncertain")&&strstr(result,"derived"));Json j;parse(result,&j);size_t reported=0;CHECK(json_uint(&j,json_get(&j,0,"duration_ms"),&reported)&&reported==duration);
     int segments=json_get(&j,0,"segments");CHECK(segments>=0&&j.tokens[segments].type==JT_ARRAY&&j.tokens[segments].count>0);size_t previous=0;
     for(int t=segments+1;t<j.tokens[segments].next;t=j.tokens[t].next){size_t start=0,end=0;CHECK(json_uint(&j,json_get(&j,t,"start_ms"),&start)&&json_uint(&j,json_get(&j,t,"end_ms"),&end)&&start<end&&end<=duration&&start>=previous);previous=start;}
     char arguments[512];snprintf(arguments,sizeof(arguments),"%s/provider-arguments.json",root);
-    char *argument_json=NULL;size_t argument_bytes=0;FILE *args_out=open_memstream(&argument_json,&argument_bytes);CHECK(args_out);
-    const char *values[]={"--whisper-cli",cfg.engine,"--whisper-model",cfg.model,"--whisper-cli-sha256",cfg.engine_sha,"--whisper-model-sha256",cfg.model_sha,"--admission-state",cfg.state,"--owner",cfg.owner};
-    fputc('[',args_out);for(size_t i=0;i<12;i++){if(i)fputc(',',args_out);json_quote(args_out,values[i],strlen(values[i]));}fputc(']',args_out);CHECK(!fclose(args_out));file_write(arguments,argument_json);free(argument_json);
+    actual_arguments(&cfg,arguments);
     snprintf(request,sizeof(request),"{\"contract_version\":1,\"op\":\"transcribe_audio\",\"source_id\":\"%s\",\"version\":\"%s\",\"start_ms\":0,\"end_ms\":%zu}",source,version,duration);
     char *captured=source_capture(argv[2],source_state,&cfg,arguments,request,1);CHECK(strstr(captured,"coriander")&&strstr(captured,"sample")&&strstr(captured,"speech_recognition_uncertain"));
     Json capture;parse(captured,&capture);int provenance=json_get(&capture,0,"provenance");char *captured_sha=json_string(&capture,json_get(&capture,provenance,"input_sha256"));CHECK(captured_sha&&!strcmp(captured_sha,expected_sha));free(captured_sha);CHECK(!strstr(captured,"evidence_id"));CHECK(strstr(captured,"whisper_20ms_end_clipped_to_input"));

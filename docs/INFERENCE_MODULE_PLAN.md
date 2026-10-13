@@ -149,3 +149,10 @@ voices pass actual package/loader/PCM/cancellation/recovery checks. See
 [Kokoro evidence](KOKORO_VERIFICATION.md); fresh PCM variability is documented
 and exact per-request integrity/replay remains required. Other area1 and full
 release gates remain open.
+
+Actual Whisper/Vision registry checkpoint: existing quality/provenance harnesses
+now route through a private combined registry configuration. Actual Vision heading
+recognition, Sources-prepared Whisper audio, SDK publication/readback and66-second
+windowed capture pass normal/sanitizer checks. See
+[actual modality evidence](REGISTRY_ACTUAL_MODALITIES_VERIFICATION.md). Remaining
+model/platform, lifecycle, service and release acceptance gates stay open.

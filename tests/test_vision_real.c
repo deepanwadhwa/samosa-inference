@@ -23,6 +23,12 @@ int main(int argc, char **argv) {
     file_sha(path, cfg.tokenizer);
     snprintf(path, sizeof(path), "%s/model.safetensors", cfg.base.model);
     file_sha(path, cfg.weights);
+    if(getenv("SAMOSA_TEST_USE_REGISTRY")){
+        char material[256],extra[320];int n=snprintf(material,sizeof(material),"visionpsy-model-v1:%s:%s:%s",cfg.config,cfg.tokenizer,cfg.weights);CHECK(n>0&&(size_t)n<sizeof(material));
+        hash_bytes(material,(size_t)n,cfg.base.model_sha);
+        snprintf(extra,sizeof(extra),",\"config_sha256\":\"%s\",\"tokenizer_sha256\":\"%s\",\"weights_sha256\":\"%s\"",cfg.config,cfg.tokenizer,cfg.weights);
+        actual_registry(&cfg.base,root,"visionpsy-native-v1","image_analysis",extra);
+    }else CHECK(!getenv("SAMOSA_TEST_REGISTRY_CONFIG"));
     FILE *f = fopen(argv[4], "rb");
     CHECK(f);
     size_t width = 0, height = 0;
