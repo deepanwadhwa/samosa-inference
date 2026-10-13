@@ -20,7 +20,7 @@ static void terminal(EngineProcess *p){struct pollfd watch={p->response,POLLIN|P
 static void expect_stop(EngineProcess *p,const char *reason){const char *e=engine_process_stop(p);CHECK(e&&!strcmp(e,reason));}
 static int lease(const char *path){int fd=open(path,O_RDWR|O_CREAT,0600);if(fd<0||flock(fd,LOCK_EX|LOCK_NB))return -1;return fd;}
 static int released(const char *path){int fd=open(path,O_RDWR);if(fd<0)return 0;int ok=!flock(fd,LOCK_EX|LOCK_NB);close(fd);return ok;}
-static void observe(const char *path,int wanted){int seen=0;for(int i=0;i<300;i++){if(!access(path,F_OK)&&released(path)==wanted){seen=1;break;}pause_ms();}CHECK(seen);}
+static void observe(const char *path,int wanted){int seen=0;for(int i=0;i<300;i++){if(!access(path,F_OK)&&released(path)==wanted){seen=1;break;}pause_ms();}if(!seen)fprintf(stderr,"lease observation timed out: %s, released=%d\n",path,wanted);CHECK(seen);}
 static char *command(const char *self,const char *mode,const char *path){char *out=NULL;size_t n;FILE *f=open_memstream(&out,&n);CHECK(f);
     fputc('[',f);json_quote(f,self,strlen(self));fputs(",\"--fixture\",",f);json_quote(f,mode,strlen(mode));fputc(',',f);json_quote(f,path,strlen(path));fputc(']',f);CHECK(!fclose(f));return out;}
 static int fixture(const char *mode,const char *path){
@@ -65,7 +65,10 @@ int main(int argc,char **argv){
     observe(path,0);observe(descendant,0);terminal(&p);
     expect_stop(&p,"engine_failed");observe(path,1);observe(descendant,1);
     free(cmd);CHECK(!unlink(path));CHECK(!unlink(descendant));
-    cmd=command(argv[0],"sleep",path);CHECK(!engine_process_start(argv[0],cmd,0.1,65536,&p));
+    /* Lifetime includes process/ASan startup on the hosted runner. Give the
+     * fixture time to acquire its lease before asserting automatic expiry;
+     * terminal() still bounds the entire observation to five seconds. */
+    cmd=command(argv[0],"sleep",path);CHECK(!engine_process_start(argv[0],cmd,1,65536,&p));
     observe(path,0);terminal(&p);expect_stop(&p,"lifetime_exceeded");observe(path,1);free(cmd);CHECK(!unlink(path));
     cmd=command(argv[0],"closed-log",path);CHECK(!engine_process_start(argv[0],cmd,30,65536,&p));observe(path,0);
     CHECK(!engine_process_stop(&p));observe(path,1);free(cmd);CHECK(!unlink(path));
