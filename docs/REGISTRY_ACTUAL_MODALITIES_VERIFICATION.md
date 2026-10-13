@@ -62,6 +62,15 @@ Regression gates pass Whisper508/511, Vision634/644 and registry CLI427/430 in
 normal/sanitizer builds. Hosted CI also compiles the optional actual-model harnesses
 on both native platforms; actual execution requires explicitly supplied artifacts.
 
+Independent archive CI passes all configured gates on macOS14/ARM64 and
+Ubuntu24.04/x86-64 at `6c5c3e1855ff56cd950c7c6f1cba6c03c8b15c96`:
+[run38464409173](https://github.com/deepanwadhwa/samosa-inference/actions/runs/38464409173).
+Both logs confirm normal/sanitizer builds of all four optional actual-model
+harnesses. Controlled Whisper passes508/514 on macOS and511/589 on Linux;
+controlled Vision passes634/644 and639/769 respectively. Counts vary with polling
+and platform-specific native checks; both complete gate commands pass.
+This CI evidence does not substitute for actual-model execution on Linux.
+
 Actual Linux modality execution, other configured models, generic vision quality,
 persistent readiness, global residency/scheduling, public incremental events,
 authenticated service and legacy Chat retirement remain open. This checkpoint
