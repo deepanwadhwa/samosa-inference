@@ -7,6 +7,10 @@
 #include <curl/curl.h>
 #include <fcntl.h>
 #include <locale.h>
+#ifdef __APPLE__
+/* Older macOS SDKs declare per-thread POSIX locales in xlocale.h. */
+#include <xlocale.h>
+#endif
 #include <math.h>
 #include <sys/file.h>
 #include <sys/stat.h>

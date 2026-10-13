@@ -23,7 +23,7 @@ const char *engine_runtime_environment(void){
 static int os_mach_path(const char *p){return (!strncmp(p,"/usr/lib/",9)||!strncmp(p,"/System/Library/",16))&&
     !strstr(p,"/../")&&!strstr(p,"/./")&&!strstr(p,"//")&&strcmp(p+strlen(p)-1,".");}
 static const char *mach(int fd,const unsigned char *h,uint64_t size){
-    if(u32(h+4)!=0x100000c||u32(h+12)!=2)return "unsupported_engine_binary";
+    if((u32(h+4)!=0x100000c&&u32(h+4)!=0x1000007)||u32(h+12)!=2)return "unsupported_engine_binary";
     uint32_t count=u32(h+16),length=u32(h+20);if(count>1024||length>65536)return "engine_loader_limit";
     unsigned char *commands=malloc(length?length:1);if(!commands)return "engine_resource_limit";
     const char *e=NULL;if(!read_at(fd,commands,length,32,size))e="invalid_engine_loader";
@@ -64,7 +64,7 @@ int engine_trusted_system_library(int mach_o,const char *name){
     return 1;
 }
 static const char *elf(int fd,const unsigned char *h,uint64_t size){
-    if(h[4]!=2||h[5]!=1||h[6]!=1||(h[16]!=2&&h[16]!=3)||h[17]||h[18]!=183||h[19]||!u64(h+24))return "unsupported_engine_binary";
+    if(h[4]!=2||h[5]!=1||h[6]!=1||(h[16]!=2&&h[16]!=3)||h[17]||(h[18]!=183&&h[18]!=62)||h[19]||!u64(h+24))return "unsupported_engine_binary";
     uint64_t start=u64(h+32);uint32_t count=(uint32_t)h[56]|(uint32_t)h[57]<<8;
     if(h[54]!=56||h[55]||!count||count>128)return "engine_loader_limit";
     unsigned char headers[128*56];if(!read_at(fd,headers,count*56,start,size))return "invalid_engine_loader";
@@ -73,7 +73,7 @@ static const char *elf(int fd,const unsigned char *h,uint64_t size){
         if(offset>size||length>size-offset)return "invalid_engine_loader";
         if(type==2){dyn_offset=offset;dyn_size=length;dynamic_count++;}
         if(type==3){char interpreter[128];if(length<2||length>sizeof(interpreter)||!read_at(fd,interpreter,(size_t)length,offset,size)||
-                !memchr(interpreter,0,(size_t)length)||strcmp(interpreter,"/lib/ld-linux-aarch64.so.1"))return "unqualified_engine_dependencies";}
+                !memchr(interpreter,0,(size_t)length)||strcmp(interpreter,h[18]==183?"/lib/ld-linux-aarch64.so.1":"/lib64/ld-linux-x86-64.so.2"))return "unqualified_engine_dependencies";}
     }
     if(!dynamic_count)return NULL;
     if(dynamic_count!=1||!dyn_size||dyn_size>16384||dyn_size%16)return "engine_loader_limit";

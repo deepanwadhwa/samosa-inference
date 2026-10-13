@@ -48,9 +48,13 @@ int main(int argc,char **argv){
     elf(b,"libc.so.6");b[56]=129;expect(fd,b,sizeof(b),"engine_loader_limit");
     elf(b,"libc.so.6");b[5]=2;expect(fd,b,sizeof(b),"unsupported_engine_binary");
     memset(b,0,sizeof(b));expect(fd,b,sizeof(b),"unsupported_engine_binary");
+    mach(b,"/usr/lib/libc++.1.dylib");w32(b+4,0x1000007);expect(fd,b,sizeof(b),NULL);
+    mach(b,"/usr/lib/libc++.1.dylib");w32(b+4,0x1000012);expect(fd,b,sizeof(b),"unsupported_engine_binary");
+    elf(b,"libc.so.6");b[18]=62;w64(b+176+32,28);strcpy((char*)b+300,"/lib64/ld-linux-x86-64.so.2");expect(fd,b,sizeof(b),NULL);
+    elf(b,"libc.so.6");b[18]=62;expect(fd,b,sizeof(b),"unqualified_engine_dependencies");
     CHECK(!close(fd));CHECK(!setenv("LD_PRELOAD","",1));CHECK(engine_runtime_environment()!=NULL);CHECK(!unsetenv("LD_PRELOAD"));
     CHECK(!setenv("DYLD_LIBRARY_PATH","/tmp",1));CHECK(engine_runtime_environment()!=NULL);CHECK(!unsetenv("DYLD_LIBRARY_PATH"));
     CHECK(!setenv("GGML_BACKEND_PATH","/tmp",1));CHECK(engine_runtime_environment()!=NULL);CHECK(!unsetenv("GGML_BACKEND_PATH"));
     CHECK(!setenv("LLAMA_ARG_MMPROJ","/tmp/unpinned",1));CHECK(engine_runtime_environment()!=NULL);CHECK(!unsetenv("LLAMA_ARG_MMPROJ"));
-    printf("PASS engine runtime: %u checks; bounded ARM64 Mach-O/ELF loader policy and environment refusal\n",checks);return 0;
+    printf("PASS engine runtime: %u checks; bounded ARM64/x86-64 Mach-O/ELF loader policy and environment refusal\n",checks);return 0;
 }

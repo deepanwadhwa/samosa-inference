@@ -66,3 +66,14 @@ The complete indexed source was independently exported to
 (87) each pass normal and sanitizer gates there. Both actual pinned-package
 speech runs also pass after rebuilding all source in that export. No parent
 source path or prebuilt inference executable was used.
+
+The first independent CI run (38453311974) failed rather than silently skipping
+platform checks: macOS14/Xcode15.4 did not expose per-thread locale declarations
+from `locale.h`, and Ubuntu24.04/x86-64 executable publication only had an ARM64
+branch. The follow-up includes `xlocale.h` on macOS in the existing text/embedding
+adapters, supports native x86-64 executable publication, and extends generic
+system-loader parsing to both architectures with the matching ELF interpreter.
+Wrong-architecture publication still refuses without changing permissions.
+Local native install normal/sanitizer passes 267/269 checks; engine-loader
+normal/sanitizer passes 99. Existing registry and controlled native text/acquisition
+CLI gates pass after the portability changes. Hosted results remain pending.

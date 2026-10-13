@@ -247,9 +247,18 @@ const char *artifact_make_executable(const ArtifactConfig *c) {
     if(!e){int native=0;
 #if defined(__APPLE__) && defined(__aarch64__)
         native=!memcmp(header,"\xcf\xfa\xed\xfe\x0c\x00\x00\x01",8)&&header[12]==2&&!header[13]&&!header[14]&&!header[15];
-#elif defined(__linux__) && defined(__aarch64__)
+#elif defined(__APPLE__) && defined(__x86_64__)
+        native=!memcmp(header,"\xcf\xfa\xed\xfe\x07\x00\x00\x01",8)&&header[12]==2&&!header[13]&&!header[14]&&!header[15];
+#elif defined(__linux__) && (defined(__aarch64__) || defined(__x86_64__))
         unsigned entry=0;for(size_t i=24;i<32;i++)entry|=header[i];
-        native=!memcmp(header,"\x7f" "ELF",4)&&header[4]==2&&header[5]==1&&header[18]==183&&header[19]==0&&
+        /* Publication uses the actual compiled host architecture, while the
+         * generic loader inspector separately checks declared dependencies. */
+#if defined(__aarch64__)
+        unsigned machine=183;
+#else
+        unsigned machine=62;
+#endif
+        native=!memcmp(header,"\x7f" "ELF",4)&&header[4]==2&&header[5]==1&&header[18]==machine&&header[19]==0&&
             (header[16]==2||header[16]==3)&&!header[17]&&entry;
 #endif
         if(!native)e="unsupported_executable";

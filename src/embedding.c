@@ -6,6 +6,10 @@
 #include "sha256.h"
 #include <fcntl.h>
 #include <locale.h>
+#ifdef __APPLE__
+/* Older macOS SDKs declare per-thread POSIX locales in xlocale.h. */
+#include <xlocale.h>
+#endif
 #include <sys/stat.h>
 #include <unistd.h>
 static int failure(FILE *out, const char *error) {

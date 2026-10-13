@@ -2,14 +2,17 @@
 
 Trusted host activation may require `system-runtime-v1`. After verifying exact
 engine size/SHA256, Inference reads the pinned descriptor's loader metadata.
-ARM64 little-endian Mach-O MH_EXECUTE and ELF64 executable/PIE are supported.
+ARM64 and x86-64 little-endian Mach-O MH_EXECUTE and ELF64 executable/PIE
+loader formats are supported. Executable publication separately requires the
+compiled host architecture; a loader-format inspection alone does not prove
+host/model compatibility.
 Parsing uses bounded headers, <=64KiB command/string tables and <=16KiB dynamic
 table, positional reads, and file bounds. It does not invoke inspection commands.
 
 Mach-O permits direct dylib loads only beneath /usr/lib/ or /System/Library/,
 rejects path traversal, rpaths and embedded loader environment, and permits only
 /usr/lib/dyld as the interpreter. ELF permits the /lib/ld-linux-aarch64.so.1
-interpreter and libc/libm/libstdc++/libgcc_s/libgomp/libpthread/libdl/librt ABI
+interpreter for ARM64, or /lib64/ld-linux-x86-64.so.2 for x86-64, and libc/libm/libstdc++/libgcc_s/libgomp/libpthread/libdl/librt ABI
 sonames; rpaths/runpaths, filters, auxiliary libraries and audit tags refuse.
 Malformed metadata, unknown dependencies and unsupported architectures refuse.
 Host DYLD_*, LD_*, GGML_* and LLAMA_* environment overrides refuse before engine

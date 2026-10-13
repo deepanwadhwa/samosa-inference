@@ -112,6 +112,24 @@ int main(int argc,char **argv){
     CHECK(!artifact_install(&c));CHECK(!artifact_make_executable(&c));status(&c,"verified");CHECK(!artifact_install(&c));
     snprintf(ready,sizeof(ready),"%s/%s/artifact",state,sha);CHECK(!stat(ready,&st));CHECK((st.st_mode&0777)==0500);
     CHECK(!stat(argv[0],&st));CHECK(st.st_mode==executable_before.st_mode);
+    /* Refuse a pinned executable for the other supported architecture before
+     * changing permissions; the actual host executable above remains the
+     * positive gate, not a synthetic header accepted as a runnable engine. */
+    unsigned char foreign[64];fd=open(argv[0],O_RDONLY);CHECK(fd>=0);
+    CHECK(read(fd,foreign,sizeof(foreign))==sizeof(foreign));CHECK(!close(fd));
+#if defined(__APPLE__) && defined(__aarch64__)
+    foreign[4]=7;
+#elif defined(__APPLE__) && defined(__x86_64__)
+    foreign[4]=12;
+#elif defined(__linux__) && defined(__aarch64__)
+    foreign[18]=62;
+#elif defined(__linux__) && defined(__x86_64__)
+    foreign[18]=183;
+#endif
+    fixture(root,source,state,&c,sha);fd=open(source,O_WRONLY|O_TRUNC);CHECK(fd>=0);
+    CHECK(write(fd,foreign,sizeof(foreign))==sizeof(foreign));CHECK(!close(fd));hash_bytes(foreign,sizeof(foreign),sha);
+    c.size=sizeof(foreign);CHECK(!artifact_install(&c));CHECK(!strcmp(artifact_make_executable(&c),"unsupported_executable"));
+    snprintf(ready,sizeof(ready),"%s/%s/artifact",state,sha);CHECK(!stat(ready,&st));CHECK((st.st_mode&0777)==0600);
     printf("PASS native install: %u checks; verified/offline retry, cancel/death/resume, foreign/root/quota refusal\n",checks);
     return 0;
 }
