@@ -107,6 +107,9 @@ int main(int argc, char **argv) {
     CHECK(setenv("DYLD_LIBRARY_PATH", directory, 1) == 0);
     CHECK(speech_runtime_open(&o, &r) != NULL && r == NULL);
     CHECK(unsetenv("DYLD_LIBRARY_PATH") == 0);
+    CHECK(setenv("SAMOSA_TEST_SPEECH_ABI", "1.13.3", 1) == 0);
+    CHECK(!strcmp(speech_runtime_open(&o, &r), "incompatible_speech_abi")); CHECK(r == NULL);
+    CHECK(unsetenv("SAMOSA_TEST_SPEECH_ABI") == 0);
     CHECK(unlink(alias) == 0); CHECK(unlink(reference) == 0); CHECK(rmdir(directory) == 0);
     printf("PASS native speech runtime: %u checks; Kokoro/Pocket ABI, PCM, fallback, cancellation and malformed audio\n", checks);
     return 0;

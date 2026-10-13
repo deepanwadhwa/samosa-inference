@@ -210,3 +210,9 @@ contents to a host-pinned manifest and retains identities for rechecks. See
 [qualification](docs/SPEECH_PACKAGE_VERIFICATION.md). Actual pinned-package Pocket
 generation and cancellation/recovery pass on macOS ARM64. Production catalog
 provenance, loader compatibility and owned guardian execution remain open.
+
+Speech native loader compatibility now inspects pinned library graphs and checks
+reported Sherpa ABI before model initialization. See
+[loader evidence and supported search profiles](docs/SPEECH_LOADER_VERIFICATION.md).
+Independent CI exports this repository's source and runs controlled macOS/Linux
+normal and sanitizer gates; actual-model readiness and release gates remain open.

@@ -1,0 +1,52 @@
+name: Independent native qualification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      # Pin the checkout implementation as well as the module source revision.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang libsqlite3-dev libcurl4-openssl-dev openssl
+      - name: Record native environment and export independent source
+        shell: bash
+        run: |
+          uname -a
+          clang --version
+          mkdir "$RUNNER_TEMP/inference"
+          git archive HEAD | tar -x -C "$RUNNER_TEMP/inference"
+          echo "INFERENCE_SOURCE=$RUNNER_TEMP/inference" >> "$GITHUB_ENV"
+      - name: Core and native speech contracts
+        shell: bash
+        run: make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test sanitize
+      - name: Combined provider registry and process controls
+        shell: bash
+        run: |
+          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-registry-modalities sanitize-registry-modalities
+          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-registry-cli sanitize-registry-cli
+      - name: Controlled text, acquisition and modality adapters
+        shell: bash
+        run: |
+          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-native sanitize-native
+          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-summary sanitize-summary
+          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-whisper sanitize-whisper
+          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-vision sanitize-vision
+      # Actual models, temporal package gates and release/product retirement
+      # require explicit pinned artifacts and remain separate acceptance rows.

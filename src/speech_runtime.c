@@ -55,6 +55,10 @@ const char *speech_runtime_open(const SpeechRuntimeOptions *o, SpeechRuntime **o
     r->library = dlopen(o->library, RTLD_NOW | RTLD_LOCAL);
     if (!r->library) { free(r); return "speech_runtime_unavailable"; }
     SamosaSherpaCreateTts create;
+    const char *(*version)(void);
+    LOAD(version, "SherpaOnnxGetVersionStr");
+    const char *abi = version();
+    if (!abi || strcmp(abi, "1.13.4")) { speech_runtime_close(r); return "incompatible_speech_abi"; }
     LOAD(create, "SherpaOnnxCreateOfflineTts");
     LOAD(r->destroy, "SherpaOnnxDestroyOfflineTts");
     LOAD(r->rate, "SherpaOnnxOfflineTtsSampleRate");

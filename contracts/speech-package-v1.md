@@ -74,3 +74,12 @@ function alone does not recheck disk state. `make test-speech-package
 sanitize-speech-package` tests the private contract. Optional actual-model
 `test-speech-real --package ROOT MANIFEST_SHA256` verifies the package, generates
 both Pocket voices with cancellation/recovery, and rechecks retained identity.
+
+Native loader prerequisite: `speech_package_loader_verify` now inspects all
+pinned `library`/`dependency` entries and validates the closed sibling-loader
+graph, architecture, supported search paths, Mach-O compatibility/minimum OS and
+ELF GLIBC requirements. The host obtains its policy from
+`library_runtime_host_policy`; policy parameters are trusted private host inputs.
+See [loader qualification and remaining limits](../docs/SPEECH_LOADER_VERIFICATION.md).
+This is a separate gate from the manifest's declared platform/version fields.
+The runtime also checks the loaded Sherpa version before model initialization.

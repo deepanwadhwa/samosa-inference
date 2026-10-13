@@ -115,3 +115,9 @@ artifact hashing/identity primitives and passes controlled normal/sanitizer and
 actual pinned-package Pocket generation/recheck gates. See
 [package evidence](SPEECH_PACKAGE_VERIFICATION.md). This does not close public
 speech routing, production acquisition, loader compatibility or engine ownership.
+
+Speech loader checkpoint: actual macOS Pocket package passes native graph/host
+compatibility and loaded ABI checks. Normal/sanitizer format and transitive graph
+gates cover both Mach-O/ELF and ARM64/x86-64 under explicit private test policies.
+See [loader evidence](SPEECH_LOADER_VERIFICATION.md). Guardian/staging, public
+speech routing, actual Linux/Kokoro and final release gates remain open.

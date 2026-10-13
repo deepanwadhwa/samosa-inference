@@ -51,6 +51,18 @@ static int os_elf_library(const char *name){
     for(size_t i=0;allowed[i];i++)if(!strcmp(name,allowed[i]))return 1;
     return 0;
 }
+int engine_trusted_system_library(int mach_o,const char *name){
+    if(!name||!*name)return 0;
+    if(!mach_o)return os_elf_library(name);
+    if(!os_mach_path(name))return 0;
+    for(const char *p=name+1;*p;){
+        const char *end=strchr(p,'/');size_t n=end?(size_t)(end-p):strlen(p);
+        if(!n||(n==1&&p[0]=='.')||(n==2&&p[0]=='.'&&p[1]=='.'))return 0;
+        if(!end)break;
+        p=end+1;if(!*p)return 0;
+    }
+    return 1;
+}
 static const char *elf(int fd,const unsigned char *h,uint64_t size){
     if(h[4]!=2||h[5]!=1||h[6]!=1||(h[16]!=2&&h[16]!=3)||h[17]||h[18]!=183||h[19]||!u64(h+24))return "unsupported_engine_binary";
     uint64_t start=u64(h+32);uint32_t count=(uint32_t)h[56]|(uint32_t)h[57]<<8;

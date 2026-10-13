@@ -12,6 +12,10 @@ static struct SamosaSherpaOfflineTts tts;
 static const float samples[] = {0.0f, 0.30f, -0.30f, 0.0f};
 static const SamosaSherpaGeneratedAudio audio = {samples, 4, 24000};
 
+const char *SherpaOnnxGetVersionStr(void) {
+    const char *override = getenv("SAMOSA_TEST_SPEECH_ABI");
+    return override ? override : "1.13.4";
+}
 const SamosaSherpaOfflineTts *SherpaOnnxCreateOfflineTts(const SamosaSherpaTtsConfig *config) {
     if (!config || !config->model.provider || strcmp(config->model.provider, "cpu")) return NULL;
     if (config->model.pocket.lm_flow) {

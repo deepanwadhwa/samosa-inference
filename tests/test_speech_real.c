@@ -3,6 +3,7 @@
 #define _DARWIN_C_SOURCE
 #include "speech_runtime.h"
 #include "speech_package.h"
+#include "speech_package_loader.h"
 #include <fcntl.h>
 #include <unistd.h>
 #include "sha256.h"
@@ -46,6 +47,10 @@ int main(int argc, char **argv) {
         if (!receipt) return 1;
         package_fd = open(argv[2], O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
         e = speech_package_verify(package_fd, argv[2], argv[3], NULL, NULL, receipt, 0);
+        LibraryRuntimePolicy policy;
+        if (!e) e = library_runtime_host_policy(&policy);
+        if (!e) e = speech_package_loader_verify(package_fd, argv[2], argv[3], &policy, NULL, NULL, receipt);
+        if (!e) puts("PASS actual speech native loader graph and host compatibility");
         if (!e) e = speech_package_options(receipt, &o, &references[0], &references[1]);
         if (!e && !o.pocket) e = "actual_gate_requires_pocket";
         if (e) { fprintf(stderr, "%s\n", e); if (package_fd >= 0) close(package_fd); free(receipt); return 1; }
