@@ -58,6 +58,13 @@ Both actual-model harnesses pass39 checks on macOS ARM64. Regression gates pass
 registry CLI427/430, summary478/478 and native speech runtime324/324 checks in
 normal/sanitizer builds after the guardian change.
 
+Independent archive CI also passes all configured normal/sanitizer gates on
+macOS14/ARM64 and Ubuntu24.04/x86-64 at source
+`a7b8c8046c18e0124c317ab104e049ec0e654a0f`:
+[run38458189005](https://github.com/deepanwadhwa/samosa-inference/actions/runs/38458189005).
+Both job logs confirm owned speech324 and guardian152 checks in each build mode.
+CI uses controlled native fixtures; the actual Pocket evidence above is local.
+
 Public owner isolation, admission, audio artifact publication, range reads,
 streaming, readiness/session recovery and replacement integration remain open.
 No numbered area or final release is closed by this checkpoint.
