@@ -20,6 +20,9 @@ const char *engine_process_start_bound_workspace(const char *,const char *,doubl
  * fd, separate from bounded stderr logs. Guardian enforces 8196 output bytes
  * and removes request.frame/result.frame from its retained private workspace. */
 const char *engine_process_start_bound_protocol(const char *,const char *,double,size_t,int,int,const char *,int,int,int,EngineProcess *);
+/* Trusted opt-in binary protocol, 1..16MiB result cap enforced by RLIMIT_FSIZE
+ * in the guardian/worker. Keeps the legacy 8196-byte summary API unchanged. */
+const char *engine_process_start_bound_protocol_sized(const char *,const char *,double,size_t,int,int,const char *,int,int,int,size_t,EngineProcess *);
 const char *engine_process_stop(EngineProcess *);
 /* Returns -1 for normal command dispatch, otherwise hidden guardian exit code. */
 int engine_guardian_dispatch(int argc,char **argv);

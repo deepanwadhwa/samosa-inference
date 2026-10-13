@@ -4,6 +4,8 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
 
 #include "sherpa_abi.h"
 
@@ -53,6 +55,11 @@ const SamosaSherpaGeneratedAudio *SherpaOnnxOfflineTtsGenerateWithConfig(
                       config->speed != 1.0f || config->silence_scale != 1.0f)
                    : (config->sid != 3 || config->speed != 1.15f))
         return NULL;
+    if (!strcmp(text, "partial-wait")) {
+        if (callback && !callback(samples, 2, .5f, arg)) return NULL;
+        for (;;) pause();
+    }
+    if (!strcmp(text, "crash")) { raise(SIGKILL); return NULL; }
     static float bad[] = {NAN, 0, 0, 0};
     static float clipped[] = {2, -2, 0, 0};
     static SamosaSherpaGeneratedAudio result;

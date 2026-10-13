@@ -25,9 +25,10 @@ static char *command(const char *self,const char *mode,const char *path){char *o
     fputc('[',f);json_quote(f,self,strlen(self));fputs(",\"--fixture\",",f);json_quote(f,mode,strlen(mode));fputc(',',f);json_quote(f,path,strlen(path));fputc(']',f);CHECK(!fclose(f));return out;}
 static int fixture(const char *mode,const char *path){
     if(!strcmp(mode,"fail"))return 9;
-    if(!strcmp(mode,"protocol")||!strcmp(mode,"protocol-flood")){
+    if(!strcmp(mode,"protocol")||!strcmp(mode,"protocol-flood")||!strcmp(mode,"protocol-large")){
         fputs("diagnostic belongs only in stderr\n",stderr);
         if(!strcmp(mode,"protocol-flood")){char b[9000];memset(b,'x',sizeof(b));return write(1,b,sizeof(b))==(ssize_t)sizeof(b)?0:4;}
+        if(!strcmp(mode,"protocol-large")){char b[8192];memset(b,'x',sizeof(b));for(unsigned i=0;i<16;i++)if(write(1,b,sizeof(b))!=(ssize_t)sizeof(b))return 4;return 0;}
         char b[128];ssize_t n;while((n=read(0,b,sizeof(b)))>0)if(write(1,b,(size_t)n)!=n)return 4;
         return n<0?4:0;
     }
@@ -95,7 +96,7 @@ int main(int argc,char **argv){
     observe(path,0);observe(descendant,0);observe(residency_path,0);CHECK(!kill(parent,SIGKILL));int status;CHECK(waitpid(parent,&status,0)==parent);
     observe(path,1);observe(descendant,1);observe(residency_path,1);CHECK(!released(foreign));CHECK(!kill(external,SIGKILL));CHECK(waitpid(external,&status,0)==external);observe(foreign,1);
     CHECK(!unlink(path));CHECK(!unlink(descendant));CHECK(!unlink(ready));CHECK(!unlink(foreign));CHECK(!unlink(residency_path));/* The actual monolith protocol needs stdin and stdout separate from logs. */
-    for(int flood=0;flood<2;flood++){
+    for(int flood=0;flood<4;flood++){
         char workspace[512],input_path[600],result_path[600];
         snprintf(workspace,sizeof(workspace),"%s/protocol",root);CHECK(!mkdir(workspace,0700));
         snprintf(input_path,sizeof(input_path),"%s/request.frame",workspace);
@@ -105,10 +106,13 @@ int main(int argc,char **argv){
         in=open(input_path,O_RDONLY);int result=open(result_path,O_RDWR|O_CREAT|O_EXCL,0600);
         int directory=open(workspace,O_RDONLY|O_DIRECTORY);int model=open(input_path,O_RDONLY);
         residency=lease(residency_path);CHECK(in>=0&&result>=0&&directory>=0&&model>=0&&residency>=0);
-        cmd=command(argv[0],flood?"protocol-flood":"protocol",path);
-        CHECK(!engine_process_start_bound_protocol(argv[0],cmd,30,65536,residency,model,workspace,directory,in,result,&p));
+        cmd=command(argv[0],flood>=2?"protocol-large":flood?"protocol-flood":"protocol",path);
+        if(flood<2)CHECK(!engine_process_start_bound_protocol(argv[0],cmd,30,65536,residency,model,workspace,directory,in,result,&p));
+        else CHECK(!engine_process_start_bound_protocol_sized(argv[0],cmd,30,65536,residency,model,workspace,directory,in,result,flood==2?200000:65536,&p));
         terminal(&p);
-        if(flood)expect_stop(&p,"protocol_limit");else{CHECK(!engine_process_stop(&p));CHECK(!strcmp(p.reason,"completed"));char actual[128];CHECK(pread(result,actual,sizeof(actual),0)==(ssize_t)sizeof(frame));CHECK(!memcmp(actual,frame,sizeof(frame)));}
+        if(flood==1||flood==3){expect_stop(&p,"protocol_limit");if(flood==3){struct stat size;CHECK(!fstat(result,&size));CHECK(size.st_size<=65536);}}
+        else if(flood==2){CHECK(!engine_process_stop(&p));struct stat size;CHECK(!fstat(result,&size));CHECK(size.st_size==131072);}
+        else{CHECK(!engine_process_stop(&p));CHECK(!strcmp(p.reason,"completed"));char actual[128];CHECK(pread(result,actual,sizeof(actual),0)==(ssize_t)sizeof(frame));CHECK(!memcmp(actual,frame,sizeof(frame)));}
         CHECK(access(workspace,F_OK)<0&&errno==ENOENT);
         free(cmd);close(in);close(result);close(directory);close(model);close(residency);CHECK(!unlink(residency_path));
     }

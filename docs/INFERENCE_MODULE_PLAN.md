@@ -128,3 +128,10 @@ normal/sanitizer controlled gate on macOS14/ARM64 and Ubuntu24.04/x86-64 at sour
 publication/catalog/provider identity gaps were fixed with explicit foreign-host
 refusal retained. This closes the controlled Linux registry build gap; it does
 not close actual-model platform coverage, public speech or any full numbered area.
+
+Owned speech worker checkpoint: the extracted native runtime now runs through
+the existing process guardian with a bounded binary PCM result, package rechecks,
+retained shutdown ownership and cancellation/requester-death cleanup. See
+[worker evidence](SPEECH_WORKER_VERIFICATION.md). Public speech routing, immutable
+package staging, persistent lifecycle/readiness and the remaining acceptance
+gates stay open.

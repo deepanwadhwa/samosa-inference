@@ -358,3 +358,33 @@ sanitize-speech-loader: | build
 	./build/test-speech-loader-sanitize
 test: test-library-runtime test-speech-loader
 sanitize: sanitize-library-runtime sanitize-speech-loader
+
+SPEECH_WORKER_SOURCES = src/speech_worker.c src/speech_runtime.c src/speech_package_loader.c src/library_runtime.c src/speech_package.c src/artifact.c src/engine_runtime.c src/engine_process.c
+SPEECH_WORKER_HEADERS = src/speech_worker.h src/speech_runtime.h src/sherpa_abi.h src/speech_package_loader.h src/library_runtime.h src/speech_package.h src/artifact.h src/engine_runtime.h src/engine_process.h src/json.h src/sha256.h
+.PHONY: speech-worker
+speech-worker: build/samosa-inference-speech-worker
+build/samosa-inference-speech-worker: src/speech_worker_main.c $(SPEECH_WORKER_SOURCES) $(SPEECH_WORKER_HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc $< $(SPEECH_WORKER_SOURCES) $(DL_LIBS) -o $@
+build/samosa-inference-speech-worker-sanitize: src/speech_worker_main.c $(SPEECH_WORKER_SOURCES) $(SPEECH_WORKER_HEADERS) | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $< $(SPEECH_WORKER_SOURCES) $(DL_LIBS) -o $@
+
+# The external fixture is intentionally unsanitized in the closed-package gate,
+# as actual Sherpa libraries are. Primitive ABI tests also sanitize the fixture.
+SPEECH_FIXTURE_LINK = $(if $(filter Darwin,$(shell uname -s)),-Wl$(comma)-install_name$(comma)@rpath/libspeech-fixture.so -Wl$(comma)-rpath$(comma)@loader_path,-Wl$(comma)-soname$(comma)libspeech-fixture.so -Wl$(comma)-rpath$(comma)'$$ORIGIN')
+comma := ,
+.PHONY: test-speech-worker sanitize-speech-worker
+build/speech-worker-fixture.so: tests/fake_speech_native.c src/sherpa_abi.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc -shared -fPIC $< $(SPEECH_FIXTURE_LINK) -o $@
+build/test-speech-worker: tests/test_speech_worker.c $(SPEECH_WORKER_SOURCES) $(SPEECH_WORKER_HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc $< $(SPEECH_WORKER_SOURCES) $(DL_LIBS) -o $@
+test-speech-worker: build/test-speech-worker build/speech-worker-fixture.so
+	$(abspath build/test-speech-worker) $(abspath build/speech-worker-fixture.so)
+sanitize-speech-worker: build/speech-worker-fixture.so | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_speech_worker.c $(SPEECH_WORKER_SOURCES) $(DL_LIBS) -o build/test-speech-worker-sanitize
+	$(abspath build/test-speech-worker-sanitize) $(abspath build/speech-worker-fixture.so)
+test: test-speech-worker
+sanitize: sanitize-speech-worker
+build/test-speech-process-real: tests/test_speech_process_real.c $(SPEECH_WORKER_SOURCES) $(SPEECH_WORKER_HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc $< $(SPEECH_WORKER_SOURCES) $(DL_LIBS) -o $@
+build/test-speech-process-real-sanitize: tests/test_speech_process_real.c $(SPEECH_WORKER_SOURCES) $(SPEECH_WORKER_HEADERS) | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $< $(SPEECH_WORKER_SOURCES) $(DL_LIBS) -o $@
