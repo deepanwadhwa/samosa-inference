@@ -3,6 +3,16 @@
 #define _DARWIN_C_SOURCE
 #include "whisper_fixture.h"
 static char *invoke_temporal(char **argv,const char *state,const char *engine_pin,const char *manifest_pin,const char *request,int offline,const char *owner,const char *error){
+    if(getenv("SAMOSA_TEST_USE_REGISTRY")){
+        FixtureConfig c={.cli=argv[1],.engine=offline?"/missing/temporal-engine":argv[2],.model=offline?"/missing/temporal-model":argv[3],.state=state,.owner=owner};
+        strcpy(c.engine_sha,engine_pin);char material[96],extra[128];
+        int n=snprintf(material,sizeof(material),"molmo2-package-v1:%s",manifest_pin);CHECK(n>0&&(size_t)n<sizeof(material));hash_bytes(material,(size_t)n,c.model_sha);
+        snprintf(extra,sizeof(extra),",\"manifest_sha256\":\"%s\"",manifest_pin);
+        /* Reconfigure trusted owner/paths for the original offline and foreign
+         * tests; public JSON never chooses them. Model identity stays pinned. */
+        actual_registry(&c,argv[4],"molmo2-native-v1","video_analysis",extra);
+        char *body=finish(registry_launch(&c,request,"molmo2-native-v1"),error?1:0);if(error)error_check(body,error);return body;
+    }
     char *args[]={argv[1],"--temporal-engine",offline?"/missing/temporal-engine":argv[2],"--temporal-model",offline?"/missing/temporal-model":argv[3],"--temporal-engine-sha256",(char *)engine_pin,"--temporal-manifest-sha256",(char *)manifest_pin,"--admission-state",(char *)state,"--owner",(char *)owner,NULL};
     char *body=finish(spawn_request(args,request),error?1:0);if(error)error_check(body,error);return body;
 }

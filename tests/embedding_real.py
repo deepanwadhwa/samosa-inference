@@ -15,7 +15,10 @@ import sys
 
 def sha(path):
     with open(path, "rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+        digest = hashlib.sha256()
+        for chunk in iter(lambda: stream.read(65536), b""):
+            digest.update(chunk)
+        return digest.hexdigest()
 
 
 def private_json(path, value):
@@ -26,6 +29,7 @@ def private_json(path, value):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--registry-binary")
     parser.add_argument("--binary", required=True)
     parser.add_argument("--offline-binary", required=True)
     parser.add_argument("--engine", required=True)
@@ -62,14 +66,42 @@ def main():
         process = subprocess.Popen([args.binary, "--config", str(root / "managed.json")],
                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=log)
         buffer = bytearray()
+        credential = root / "registry-key"
+
+        def retain_test_credential():
+            # The supervisor removes its startup key before announcing readiness.
+            # This trusted host harness retains a private copy only for live
+            # registry requests, and removes it before testing offline replay.
+            if not args.registry_binary or credential.exists():
+                return
+            for path in (root / "state").glob("key.*"):
+                try:
+                    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+                except FileNotFoundError:
+                    continue
+                try:
+                    value = os.read(fd, 65)
+                    stat = os.fstat(fd)
+                finally:
+                    os.close(fd)
+                assert stat.st_uid == os.geteuid() and not stat.st_mode & 0o077
+                if len(value) == 64:
+                    fd = os.open(credential, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                    try:
+                        os.write(fd, value)
+                    finally:
+                        os.close(fd)
+                    return
 
         def receive(timeout=180):
             deadline = time.monotonic() + timeout
             while b"\n" not in buffer:
+                retain_test_credential()
                 remaining = deadline - time.monotonic()
                 assert remaining > 0, "managed response timed out"
-                ready, _, _ = select.select([process.stdout], [], [], remaining)
-                assert ready, "managed response timed out"
+                ready, _, _ = select.select([process.stdout], [], [], min(remaining, 0.01))
+                if not ready:
+                    continue
                 chunk = os.read(process.stdout.fileno(), 65536)
                 assert chunk, f"managed EOF, exit={process.poll()}"
                 buffer.extend(chunk)
@@ -77,15 +109,25 @@ def main():
             buffer[:] = rest
             return json.loads(line)
 
+        def registry_call(request, expected=0):
+            result = subprocess.run([args.registry_binary, "--config", str(root / "registry.json")],
+                                    input=json.dumps(request), text=True, capture_output=True, timeout=90)
+            assert result.returncode == expected, (result.stdout, result.stderr)
+            return json.loads(result.stdout)
+
         def embed(text, role, operation, title=None):
             request = dict(contract_version=1, op="embed_text", text=text,
                            role=role, operation_id=operation, timeout_ms=60000)
             if title is not None:
                 request["title"] = title
             frame = dict(contract_version=1, request_id=operation, request=request)
-            process.stdin.write(json.dumps(frame).encode() + b"\n")
-            process.stdin.flush()
-            response = receive()
+            if args.registry_binary:
+                request["provider_id"] = event["provider_id"]
+                response = dict(request_id=operation, response=registry_call(request))
+            else:
+                process.stdin.write(json.dumps(frame).encode() + b"\n")
+                process.stdin.flush()
+                response = receive()
             assert response["request_id"] == operation, response
             result = response["response"]
             assert "error" not in result, result
@@ -102,6 +144,17 @@ def main():
         try:
             event = receive()
             assert event.get("event") == "provider_started", event
+            if args.registry_binary:
+                assert credential.exists(), "startup credential was not retained"
+                provider = dict(kind="embeddings", provider_id=event["provider_id"],
+                                state=str(root / "state" / "admission"), endpoint=f"http://127.0.0.1:{port}",
+                                model_alias="embedding-qa", context_tokens=8192,
+                                api_key_file=str(credential), embedding_config_file=str(root / "embedding.json"))
+                registry = dict(contract_version=1, owner="embedding-qa", providers=[provider,
+                    dict(kind="fake_text", provider_id="contract-text", state=str(root / "text-state"))])
+                private_json(root / "registry.json", registry)
+                discovery = registry_call(dict(contract_version=1, op="describe"))
+                assert len(discovery["providers"]) == 2
             documents = [
                 ("Backups", "Restore a deleted file by opening the backup archive and recovering the saved copy."),
                 ("Bread", "Combine flour, water and yeast. Knead the dough, let it rise, then bake the loaf."),
@@ -127,14 +180,20 @@ def main():
             frame = dict(contract_version=1, request_id="too-long", request=dict(
                 contract_version=1, op="embed_text", text="sun " * 9000,
                 role="document", operation_id="too-long", timeout_ms=60000))
-            process.stdin.write(json.dumps(frame).encode() + b"\n")
-            process.stdin.flush()
-            refused = receive()
+            if args.registry_binary:
+                frame["request"]["provider_id"] = event["provider_id"]
+                refused = dict(response=registry_call(frame["request"], 1))
+            else:
+                process.stdin.write(json.dumps(frame).encode() + b"\n")
+                process.stdin.flush()
+                refused = receive()
             assert refused["response"]["error"]["code"] == "context_limit", refused
             private_json(root / "long-input-refusal.json", refused)
             private_json(root / "receipts.json", receipts)
             private_json(root / "rankings.json", rankings)
         finally:
+            if credential.exists():
+                credential.unlink()
             failed = sys.exc_info()[0] is not None
             process.stdin.close()
             try:
@@ -146,6 +205,18 @@ def main():
                 assert rc == 0, f"managed shutdown failed: {rc}"
     offline_request = dict(contract_version=1, op="embed_text", text=queries[0][0],
                            role="query", operation_id="query-0", timeout_ms=60000)
+    if args.registry_binary:
+        registry["providers"][0]["endpoint"] = "http://127.0.0.1:1"
+        registry["providers"][0].pop("api_key_file")
+        # Supervisor shutdown removes its secret; replay needs neither endpoint
+        # nor credentials, while the pinned representation remains unchanged.
+        (root / "registry.json").unlink()
+        private_json(root / "registry.json", registry)
+        offline_request["provider_id"] = event["provider_id"]
+        replay = registry_call(offline_request)
+        assert replay == receipts[4]["response"]
+        private_json(root / "registry-offline-replay.json", replay)
+        offline_request.pop("provider_id")
     offline = subprocess.run([
         args.offline_binary, "--llama-endpoint", "http://127.0.0.1:1",
         "--provider-id", event["provider_id"], "--model-alias", "embedding-qa",
@@ -165,7 +236,7 @@ def main():
     assert result["profile"] == receipts[4]["response"]["profile"]
     assert result["vector"] == receipts[4]["response"]["vector"], "single/stream vectors differ"
     private_json(root / "single-response.json", result)
-    print(f"PASS actual managed embedding: 768 dimensions, 4/4 paraphrase rankings, long-input refusal, offline replay, single/stream parity, shutdown; {root}")
+    print(f"PASS actual managed/registry embedding: 768 dimensions, 4/4 paraphrase rankings, long-input refusal, offline replay, single/stream parity, shutdown; {root}")
 
 
 if __name__ == "__main__":

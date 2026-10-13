@@ -82,6 +82,12 @@ int main(void){
         body=call(&modalities,request,NULL);CHECK(strstr(body,ids[i]));if(i==5){CHECK(strstr(body,"text_embeddings"));CHECK(strstr(body,"\"dimensions\":768"));CHECK(!strstr(body,"fake_contract_only"));}free(body);
     }
     refused(&modalities,"{\"contract_version\":1,\"op\":\"generate\",\"provider_id\":\"embedding\",\"prompt\":\"hidden text\",\"max_output_tokens\":8}","unsupported_operation");
+    /* An expired trusted deadline proves embedding request validation reached
+     * the adapter without requiring a model or touching a network endpoint. */
+    mixed[5].deadline_monotonic=1;
+    refused(&modalities,"{\"contract_version\":1,\"op\":\"embed_text\",\"provider_id\":\"embedding\",\"text\":\"hello\",\"role\":\"query\",\"operation_id\":\"embedding-route\"}","deadline_exceeded");
+    refused(&modalities,"{\"contract_version\":1,\"op\":\"embed_text\",\"provider_id\":\"embedding\",\"text\":\"hello\",\"role\":\"query\",\"endpoint\":\"http://untrusted\"}","invalid_request");
+    body=call(&modalities,"{\"contract_version\":1,\"op\":\"operation_get\",\"provider_id\":\"embedding\",\"operation_id\":\"embedding-route\"}",NULL);CHECK(strstr(body,"failed"));free(body);
     refused(&modalities,"{\"contract_version\":1,\"op\":\"summarize\",\"provider_id\":\"image\"}","unsupported_operation");
     body=call(&modalities,"{\"contract_version\":1,\"op\":\"summarize\",\"provider_id\":\"summary\",\"text\":\"abc\",\"max_output_tokens\":16}","artifact_unavailable");free(body);
     char *wav=silence(100),*audio=transcribe(wav,NULL,0);char *provider=strstr(audio,"whisper-base-en-v1");CHECK(provider); /* route using its existing identity */

@@ -105,8 +105,8 @@ static int describe(const InferenceRegistry *r,FILE *out) {
     }
     fputs("]}\n",out);return ferror(out)?1:0;
 }
-/* Strip routing metadata only for legacy controls/descriptors. Retain all other
- * fields byte-for-byte so their existing strict validators and retry identity
+/* Strip routing metadata for legacy controls/descriptors and embedding work.
+ * Retain other fields byte-for-byte so strict validators and retry identity
  * remain authoritative. This never forwards a private configuration field. */
 static char *forward(const Json *j,int descriptor,size_t *length) {
     char *body=NULL;FILE *out=open_memstream(&body,length);if(!out)return NULL;
@@ -141,7 +141,7 @@ int inference_registry_dispatch(const InferenceRegistry *r,const char *input,siz
     if(descriptor&&j.tokens[0].count!=3)error="unknown_field";
     if(error){free(id);free(op);return fail(out,error);}
     char *body=NULL;size_t bytes=length;
-    if(descriptor||control){body=forward(&j,descriptor,&bytes);if(!body){free(id);free(op);return fail(out,"resource_limit");}}
+    if(descriptor||control||(selected->embedding&&!strcmp(op,"embed_text"))){body=forward(&j,descriptor,&bytes);if(!body){free(id);free(op);return fail(out,"resource_limit");}}
     int rc=inference_dispatch_config(selected,body?body:input,bytes,out);
     free(body);free(id);free(op);return rc;
 }
