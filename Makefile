@@ -468,3 +468,16 @@ test-speech-public: build/samosa-inference-providers build/test-speech-worker bu
 	python3 tests/test_speech_public.py $(abspath build/samosa-inference-providers) $(abspath build/test-speech-worker) $(abspath build/speech-worker-fixture.so)
 sanitize-speech-public: build/samosa-inference-providers-sanitize build/test-speech-worker build/speech-worker-fixture.so
 	python3 tests/test_speech_public.py $(abspath build/samosa-inference-providers-sanitize) $(abspath build/test-speech-worker) $(abspath build/speech-worker-fixture.so)
+
+
+.PHONY: test-package-remote sanitize-package-remote
+PACKAGE_REMOTE_SOURCES = src/package_remote_cache.c src/remote_artifact.c $(PACKAGE_COMPATIBILITY_SOURCES)
+build/test-package-remote: tests/test_package_compatibility.c $(PACKAGE_REMOTE_SOURCES) src/remote_artifact.h src/artifact.h src/package_remote_cache.h src/package_cache.h src/package_assemble.h src/package_compatibility.h src/package_stage.h src/package_tree.h src/package_publish.h src/package_index.h src/catalog.h src/platform.h $(SPEECH_PACKAGE_HEADERS) $(SPEECH_LOADER_HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(CURL_CFLAGS) -DSAMOSA_PACKAGE_REMOTE_TESTS -DJSON_TOKENS_MAX=8192 -Isrc tests/test_package_compatibility.c $(PACKAGE_REMOTE_SOURCES) $(CURL_LIBS) -o $@
+test-package-remote: build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so
+	python3 tests/package_compatibility_fixture.py $(abspath build/test-package-remote) $(abspath build/test-speech-worker) $(abspath build/speech-worker-fixture.so) --https
+sanitize-package-remote: build/test-speech-worker build/speech-worker-fixture.so | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(CURL_CFLAGS) -DSAMOSA_PACKAGE_REMOTE_TESTS -DJSON_TOKENS_MAX=8192 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Isrc tests/test_package_compatibility.c $(PACKAGE_REMOTE_SOURCES) $(CURL_LIBS) -o build/test-package-remote-sanitize
+	python3 tests/package_compatibility_fixture.py $(abspath build/test-package-remote-sanitize) $(abspath build/test-speech-worker) $(abspath build/speech-worker-fixture.so) --https
+test-native: test-package-remote
+sanitize-native: sanitize-package-remote

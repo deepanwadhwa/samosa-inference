@@ -5,6 +5,9 @@
 #include "package_assemble.h"
 #include "artifact.h"
 #include "package_cache.h"
+#ifdef SAMOSA_PACKAGE_REMOTE_TESTS
+#include "package_remote_cache.h"
+#endif
 #include <sys/file.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -18,7 +21,7 @@ static const char *cancel(void *unused){(void)unused;return "cancelled";}
 int main(int argc,char **argv){
     PackageIndex *index=calloc(1,sizeof(*index));CHECK(index);
     PackageCompatibilityContext context={.payload_path="/unused/private-payload"};
-    if(argc==4||argc==5){
+    if(argc==4||argc==5||argc==7){
         int file=open(argv[2],O_RDONLY|O_NOFOLLOW);struct stat s;CHECK(file>=0&&!fstat(file,&s));
         CHECK(S_ISREG(s.st_mode)&&s.st_uid==geteuid()&&!(s.st_mode&077)&&s.st_nlink==1&&s.st_size>0&&s.st_size<=PACKAGE_INDEX_BYTES);
         char *body=malloc((size_t)s.st_size);CHECK(body);size_t at=0;
@@ -26,7 +29,7 @@ int main(int argc,char **argv){
         CHECK(!close(file));CHECK(!package_index_parse(body,at,argv[3],index));free(body);
         context.payload_path=argv[1];int root=open(argv[1],O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(root>=0);
         const char *e=package_backend_compatible(root,index,&context);if(e)fprintf(stderr,"backend compatibility: %s\n",e);CHECK(!e);
-        if(argc==5){
+        if(argc>=5){
             /* Exercise the same verified copies and concrete compatibility gate
              * a coordinator must use; this harness owns the private destination. */
             int directory=open(argv[4],O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(directory>=0);
@@ -97,6 +100,33 @@ int main(int argc,char **argv){
             CHECK(!close(payload));CHECK(!close(directory));
             printf("PASS staged native speech publication: %zu files; compatibility, completion, revalidation and cancellation\n",index->count);
         }
+#ifdef SAMOSA_PACKAGE_REMOTE_TESTS
+        if(argc==7){
+            int directory=open(argv[4],O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(directory>=0);CHECK(!mkdirat(directory,"remote-package",0700));
+            int remote_directory=openat(directory,"remote-package",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(remote_directory>=0);
+            char store[4096],payload_path[4096];CHECK(snprintf(store,sizeof(store),"%s/remote-artifacts",argv[4])<(int)sizeof(store));
+            CHECK(snprintf(payload_path,sizeof(payload_path),"%s/remote-package/payload",argv[4])<(int)sizeof(payload_path));
+            RemoteArtifactSource *downloads=calloc(index->count,sizeof(*downloads));char (*urls)[4096]=calloc(index->count,sizeof(*urls));CHECK(downloads&&urls);
+            for(size_t i=0;i<index->count;i++){CHECK(snprintf(urls[i],sizeof(urls[i]),"%s/%s",argv[5],index->files[i].sha256)<(int)sizeof(urls[i]));downloads[i]=(RemoteArtifactSource){.url=urls[i],.ca_file=argv[6],.timeout_ms=5000};}
+            PackageRemoteCacheSource remote={.store={.state_path=store,.byte_ceiling=index->payload_bytes,.disk_ceiling=index->payload_bytes*2,.artifact_capacity=PACKAGE_INDEX_FILES,.resume=1},.index=index,.files=downloads,.count=index->count};
+            int held=-7;downloads[0].ca_file=NULL;
+            CHECK(!strcmp(package_remote_cache_open(&remote,&index->files[0],NULL,NULL,&held),"artifact_tls_verification_failed"));CHECK(held==-7);downloads[0].ca_file=argv[6];
+            PackageAssembly assembly={.directory=remote_directory,.source=-1,.source_open=package_remote_cache_open,.source_context=&remote,.index=index,.payload_path=payload_path,.copy_ceiling=index->payload_bytes};
+            PackageTreeResult observed;CHECK(!package_assemble(&assembly,&observed));CHECK(observed.files==index->count);
+            remote.files=NULL;CHECK(!package_assemble(&assembly,&observed));
+            CHECK(!package_remote_cache_open(&remote,&index->files[0],NULL,NULL,&held));CHECK(!close(held));
+            /* Cold destination installation uses only retained verified cache
+             * descriptors after all URL/credential configuration is removed. */
+            CHECK(!mkdirat(directory,"remote-offline-package",0700));int offline_directory=openat(directory,"remote-offline-package",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(offline_directory>=0);
+            char offline_path[4096];CHECK(snprintf(offline_path,sizeof(offline_path),"%s/remote-offline-package/payload",argv[4])<(int)sizeof(offline_path));
+            assembly.directory=offline_directory;assembly.payload_path=offline_path;
+            CHECK(!package_assemble(&assembly,&observed));CHECK(observed.files==index->count);CHECK(!close(offline_directory));
+            CHECK(!close(remote_directory));CHECK(!close(directory));free(downloads);free(urls);
+            printf("PASS complete HTTPS native package: %zu indexed files; untrusted TLS refusal, pinned acquisition, compatibility, publication and credential-free cache reuse\n",index->count);
+        }
+#else
+        CHECK(argc!=7);
+#endif
         context.control=cancel;CHECK(!strcmp(package_backend_compatible(root,index,&context),"cancelled"));
         CHECK(!close(root));printf("PASS pinned native speech package compatibility: index %s; closed manifest/graph/host inspection, no model load or readiness claim\n",index->manifest_sha256);free(index);return 0;
     }
