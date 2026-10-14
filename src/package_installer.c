@@ -11,7 +11,7 @@ static int interrupted(void *opaque){InstallerControl *c=opaque;const PackageIns
     return config->store.cancelled&&config->store.cancelled(config->store.cancellation);
 }
 const char *package_install_catalog(const PackageInstaller *c,PackageTreeResult *out){
-    if(!c||!c->entry||!out||!c->assembly.reservation_ceiling||!c->assembly.reservation_capacity||c->assembly.reservation_capacity>PACKAGE_RESERVATION_CAPACITY||!c->entry->size||c->entry->size>PACKAGE_INDEX_BYTES||c->store.acquire||
+    if(!c||!c->entry||!out||(c->file_sources&&c->digest_source)||!c->assembly.reservation_ceiling||!c->assembly.reservation_capacity||c->assembly.reservation_capacity>PACKAGE_RESERVATION_CAPACITY||!c->entry->size||c->entry->size>PACKAGE_INDEX_BYTES||c->store.acquire||
         !memchr(c->entry->platform,0,sizeof(c->entry->platform))||!memchr(c->entry->minimum_os,0,sizeof(c->entry->minimum_os))||
         !memchr(c->entry->recipe,0,sizeof(c->entry->recipe))||!memchr(c->entry->runtime,0,sizeof(c->entry->runtime))||!memchr(c->entry->sha256,0,sizeof(c->entry->sha256))||
         !memchr(c->entry->url,0,sizeof(c->entry->url)))return "invalid_package_installer";
@@ -33,7 +33,7 @@ const char *package_install_catalog(const PackageInstaller *c,PackageTreeResult 
     if(!e)e=package_catalog_read_index(c->entry,index_fd,c->assembly.control,c->assembly.context,index);
     if(index_fd>=0)close(index_fd);
     if(!e&&c->file_sources&&c->file_count!=index->count)e="invalid_package_remote_source";
-    if(!e){PackageRemoteCacheSource files={.store=c->store,.index=index,.files=c->file_sources,.count=index->count};
+    if(!e){PackageRemoteCacheSource files={.store=c->store,.index=index,.files=c->file_sources,.count=index->count,.digest_source=c->digest_source};
         PackageAssembly assembly=c->assembly;assembly.index=index;assembly.source=-1;assembly.source_open=package_remote_cache_open;assembly.source_context=&files;
         e=package_assemble(&assembly,out);}
     free(index);return e;

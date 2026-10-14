@@ -57,3 +57,12 @@ are unnecessary. A missing index reports `artifact_absent`; other errors leave
 the result untouched. `installed_verified` proves observed installation bytes
 and static compatibility, without claiming loaded engine readiness.
 
+## Trusted digest endpoint
+
+The installer may configure `digest_source` instead of a per-file source array.
+Its host-owned HTTPS URL is an endpoint prefix without a trailing slash, query,
+or fragment. Each missing file is acquired from that prefix plus `/` and the
+SHA-256 recorded in the verified index. TLS, credentials, redirect policy,
+resumable verification and byte limits use the existing downloader. Cache hits
+need no endpoint or credentials. Configuring both source forms refuses; index
+contents cannot substitute the endpoint, transport policy or expected hash.

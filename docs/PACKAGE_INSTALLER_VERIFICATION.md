@@ -51,3 +51,19 @@ The host file loader and its identity checks are reused rather than duplicated.
 This connects trusted catalog configuration to installation, while production
 package qualification, remaining compatibility/recovery and public entry-point
 requirements remain within area 2.
+## Trusted digest endpoint verification (2026-10-14)
+
+`make test-package-remote sanitize-package-remote test-remote-artifact
+sanitize-remote-artifact` passed; local log:
+`/private/tmp/samosa-digest-endpoint.log`.
+
+The complete HTTPS fixture now downloads missing payloads using a trusted
+endpoint plus each verified index digest. It rejects simultaneous source-array
+and endpoint configuration, and rejects a query-bearing endpoint while leaving
+the output descriptor untouched. The fixture's server observes exactly the
+expected unique pinned index/payload downloads; cold destination/cache-only
+retry does not issue additional requests. Normal and ASan/UBSan package gates
+and the downloader's 188 checks each pass. This qualifies the controlled
+fixture, not a production catalog or engine readiness. Public setup wiring,
+supported production recipes and remaining installation recovery remain open.
+

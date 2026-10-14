@@ -8,6 +8,7 @@ typedef struct {
     const RemoteArtifactSource *index_source,*file_sources;
     size_t file_count;
     PackageAssembly assembly;
+    const RemoteArtifactSource *digest_source;
 } PackageInstaller;
 /* Complete native catalog -> verified index -> verified files -> compatible
  * publication. Configuration is trusted; public requests select catalog IDs.

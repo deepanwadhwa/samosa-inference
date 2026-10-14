@@ -145,6 +145,9 @@ int main(int argc,char **argv){
             PackageRemoteCacheSource remote={.store={.state_path=store,.byte_ceiling=index->payload_bytes,.disk_ceiling=index->payload_bytes*2,.artifact_capacity=PACKAGE_INDEX_FILES,.resume=1},.index=index,.files=downloads,.count=index->count};
             int held=-7;downloads[0].ca_file=NULL;
             CHECK(!strcmp(package_remote_cache_open(&remote,&index->files[0],NULL,NULL,&held),"artifact_tls_verification_failed"));CHECK(held==-7);downloads[0].ca_file=argv[6];
+            RemoteArtifactSource digest_download={.url="https://example.invalid/files?redirect=1",.ca_file=argv[6],.timeout_ms=5000};
+            remote.digest_source=&digest_download;CHECK(!strcmp(package_remote_cache_open(&remote,&index->files[0],NULL,NULL,&held),"invalid_package_remote_source"));CHECK(held==-7);
+            remote.files=NULL;CHECK(!strcmp(package_remote_cache_open(&remote,&index->files[0],NULL,NULL,&held),"invalid_package_remote_source"));CHECK(held==-7);digest_download.url=argv[5];
             CHECK(!mkdirat(directory,"reservation-pool",0700));int reservation_pool=openat(directory,"reservation-pool",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(reservation_pool>=0);
             PackageAssembly assembly={.directory=remote_directory,.source=-1,.source_open=package_remote_cache_open,.source_context=&remote,.index=index,.payload_path=payload_path,.copy_ceiling=index->payload_bytes,.reservation_directory=reservation_pool,.reservation_ceiling=index->payload_bytes*2,.reservation_capacity=2};
             PackageTreeResult observed;
@@ -154,7 +157,7 @@ int main(int argc,char **argv){
             PackageAssemblyStatus incomplete;CHECK(!package_assembly_status(&assembly,&incomplete));CHECK(!strcmp(incomplete.state,"incomplete_unverified"));CHECK(!incomplete.package.files);
             assembly.control=NULL;assembly.context=NULL;
             CHECK(!package_assemble(&assembly,&observed));CHECK(observed.files==index->count);
-            remote.files=NULL;CHECK(!package_assemble(&assembly,&observed));
+            remote.digest_source=NULL;CHECK(!package_assemble(&assembly,&observed));
             CHECK(!package_remote_cache_open(&remote,&index->files[0],NULL,NULL,&held));CHECK(!close(held));
             /* Cold destination installation uses only retained verified cache
              * descriptors after all URL/credential configuration is removed. */

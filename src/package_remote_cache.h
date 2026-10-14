@@ -9,6 +9,9 @@ typedef struct {
      * NULL permits verified cache-only use without network credentials. */
     const RemoteArtifactSource *files;
     size_t count;
+    /* Optional trusted HTTPS endpoint: URL + '/' + pinned SHA-256.
+     * Mutually exclusive with files. Index bytes never choose the endpoint. */
+    const RemoteArtifactSource *digest_source;
 } PackageRemoteCacheSource;
 const char *package_remote_cache_open(void *,const PackageFile *,const char *(*)(void *),void *,int *);
 #endif
