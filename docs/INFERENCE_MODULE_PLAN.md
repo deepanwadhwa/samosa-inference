@@ -24,7 +24,7 @@ Do not introduce a shipped Python runtime.
 - Qualify actual supported models and combined-provider routing, malformed input,
   provenance, unavailable providers and platform-specific capability reporting.
 
-## 2. Model acquisition and installation — pending
+## 2. Model acquisition and installation — active
 
 - Assemble trusted catalogs over the existing verified artifact, HTTPS download
   and setup primitives; pin full engine/model packages and provenance.
@@ -176,3 +176,10 @@ receipts. All seven adapter kinds now coexist in the combined controlled routing
 gate. See [platform policy evidence](REGISTRY_PLATFORM_POLICY_VERIFICATION.md).
 Actual-model Linux coverage, production package qualification and remaining
 provider/lifecycle/resource/service/release gates remain open.
+
+Multi-file acquisition checkpoint: added a pinned native package index over the
+existing hashing/catalog/platform primitives. It handles complete payload lists
+without increasing the existing single-file install store's16-identity limit.
+See [index evidence](PACKAGE_INDEX_VERIFICATION.md). Package acquisition,
+publication, compatibility, controls and actual installation remain required;
+area2 is active and no complete numbered area is closed by this foundation.

@@ -4,7 +4,7 @@ CFLAGS ?= -O2 -g
 WARN = -std=c11 -Wall -Wextra -Werror -Wpedantic
 LIBS = -lsqlite3
 SOURCES = src/registry.c src/embedding.c src/inference.c src/sessions.c src/admission.c src/operations.c src/engine_process.c src/budget.c
-HEADERS = src/registry.h src/embedding.h src/inference.h src/json.h src/llama.h src/sessions.h src/admission.h src/operations.h src/sha256.h src/engine_process.h src/budget.h
+HEADERS = src/registry.h src/platform.h src/embedding.h src/inference.h src/json.h src/llama.h src/sessions.h src/admission.h src/operations.h src/sha256.h src/engine_process.h src/budget.h
 .PHONY: all test sanitize release clean native test-native sanitize-native test-admission test-operations test-artifact sanitize-artifact test-install sanitize-install test-artifacts-cli test-engine-process sanitize-engine-process test-activation sanitize-activation
 .PHONY: test-remote-artifact sanitize-remote-artifact test-remote-tls test-remote-key sanitize-remote-cli
 .PHONY: test-whisper sanitize-whisper
@@ -261,6 +261,18 @@ sanitize-catalog: | build
 
 test: test-catalog
 sanitize: sanitize-catalog
+
+.PHONY: test-package-index sanitize-package-index
+PACKAGE_INDEX_SOURCES = src/package_index.c src/catalog_host.c
+build/test-package-index: tests/test_package_index.c $(PACKAGE_INDEX_SOURCES) src/package_index.h src/catalog.h src/platform.h src/json.h src/sha256.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc tests/test_package_index.c $(PACKAGE_INDEX_SOURCES) -o $@
+test-package-index: build/test-package-index
+	./build/test-package-index
+sanitize-package-index: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Isrc tests/test_package_index.c $(PACKAGE_INDEX_SOURCES) -o build/test-package-index-sanitize
+	./build/test-package-index-sanitize
+test: test-package-index
+sanitize: sanitize-package-index
 
 SETUP_SOURCES = src/setup_main.c $(CATALOG_SOURCES) src/remote_artifact.c src/artifact.c src/install.c
 SETUP_HEADERS = src/catalog.h src/artifact.h src/remote_artifact.h src/json.h src/private_key.h src/sha256.h
