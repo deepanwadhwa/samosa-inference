@@ -377,3 +377,9 @@ credential-free retry pass normal/sanitizer gates; unknown IDs refuse before
 acquisition and the original catalog suite passes 951 checks in each mode.
 Continue installation's supported-package/public-configuration and production
 qualification requirements before opening lifecycle.
+
+Area 2 installer now loads trusted private catalog files through the existing
+ownership/single-link/named-binding checks before ID selection. Normal/sanitizer
+HTTPS gates refuse unsafe permissions, hardlinks and symlink catalogs, then
+install/retry with restored private configuration. Continue installation's
+remaining production-package and public entry-point requirements in order.

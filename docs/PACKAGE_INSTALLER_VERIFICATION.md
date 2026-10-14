@@ -36,3 +36,18 @@ complete package gates passed. The original catalog parser suite also passed wit
 This connects existing catalog parsing/selection to the complete native installer;
 it does not publish the fixture as a production model entry or close the remaining
 area-2 package compatibility, production qualification and recovery requirements.
+
+## Private-file catalog integration
+
+The HTTPS fixture now writes the trusted parsed catalog to an owner-private file
+and calls production `package_install_from_file` for initial installation and
+cache-only retry. Group-readable permissions, a hardlink alias and a symlink path
+all refuse with `invalid_catalog_file` before installation. The permissions case
+also checks unchanged output; restored owner-private/single-link configuration
+installs successfully. Normal and ASan/UBSan complete HTTPS gates passed. Log:
+`/private/tmp/samosa-private-catalog-installer-final.log`.
+
+The host file loader and its identity checks are reused rather than duplicated.
+This connects trusted catalog configuration to installation, while production
+package qualification, remaining compatibility/recovery and public entry-point
+requirements remain within area 2.

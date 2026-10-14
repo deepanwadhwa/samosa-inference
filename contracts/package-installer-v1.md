@@ -36,3 +36,13 @@ pointer is ignored, so the caller cannot substitute a different artifact descrip
 for the selected ID. Cache-only retries use the same selected catalog identity.
 Catalog parsing retains its original 1024-token bound even in builds that use a
 larger JSON token budget for other translation units.
+
+## Private catalog configuration file
+
+`package_install_from_file` loads the host-selected absolute catalog path through
+the existing `provider_catalog_load` checks before selection/install. Catalog files
+must be owned/private regular single-link files and retain their named identity
+and timestamps throughout reading. Symlinks, aliases and public permissions refuse.
+The path is host configuration; public requests choose IDs. Request controls apply
+before/after catalog reading and throughout the installer. The parsed catalog is
+owned only for the duration of the call and freed on success or failure.

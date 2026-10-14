@@ -45,3 +45,13 @@ const char *package_install_selected(const ProviderCatalog *catalog,const char *
     const ProviderEntry *entry=NULL;e=provider_catalog_select(catalog,id,platform,&entry);if(e)return e;
     PackageInstaller selected=*config;selected.entry=entry;return package_install_catalog(&selected,out);
 }
+
+const char *package_install_from_file(const char *path,const char *id,const PackageInstaller *config,PackageTreeResult *out){
+    if(!config||!out)return "invalid_package_installer";
+    const char *e=config->assembly.control?config->assembly.control(config->assembly.context):NULL;if(e)return e;
+    ProviderCatalog *catalog=calloc(1,sizeof(*catalog));if(!catalog)return "allocation_failed";
+    e=provider_catalog_load(path,catalog);
+    if(!e)e=config->assembly.control?config->assembly.control(config->assembly.context):NULL;
+    if(!e)e=package_install_selected(catalog,id,config,out);
+    free(catalog);return e;
+}

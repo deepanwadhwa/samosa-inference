@@ -16,4 +16,7 @@ const char *package_install_catalog(const PackageInstaller *,PackageTreeResult *
 /* Select by public identity from a trusted parsed catalog; the template entry
  * pointer is ignored. No acquisition occurs for unknown/incompatible IDs. */
 const char *package_install_selected(const ProviderCatalog *,const char *,const PackageInstaller *,PackageTreeResult *);
+/* Load the host-selected private catalog with existing ownership/binding checks
+ * before ID selection. The path is configuration, never request input. */
+const char *package_install_from_file(const char *,const char *,const PackageInstaller *,PackageTreeResult *);
 #endif
