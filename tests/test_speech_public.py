@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import select
 import subprocess
 import sys
 import time
@@ -51,12 +52,30 @@ def error(code, result):
     check(result.get("error", {}).get("code") == code, (code, result))
 
 
+def stream_start(operation, text="hello", **fields):
+    body = dict(contract_version=1, op="speech_generate", provider_id="voice",
+                operation_id=operation, text=text, **fields)
+    process = subprocess.Popen([cli, "--config", str(cfg), "--stream"],
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process.stdin.write(json.dumps(body).encode())
+    process.stdin.close()
+    process.stdin = None
+    return process
+
+
+def stream_event(process):
+    ready, _, _ = select.select([process.stdout], [], [], 5)
+    check(ready, "stream event timed out")
+    return json.loads(process.stdout.readline())
+
+
 try:
     discovery = request("describe", provider=None)
     check(len(discovery["providers"]) == 2)
     check(all(p["kind"] == "speech_output" for p in discovery["providers"]))
     check(not (root / "voice").exists())
     check("speech_output" in request("provider_describe")["capabilities"])
+    check("speech_pcm_stream" in request("provider_describe")["capabilities"])
     result = request("speech_generate", operation_id="one", text="hello", voice="caro")
     check(result["operation_id"] == "one" and result["sample_rate"] == 24000)
     check(result["samples"] == 4 and result["bytes"] == 8)
@@ -64,6 +83,71 @@ try:
     pcm = base64.b64decode(audio["pcm_base64"], validate=True)
     check(pcm == bytes((0, 0, 102, 38, 154, 217, 0, 0)))
     check(hashlib.sha256(pcm).hexdigest() == result["pcm_sha256"])
+    streamed = stream_start("stream-one", voice="caro")
+    output, diagnostics = streamed.communicate(timeout=15)
+    check(streamed.returncode == 0 and not diagnostics)
+    events = [json.loads(line) for line in output.splitlines()]
+    check(events[-1]["event"] == "completed" and not events[-1]["replayed"])
+    chunks = events[:-1]
+    check(chunks and all(e["event"] == "speech_pcm" and e["provisional"] for e in chunks))
+    assembled = b""
+    for i, event in enumerate(chunks):
+        check(event["sequence"] == i and event["offset"] == len(assembled))
+        check(event["provider_id"] == "voice" and event["operation_id"] == "stream-one")
+        part_pcm = base64.b64decode(event["pcm_base64"], validate=True)
+        check(len(part_pcm) == event["bytes"] and len(part_pcm) <= 8192)
+        assembled += part_pcm
+    terminal = events[-1]
+    check(terminal["sequence"] == len(chunks) and assembled == pcm)
+    check(hashlib.sha256(assembled).hexdigest() == terminal["response"]["pcm_sha256"])
+    check(request("speech_generate", operation_id="stream-one", text="hello", voice="caro") == terminal["response"])
+    replay = stream_start("stream-one", voice="caro")
+    replay_output, diagnostics = replay.communicate(timeout=15)
+    replay_events = [json.loads(line) for line in replay_output.splitlines()]
+    check(replay.returncode == 0 and not diagnostics and len(replay_events) == 1)
+    check(replay_events[0]["event"] == "completed" and replay_events[0]["replayed"])
+    check(replay_events[0]["response"] == terminal["response"])
+    # The fixture stalls inside a native callback after the first two samples.
+    # Receiving PCM here proves incremental delivery before terminal readiness.
+    live = stream_start("stream-cancel", "partial-wait")
+    first = stream_event(live)
+    check(first["event"] == "speech_pcm" and first["sequence"] == 0)
+    check(base64.b64decode(first["pcm_base64"]) == pcm[:4] and live.poll() is None)
+    check(request("operation_cancel", operation_id="stream-cancel")["cancel_requested"])
+    cancelled = stream_event(live)
+    check(live.wait(timeout=5) == 1)
+    check(cancelled["event"] == "failed" and cancelled["sequence"] == 1)
+    error("cancelled", cancelled["response"])
+    check(not live.stdout.read())
+    disconnected = stream_start("stream-disconnect", "partial-wait")
+    check(stream_event(disconnected)["event"] == "speech_pcm")
+    disconnected.stdout.close()
+    check(disconnected.wait(timeout=5) == 2)
+    check(request("operation_get", operation_id="stream-disconnect")["status"] == "cancelled")
+    check(not disconnected.stderr.read())
+    timed = stream_start("stream-deadline", "partial-wait", timeout_ms=500)
+    timed_output, diagnostics = timed.communicate(timeout=8)
+    timed_events = [json.loads(line) for line in timed_output.splitlines()]
+    check(timed.returncode == 1 and not diagnostics)
+    check(timed_events[0]["event"] == "speech_pcm" and timed_events[-1]["event"] == "failed")
+    error("deadline_exceeded", timed_events[-1]["response"])
+    for malformed, code in (("{", "invalid_json"),
+                            ('{"contract_version":1,"op":"describe"}', "unsupported_stream_operation")):
+        invalid = subprocess.run([cli, "--config", str(cfg), "--stream"], input=malformed,
+                                 text=True, capture_output=True, timeout=5)
+        event = json.loads(invalid.stdout)
+        check(invalid.returncode == 1 and event["event"] == "failed")
+        error(code, event["response"])
+    # A consumer that stays connected but never drains PCM must not defeat the
+    # operation deadline or retain the guardian/admission lease indefinitely.
+    blocked = stream_start("stream-blocked", "stream-long", timeout_ms=500)
+    check(blocked.wait(timeout=6) == 2)
+    check(request("operation_get", operation_id="stream-blocked")["status"] == "failed")
+    error("deadline_exceeded", request("speech_generate", operation_id="stream-blocked",
+                                       text="stream-long", timeout_ms=500))
+    check(request("speech_generate", operation_id="stream-survivor", text="hello")["samples"] == 4)
+    blocked.stdout.close()
+    check(not blocked.stderr.read())
     part = request("audio_read", audio_id=result["audio_id"], offset=2, length=4)
     check(base64.b64decode(part["pcm_base64"]) == pcm[2:6])
     check(request("operation_get", operation_id="one")["status"] == "completed")

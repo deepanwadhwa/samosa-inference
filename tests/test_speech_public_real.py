@@ -10,13 +10,18 @@ import subprocess
 import sys
 import tempfile
 
-cli, package, pin = sys.argv[1:4]
-profile = json.loads(Path(sys.argv[4]).read_text()) if len(sys.argv) == 5 else None
+arguments = sys.argv[1:]
+streaming = arguments[-1] == "--stream"
+if streaming:
+    arguments = arguments[:-1]
+cli, package, pin = arguments[:3]
+profile = json.loads(Path(arguments[3]).read_text()) if len(arguments) == 4 else None
 if profile and profile["manifest_sha256"] != pin:
     raise ValueError("actual-model profile does not match package pin")
 kind = profile["kind"] if profile else "Pocket"
 root = Path(tempfile.mkdtemp(prefix="samosa-public-pocket-"))
 checks = 0
+stream_audio = {}
 
 
 def check(value):
@@ -26,12 +31,36 @@ def check(value):
 
 
 def request(op, **fields):
-    result = subprocess.run([os.path.abspath(cli), "--config", str(root / "config.json")],
+    command = [os.path.abspath(cli), "--config", str(root / "config.json")]
+    if streaming and op == "speech_generate":
+        command.append("--stream")
+    result = subprocess.run(command,
                             input=json.dumps({"contract_version": 1, "provider_id": "pocket", "op": op, **fields}),
                             text=True, capture_output=True, timeout=120)
     check(result.returncode == 0)
     check("AddressSanitizer" not in result.stderr and "runtime error:" not in result.stderr)
-    return json.loads(result.stdout)
+    if not streaming or op != "speech_generate":
+        return json.loads(result.stdout)
+    events = [json.loads(line) for line in result.stdout.splitlines()]
+    check(events and events[-1]["event"] == "completed")
+    pcm = bytearray()
+    for sequence, event in enumerate(events[:-1]):
+        check(event["event"] == "speech_pcm" and event["provisional"])
+        check(event["sequence"] == sequence and event["offset"] == len(pcm))
+        check(event["operation_id"] == fields["operation_id"] and event["sample_rate"] == 24000)
+        chunk = base64.b64decode(event["pcm_base64"], validate=True)
+        check(len(chunk) == event["bytes"] and 0 < len(chunk) <= 8192 and not len(chunk) % 2)
+        pcm.extend(chunk)
+    terminal = events[-1]
+    check(terminal["sequence"] == len(events) - 1)
+    receipt = terminal["response"]
+    if pcm:
+        check(not terminal["replayed"] and len(pcm) == receipt["bytes"])
+        check(hashlib.sha256(pcm).hexdigest() == receipt["pcm_sha256"])
+        stream_audio[fields["operation_id"]] = pcm
+    else:
+        check(terminal["replayed"])
+    return receipt
 
 
 try:
@@ -70,6 +99,8 @@ try:
             pcm.extend(base64.b64decode(part["pcm_base64"], validate=True))
         check(hashlib.sha256(pcm).hexdigest() == digest)
         check(any(pcm))
+        if streaming:
+            check(stream_audio[voice] == pcm)
         check(request("speech_generate", **fields) == receipt)
         check(request("operation_get", operation_id=voice)["status"] == "completed")
         print(f"PASS actual public {kind} {voice}: {samples} samples, ranged PCM hash {digest}", flush=True)

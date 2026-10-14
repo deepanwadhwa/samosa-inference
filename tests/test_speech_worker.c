@@ -65,6 +65,16 @@ static const char *active(void *arg) {
     return NULL;
 }
 static const char *cancel_read(void *arg){(void)arg;return "operation_cancelled";}
+typedef struct {Host *host;size_t bytes,calls;unsigned char pcm[8];int live;const char *error;} Stream;
+static const char *stream_pcm(void *arg,const unsigned char *pcm,size_t bytes,int rate) {
+    Stream *s=arg;CHECK(bytes&&bytes<=8192&&!(bytes%2)&&rate==24000);CHECK(s->bytes+bytes<=sizeof(s->pcm));
+    memcpy(s->pcm+s->bytes,pcm,bytes);s->bytes+=bytes;s->calls++;
+    CHECK(!unlocked(s->host->residency));
+    if(s->host->process.guardian>0&&!s->host->process.terminal){s->live=1;
+        SpeechRuntimeResult incomplete;unsigned char magic[8];CHECK(pread(s->host->output,magic,8,0)==8);
+        if(!memcmp(magic,"SMPCP001",8))CHECK(!strcmp(speech_worker_result(s->host->output,NULL,NULL,&incomplete),"invalid_speech_output"));}
+    return s->error;
+}
 int main(int argc,char **argv) {
     int code=engine_guardian_dispatch(argc,argv);if(code>=0)return code;
     code=speech_worker_dispatch(argc,argv);if(code>=0)return code;
@@ -91,9 +101,11 @@ int main(int argc,char **argv) {
     Host h;SpeechRuntimeResult result;
     const char *requests[]={"{\"text\":\"hello\",\"voice\":\"caro\"}","{\"text\":\"final-only\",\"voice\":\"stuart\"}"};
     for(unsigned i=0;i<2;i++) {
-        setup(&h,argv[0],base,package,pin,requests[i],10);const char *e=speech_process_run(&h.c,NULL,NULL,&result);if(e)fprintf(stderr,"process result: %s\n",e);CHECK(!e);
+        setup(&h,argv[0],base,package,pin,requests[i],10);Stream streamed={.host=&h};h.c.pcm_sink=stream_pcm;h.c.pcm_context=&streamed;
+        const char *e=speech_process_run(&h.c,NULL,NULL,&result);if(e)fprintf(stderr,"process result: %s\n",e);CHECK(!e);
         CHECK(result.sample_rate==24000&&result.samples==4&&result.callbacks==(i?1u:2u));
         unsigned char actual[8],expected[]={0,0,102,38,154,217,0,0};CHECK(pread(h.output,actual,sizeof(actual),SPEECH_PACKET_HEADER)==sizeof(actual));CHECK(!memcmp(actual,expected,8));
+        CHECK(streamed.calls&&streamed.bytes==8&&!memcmp(streamed.pcm,expected,8));
         SpeechRuntimeResult read;CHECK(!speech_worker_result(h.output,NULL,NULL,&read));CHECK(!strcmp(read.pcm_sha256,result.pcm_sha256));
         CHECK(!strcmp(speech_worker_result(h.output,cancel_read,NULL,&read),"operation_cancelled"));CHECK(!read.samples);
         const unsigned offsets[]={0,8,19,20,24,32,72};
@@ -106,6 +118,12 @@ int main(int argc,char **argv) {
         unsigned char bad=42;CHECK(pwrite(h.output,&bad,1,SPEECH_PACKET_HEADER)==1);CHECK(!strcmp(speech_worker_result(h.output,NULL,NULL,&read),"speech_output_checksum"));CHECK(!read.samples);
         finish(&h);
     }
+    /* A stalling native callback exposes provisional PCM while its worker is
+     * alive. Sink refusal must preserve its error and reap before returning. */
+    setup(&h,argv[0],base,package,pin,"{\"text\":\"partial-wait\",\"voice\":\"caro\"}",10);
+    Stream rejected={.host=&h,.error="stream_sink_failed"};h.c.pcm_sink=stream_pcm;h.c.pcm_context=&rejected;
+    const char *stream_error=speech_process_run(&h.c,NULL,NULL,&result);
+    CHECK(stream_error&&!strcmp(stream_error,"stream_sink_failed"));CHECK(rejected.live&&rejected.calls==1&&rejected.bytes==4);CHECK(!result.samples);finish(&h);
     const char *bad[]={"{}","{\"text\":\"hello\",\"path\":\"/tmp/unpinned\"}","{\"text\":\"hello\",\"voice\":\"unknown\"}","{\"text\":\"nan\",\"voice\":\"caro\"}","{\"text\":\"partial\",\"voice\":\"caro\"}","{\"text\":\"crash\",\"voice\":\"caro\"}"};
     for(unsigned i=0;i<sizeof(bad)/sizeof(*bad);i++) {
         setup(&h,argv[0],base,package,pin,bad[i],10);const char *e=speech_process_run(&h.c,NULL,NULL,&result);CHECK(e&&!strcmp(e,"engine_failed"));CHECK(!result.samples);finish(&h);

@@ -19,6 +19,10 @@ typedef struct {
     double lifetime_seconds;
     size_t log_limit;
     EngineProcess *process; /* Retained by caller, including shutdown pending. */
+    /* Optional trusted incremental sink. PCM is provisional until the final
+     * result succeeds; sink failure stops/reaps the same owned worker. */
+    SpeechPcmSink pcm_sink;
+    void *pcm_context;
 } SpeechProcessConfig;
 /* Reuses guardian process-group ownership, residency retention and workspace
  * cleanup. Caller owns unopened/failed-start workspaces; a started guardian

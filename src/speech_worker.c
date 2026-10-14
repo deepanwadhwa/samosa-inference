@@ -34,13 +34,21 @@ static int write_at(int fd,const void *bytes,size_t count,off_t offset) {
     while(count){ssize_t n=pwrite(fd,p,count,offset);if(n<0&&errno==EINTR)continue;if(n<=0)return 0;
         p+=n;offset+=n;count-=(size_t)n;}return 1;
 }
-typedef struct {size_t bytes;} Output;
+typedef struct {size_t bytes,chunks;Sha256 hash;} Output;
 static const char *pcm(void *context,const unsigned char *bytes,size_t count,int rate) {
     Output *out=context;
     if(!count||count>8192||count%2||rate<8000||rate>96000||count>SPEECH_PACKET_LIMIT-SPEECH_PACKET_HEADER-out->bytes)
         return "speech_audio_limit";
     if(!write_at(STDOUT_FILENO,bytes,count,(off_t)(SPEECH_PACKET_HEADER+out->bytes)))return "speech_output_failed";
-    out->bytes+=count;return NULL;
+    sha256_update(&out->hash,bytes,count);out->bytes+=count;out->chunks++;
+    unsigned char header[SPEECH_PACKET_HEADER]={0},digest[32];Sha256 snapshot=out->hash;
+    sha256_final(&snapshot,digest);
+    memcpy(header,"SMPCP001",8);w64(header+8,out->bytes);w32(header+16,(uint32_t)rate);
+    w64(header+24,out->bytes/2);w64(header+32,out->chunks);memcpy(header+40,digest,32);
+    /* This prefix is provisional, never a completed packet. Readers accept a
+     * stable header only after verifying its entire newly appended PCM suffix. */
+    if(!write_at(STDOUT_FILENO,header,sizeof(header),0))return "speech_output_failed";
+    return NULL;
 }
 int speech_worker_dispatch(int argc,char **argv) {
     if(argc<2||strcmp(argv[1],"--inference-speech-worker"))return -1;
@@ -77,6 +85,7 @@ int speech_worker_dispatch(int argc,char **argv) {
     if(!e&&options.pocket&&voice&&strcmp(voice,"caro")&&strcmp(voice,"stuart"))e="invalid_speech_voice";
     if(!e)e=speech_runtime_open(&options,&runtime);
     Output out={0};SpeechRuntimeResult result={0};
+    sha256_init(&out.hash);
     unsigned char header[SPEECH_PACKET_HEADER]={0};
     if(!e&&!write_at(STDOUT_FILENO,header,sizeof(header),0))e="speech_output_failed";
     if(!e)e=speech_runtime_generate(runtime,text,voice,
@@ -122,6 +131,38 @@ const char *speech_worker_result(int fd,const char *(*control)(void *),void *con
     if(!e){result->sample_rate=(int)rate;result->samples=(size_t)samples;result->callbacks=(size_t)callbacks;sha256_hex(digest,result->pcm_sha256);}
     return e;
 }
+typedef struct {size_t bytes;int rate;Sha256 hash;} Progress;
+static const char *progress(int fd,Progress *p,SpeechPcmSink sink,void *sink_context,
+    const char *(*control)(void *),void *context,int final) {
+    struct stat s;unsigned char header[SPEECH_PACKET_HEADER],after[SPEECH_PACKET_HEADER];
+    if(fstat(fd,&s)||!S_ISREG(s.st_mode)||s.st_uid!=geteuid()||(s.st_mode&077)||s.st_nlink>1||s.st_size>SPEECH_PACKET_LIMIT)
+        return "invalid_speech_output";
+    if(s.st_size<SPEECH_PACKET_HEADER||!read_at(fd,header,sizeof(header),0))return final?"invalid_speech_output":NULL;
+    int complete=!memcmp(header,"SMPCM001",8);
+    if(!complete&&memcmp(header,"SMPCP001",8))return final?"invalid_speech_output":NULL;
+    uint64_t bytes=u64(header+8),samples=u64(header+24),callbacks=u64(header+32);uint32_t rate=u32(header+16);
+    /* Header writes may overlap a live observation. A transient inconsistent
+     * snapshot delivers nothing; terminal validation remains strict. */
+    if(u32(header+20)||u64(header+72)||rate<8000||rate>96000||!samples||samples>(uint64_t)rate*45||
+        bytes!=samples*2||bytes>(uint64_t)s.st_size-SPEECH_PACKET_HEADER||!callbacks||callbacks>samples)
+        return final?"invalid_speech_output":NULL;
+    if(bytes<p->bytes||(p->rate&&p->rate!=(int)rate))return "speech_stream_mismatch";
+    size_t count=(size_t)bytes-p->bytes;unsigned char *data=count?malloc(count):NULL;
+    if(count&&!data)return "speech_resource_limit";
+    const char *e=control?control(context):NULL;
+    if(!e&&count&&!read_at(fd,data,count,(off_t)(SPEECH_PACKET_HEADER+p->bytes)))e="speech_output_changed";
+    Sha256 candidate=p->hash,snapshot;unsigned char digest[32];
+    if(!e){if(count)sha256_update(&candidate,data,count);snapshot=candidate;sha256_final(&snapshot,digest);
+        if(!read_at(fd,after,sizeof(after),0)||memcmp(header,after,sizeof(header))||memcmp(digest,header+40,32)){
+            free(data);return final?"speech_output_checksum":NULL;}}
+    for(size_t at=0;!e&&at<count;){
+        e=control?control(context):NULL;if(e)break;
+        size_t n=count-at;if(n>8192)n=8192;
+        e=sink(sink_context,data+at,n,(int)rate);at+=n;
+    }
+    if(!e){p->hash=candidate;p->bytes=(size_t)bytes;p->rate=(int)rate;}
+    free(data);return e;
+}
 const char *speech_process_run(const SpeechProcessConfig *c,const char *(*control)(void *),void *context,SpeechRuntimeResult *result) {
     if(!result)return "invalid_configuration";
     memset(result,0,sizeof(*result));
@@ -147,8 +188,10 @@ const char *speech_process_run(const SpeechProcessConfig *c,const char *(*contro
         c->workspace_path,c->workspace_fd,c->input_fd,c->output_fd,SPEECH_PACKET_LIMIT,p);
     free(argv);
     if(e)return e;
+    Progress streamed={0};sha256_init(&streamed.hash);
     for(;;) {
         e=control?control(context):NULL;if(e)break;
+        if(c->pcm_sink){e=progress(c->output_fd,&streamed,c->pcm_sink,c->pcm_context,control,context,0);if(e)break;}
         struct pollfd watch={p->response,POLLIN|POLLHUP,0};int n=poll(&watch,1,10);
         if(n<0&&errno==EINTR)continue;
         if(n<0){e="speech_process_failed";break;}
@@ -159,5 +202,8 @@ const char *speech_process_run(const SpeechProcessConfig *c,const char *(*contro
     if(e)return e;
     if(stopped)return stopped;
     if(strcmp(p->reason,"completed"))return "speech_process_failed";
-    return speech_worker_result(c->output_fd,control,context,result);
+    e=speech_worker_result(c->output_fd,control,context,result);
+    if(!e&&c->pcm_sink)e=progress(c->output_fd,&streamed,c->pcm_sink,c->pcm_context,control,context,1);
+    if(e)memset(result,0,sizeof(*result));
+    return e;
 }

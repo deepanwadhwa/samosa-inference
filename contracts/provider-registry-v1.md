@@ -2,7 +2,9 @@
 
 The public native executable is `samosa-inference-providers --config
 ABSOLUTE_PRIVATE_JSON`, built by `make providers`. One JSON request on stdin,
-one adapter result on stdout. The C API is `inference_registry_dispatch` in
+one adapter result on stdout. Optional `--stream` emits incremental provisional
+PCM and a terminal envelope for `speech_generate`; see `speech-output-v1.md` for
+event, retry, deadline and disconnect semantics. The C API is `inference_registry_dispatch` in
 `src/registry.h`. Both route to existing provider implementations; there is no
 gateway dependency or additional model runtime. The optional executable links
 libcurl and system SQLite; base registry tests do not require libcurl or models.

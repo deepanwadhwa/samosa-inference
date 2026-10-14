@@ -64,6 +64,13 @@ const SamosaSherpaGeneratedAudio *SherpaOnnxOfflineTtsGenerateWithConfig(
     static float clipped[] = {2, -2, 0, 0};
     static SamosaSherpaGeneratedAudio result;
     result = audio;
+    if (!strcmp(text, "stream-long")) {
+        static float long_samples[48000];
+        for (unsigned i = 0; i < 48000; i++) long_samples[i] = i % 2 ? -.25f : .25f;
+        result.samples = long_samples;result.n = 48000;
+        if (callback && !callback(long_samples, 48000, 1, arg)) return NULL;
+        return &result;
+    }
     if (!strcmp(text, "nan")) result.samples = bad;
     if (!strcmp(text, "clip")) result.samples = clipped;
     if (!strcmp(text, "bad-rate")) result.sample_rate = 1;

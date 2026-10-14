@@ -65,3 +65,51 @@ Saved receipts/audio remain readable without the model package. Package identity
 checks observe files before and after execution; immutable installation/staging
 against concurrent same-owner writers remains separate work. Host owner scoping
 is not yet an authenticated network service.
+
+## Incremental PCM transport
+
+`samosa-inference-providers --config ABSOLUTE_PRIVATE_JSON --stream` accepts the
+same `speech_generate` request and owner-bound retry identity. Other valid work
+operations refuse `unsupported_stream_operation`. Private configuration-load
+errors occur before request ingress and retain their ordinary startup-error DTO.
+The C registry interface offers the corresponding trusted `SpeechConfig.pcm_sink`
+callback, with the active operation's cancellation/deadline hook for backpressure.
+No public request chooses a callback, file or output path.
+
+The CLI emits newline-delimited JSON `speech_pcm` events with increasing
+`sequence`, byte `offset`, `bytes`, provider/operation IDs, `pcm_s16le`, one channel,
+sample rate and `pcm_base64`. Chunks are even-sized and at most8192 PCM bytes;
+encoded events are at most16384 bytes. Each event says `provisional: true`.
+Clients must treat the stream as incomplete until a `completed` terminal event
+contains the ordinary retained receipt. Final concatenated PCM must match that
+receipt's bytes/rate/hash. A `failed` terminal event contains the ordinary typed
+operation error; it publishes no completed audio artifact. Connected consumers
+receive exactly one terminal event when delivery succeeds.
+
+Completed replay emits one terminal event with `replayed: true` and no regenerated
+PCM. Fresh completed work sets `replayed: false`. Partial progress is not durably
+replayed; an interrupted operation follows the existing refusal/recovery rules.
+The terminal sequence follows the last fully delivered PCM event. A valid
+request rejected before generation may produce only a failed terminal event.
+
+Private worker progress uses a provisional header and cumulative prefix hash.
+The owning process verifies a stable snapshot plus its newly copied suffix
+before delivering chunks. The final packet keeps its existing strict whole-PCM,
+metadata and package verification. A snapshot race emits nothing until a stable
+one is available; a terminal mismatch fails. Sink refusal stops/reaps the same
+guardian and retains residency until cleanup. The largest temporary suffix copy
+is bounded by the16MiB worker packet ceiling; this is not global memory admission.
+
+CLI output is nonblocking during event delivery. Controls are checked while
+waiting for writability. If cancellation arrives after a frame has started, it
+has at most two additional seconds to finish that JSON frame before stopping;
+terminal delivery has a separate two-second bound after worker cleanup. An
+incomplete delivered frame or broken consumer ends with transport exit2 and no
+appended terminal frame; clients must discard an unterminated stream. Disconnect
+detection also cancels a worker that stalls before another callback. A connected
+consumer that does not drain output cannot extend model work indefinitely past
+its deadline. Kernel/filesystem syscall latency retains the existing host limits.
+The worker result/operation receipt remain authoritative if terminal delivery
+fails after persistence. Native generation callback boundaries and CLI chunk
+boundaries need not be identical. This does not provide text-token streaming,
+network authentication or persistent model sessions.

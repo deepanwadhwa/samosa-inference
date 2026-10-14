@@ -33,6 +33,10 @@ char *speech_normalized(const InferenceConfig *c,const Json *j) {
     free(provider);free(text);free(voice);free(id);free(parent);return body;
 }
 static const char *control(void *p){return inference_interrupted(p);}
+static const char *public_pcm(void *context,const unsigned char *pcm,size_t bytes,int rate) {
+    const InferenceConfig *c=context;
+    return c->speech->pcm_sink(c->speech->pcm_context,pcm,bytes,rate,control,context);
+}
 static const char *run(const InferenceConfig *c,const char *text,const char *voice,const char *id,const char *pin,AudioReceipt *receipt) {
     int lease=-1,package=-1,dir=-1,input=-1,output=-1,writer=-1;char workspace[]="/tmp/samosa-inference-speech-XXXXXX";int created=0;
     const char *e=inference_schedule(c,&lease);
@@ -46,7 +50,10 @@ static const char *run(const InferenceConfig *c,const char *text,const char *voi
     if(!e){input=openat(dir,"request.frame",O_RDONLY|O_NOFOLLOW|O_CLOEXEC);if(input<0)e="engine_io_failed";}
     EngineProcess p={.guardian=-1,.control=-1,.response=-1};
     if(!e){double left=c->deadline_monotonic?c->deadline_monotonic-inference_now():60;
-        SpeechProcessConfig worker={c->speech->self,c->speech->package,c->speech->manifest_sha256,workspace,lease,package,dir,input,output,left,262144,&p};
+        SpeechProcessConfig worker={.self=c->speech->self,.package_path=c->speech->package,.manifest_sha256=c->speech->manifest_sha256,
+            .workspace_path=workspace,.residency_fd=lease,.package_fd=package,.workspace_fd=dir,.input_fd=input,.output_fd=output,
+            .lifetime_seconds=left,.log_limit=262144,.process=&p,
+            .pcm_sink=c->speech->pcm_sink?public_pcm:NULL,.pcm_context=(void *)c};
         SpeechRuntimeResult native;e=left<=0?"deadline_exceeded":speech_process_run(&worker,control,(void *)c,&native);
         if(e&&!strcmp(e,"lifetime_exceeded"))e="deadline_exceeded";}
     /* Retain ownership until the guardian is reaped; never discard a pending
@@ -67,7 +74,7 @@ int speech_dispatch(const InferenceConfig *c,const Json *j,FILE *out) {
         !c->speech->manifest_sha256||strlen(c->speech->manifest_sha256)!=64||strspn(c->speech->manifest_sha256,"0123456789abcdef")!=64||!c->admission_state)return fail(out,"invalid_configuration");
     char *op=json_string(j,json_get(j,0,"op"));if(!op)return fail(out,"invalid_request");
     if(!strcmp(op,"describe")){free(op);if(!fields(j,"|contract_version|op|"))return fail(out,"unknown_field");
-        fprintf(out,"{\"contract_version\":1,\"provider_id\":\"%s\",\"capabilities\":[\"speech_output\",\"audio_ranges\",\"operations\",\"cancellation\",\"request_budgets\"],\"max_input_bytes\":2400,\"max_audio_range_bytes\":32768,\"availability\":\"configured_unqualified\"}\n",c->provider_id);return 0;}
+        fprintf(out,"{\"contract_version\":1,\"provider_id\":\"%s\",\"capabilities\":[\"speech_output\",\"speech_pcm_stream\",\"audio_ranges\",\"operations\",\"cancellation\",\"request_budgets\"],\"max_input_bytes\":2400,\"max_audio_range_bytes\":32768,\"availability\":\"configured_unqualified\"}\n",c->provider_id);return 0;}
     char *provider=json_string(j,json_get(j,0,"provider_id"));const char *e=!provider?"invalid_request":strcmp(provider,c->provider_id)?"provider_unavailable":NULL;
     AudioStoreConfig store={c->admission_state,c->owner,c->provider_id};AudioReceipt r;
     if(!e&&!strcmp(op,"speech_generate")) {

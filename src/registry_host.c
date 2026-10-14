@@ -66,7 +66,7 @@ static const char *provider(InferenceRegistryHost *h,const Json *j,int object,si
        !number(j,object,"admission_wait_ms",10000,1,60000,&c->admission_wait_ms))return "invalid_registry_configuration";
     if(speech){const char *package=string(h,j,object,"package"),*pin=string(h,j,object,"manifest_sha256");
         if(!absolute(self)||!absolute(package)||!digest(pin))return "invalid_registry_configuration";
-        h->speeches[i]=(SpeechConfig){self,package,pin};c->speech=&h->speeches[i];}
+        h->speeches[i]=(SpeechConfig){.self=self,.package=package,.manifest_sha256=pin};c->speech=&h->speeches[i];}
     if(text||embedding){
         c->endpoint=string(h,j,object,"endpoint");c->model_alias=string(h,j,object,"model_alias");
         if(!c->endpoint||!c->model_alias||!*c->model_alias||strlen(c->model_alias)>128||json_get(j,object,"context_tokens")<0)return "invalid_registry_configuration";
