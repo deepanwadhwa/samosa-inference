@@ -23,11 +23,12 @@ def check(value, detail=None):
     assert value, (checks, detail)
 
 
-def config(owner="alice"):
+def config(owner="alice", platform=None):
     path = root / (owner + ".json")
     path.write_text(json.dumps({"contract_version": 1, "owner": owner, "providers": [
         {"provider_id": identity, "kind": "speech_output", "state": str(root / identity),
-         "package": package["package"], "manifest_sha256": package["manifest_sha256"]}
+         "package": package["package"], "manifest_sha256": package["manifest_sha256"],
+         **({"platform": platform} if platform is not None else {})}
         for identity in ("voice", "second")]}))
     path.chmod(0o600)
     return path
@@ -83,6 +84,20 @@ try:
     pcm = base64.b64decode(audio["pcm_base64"], validate=True)
     check(pcm == bytes((0, 0, 102, 38, 154, 217, 0, 0)))
     check(hashlib.sha256(pcm).hexdigest() == result["pcm_sha256"])
+    host_platform = discovery["providers"][0]["host_platform"]
+    check(discovery["providers"][0]["platform_policy"] == "unspecified")
+    foreign_platform = "macos-arm64" if host_platform.startswith("linux") else "linux-arm64"
+    config(platform=foreign_platform)
+    check(request("provider_describe")["platform_policy"] == "incompatible")
+    check(request("speech_generate", operation_id="one", text="hello", voice="caro") == result)
+    retained = request("audio_read", audio_id=result["audio_id"], offset=0, length=8)
+    check(base64.b64decode(retained["pcm_base64"]) == pcm)
+    error("unsupported_provider_platform", request("speech_generate", operation_id="foreign-platform", text="hello"))
+    check(request("operation_get", operation_id="foreign-platform")["status"] == "failed")
+    config(platform=host_platform)
+    check(request("provider_describe")["platform_policy"] == "compatible")
+    error("unsupported_provider_platform", request("speech_generate", operation_id="foreign-platform", text="hello"))
+    config()
     streamed = stream_start("stream-one", voice="caro")
     output, diagnostics = streamed.communicate(timeout=15)
     check(streamed.returncode == 0 and not diagnostics)

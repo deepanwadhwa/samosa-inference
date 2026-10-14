@@ -5,6 +5,7 @@
 #include "sessions.h"
 #include "admission.h"
 #include "operations.h"
+#include "platform.h"
 #include "json.h"
 #include "sha256.h"
 #include "budget.h"
@@ -44,7 +45,7 @@ static int dispatch_core(const InferenceConfig *cfg,const char *input,size_t len
     const char *identity=cfg?cfg->provider_id:PROVIDER;
     size_t context=cfg?cfg->context_tokens:CONTEXT;
     int native=cfg&&cfg->endpoint;
-    if(cfg&&(cfg->queue_capacity>8||cfg->admission_wait_ms>60000||
+    if(cfg&&(!inference_platform_valid(cfg->platform)||cfg->queue_capacity>8||cfg->admission_wait_ms>60000||
              (cfg->queue_capacity&&!cfg->admission_state)))return fail(out,"invalid_configuration");
     if(!identity||!*identity||strlen(identity)>128||context<128||context>131072)return fail(out,"invalid_configuration");
     for(const char *p=identity;*p;p++)if(!isalnum((unsigned char)*p)&&!strchr("-_:.",*p))return fail(out,"invalid_configuration");
@@ -55,6 +56,16 @@ static int dispatch_core(const InferenceConfig *cfg,const char *input,size_t len
     Json request;size_t contract;
     if(!json_parse(&request,input,length)||request.tokens[0].type!=JT_OBJECT)return fail(out,"invalid_json");
     if(!json_uint(&request,json_get(&request,0,"contract_version"),&contract)||contract!=1)return fail(out,"unsupported_contract");
+    if(cfg&&!inference_platform_allowed(cfg->platform)){
+        char *work=json_string(&request,json_get(&request,0,"op"));
+        int executes=work&&(!strcmp(work,"generate")||!strcmp(work,"count_tokens")||!strcmp(work,"provider_status")||
+            !strcmp(work,"embed_text")||!strcmp(work,"summarize")||!strcmp(work,"summarize_opening")||
+            !strcmp(work,"transcribe")||!strcmp(work,"analyze_image")||!strcmp(work,"analyze_video_frames")||!strcmp(work,"speech_generate"));
+        free(work);
+        /* Tracked replay happens before dispatch_core. Foreign deployment
+         * targets refuse new model work while preserving retained data access. */
+        if(executes)return fail(out,"unsupported_provider_platform");
+    }
 #ifdef SAMOSA_WITH_WHISPER
     if(cfg&&cfg->whisper)return whisper_dispatch(cfg,&request,out);
 #endif

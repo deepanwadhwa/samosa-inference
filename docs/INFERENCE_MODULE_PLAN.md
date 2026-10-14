@@ -156,3 +156,23 @@ recognition, Sources-prepared Whisper audio, SDK publication/readback and66-seco
 windowed capture pass normal/sanitizer checks. See
 [actual modality evidence](REGISTRY_ACTUAL_MODALITIES_VERIFICATION.md). Remaining
 model/platform, lifecycle, service and release acceptance gates stay open.
+
+Actual embedding/temporal/text checkpoint: the common registry now passes actual
+EmbeddingGemma vectors/rankings, Molmo2 ordered observations and Ornith native
+generation/cancellation/recovery in macOS normal/sanitizer clients. See
+[embedding/temporal evidence](REGISTRY_EMBEDDING_TEMPORAL_VERIFICATION.md) and
+[text evidence](REGISTRY_TEXT_VERIFICATION.md). Native speech streaming now passes
+provisional delivery, backpressure, deadline, cancellation/disconnect and all
+eight actual voices through the public interface; see
+[stream evidence](SPEECH_STREAM_VERIFICATION.md). Independent CI at1c12ab6 passes
+macOS14/ARM64 and Ubuntu24.04/x86-64. This establishes the listed checkpoints,
+not completion of the remaining acceptance areas.
+
+Platform policy checkpoint: trusted provider configuration can declare its
+deployment target; public discovery reports native host/declaration/policy while
+remaining explicitly unqualified for model availability/readiness. Incompatible
+targets refuse fresh work but preserve owner-bound retained data and exact
+receipts. All seven adapter kinds now coexist in the combined controlled routing
+gate. See [platform policy evidence](REGISTRY_PLATFORM_POLICY_VERIFICATION.md).
+Actual-model Linux coverage, production package qualification and remaining
+provider/lifecycle/resource/service/release gates remain open.

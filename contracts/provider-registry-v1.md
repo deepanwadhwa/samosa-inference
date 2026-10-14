@@ -44,6 +44,14 @@ Common entry fields: `provider_id`, `kind`, `state`; optional `context_tokens`
 (128..131072, default4096), `queue_capacity` (0..8, default4) and
 `admission_wait_ms` (1..60000, default10000).
 
+Optional private `platform` declares the deployment target: `macos-arm64`,
+`macos-x86_64`, `linux-arm64` or `linux-x86_64`. Unknown values, explicit null,
+nonstring values and empty strings refuse configuration. Omission preserves
+existing unspecified-platform behavior. This declaration is host policy, not
+artifact verification; native package, loader and minimum-OS checks still apply.
+It describes where this provider configuration may perform work, not the OS of
+a remote endpoint. It is never accepted as a public request override.
+
 | Kind | Additional configuration | Work operations |
 | --- | --- | --- |
 | `text` | `endpoint`, `model_alias`, required `context_tokens`, optional `api_key_file` | `count_tokens`, `generate`, `provider_status`, `session_create`, `session_get` |
@@ -69,6 +77,20 @@ kinds and supported operation names. `availability=configured_unqualified` is
 configuration metadata and never proves readiness, package integrity or actual
 model execution. A linked native video adapter on Linux does not imply MLX model
 availability. Discovery neither creates provider state nor contacts engines.
+Discovery entries and `provider_describe` also report `host_platform` (the
+executing binary's OS/architecture), `declared_platform` (or null), and
+`platform_policy`: `unspecified`, `compatible` or `incompatible`. Compatibility
+does not grant model availability, readiness or actual-model qualification.
+Unsupported host targets report null host metadata and cannot match an explicit
+deployment target. Under translation, the binary architecture is reported.
+
+An incompatible target refuses new inference or engine-health work with
+`unsupported_provider_platform` before engine, package or endpoint access.
+Owner-scoped retained operation/session reads, cancellation and audio retrieval/
+deletion remain available. Existing exact tracked receipts replay before new-work
+platform checks, including streamed speech's terminal-only replay. A newly refused
+tracked operation saves its failure; changing policy does not silently rerun it.
+Platform policy does not change the existing normalized request/replay schema.
 
 `{"contract_version":1,"op":"provider_describe","provider_id":"local-summary"}`
 returns the existing adapter's detailed limits/capabilities. Embedding discovery

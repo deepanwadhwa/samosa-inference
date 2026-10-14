@@ -20,6 +20,8 @@ typedef struct { const char *endpoint,*provider_id,*admission_state;size_t conte
     const EmbeddingConfig *embedding;
     const TemporalConfig *temporal;
     const SpeechConfig *speech;
+    /* Optional trusted deployment target; never selected by a public request. */
+    const char *platform;
 } InferenceConfig;
 const char *llama_embed(const InferenceConfig *,const char *,size_t,float **,size_t *);
 const char *llama_count(const InferenceConfig *,const char *,size_t *);

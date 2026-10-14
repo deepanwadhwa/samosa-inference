@@ -2,12 +2,14 @@
 #define _XOPEN_SOURCE 700
 #define _DARWIN_C_SOURCE
 #include "registry.h"
+#include "platform.h"
 #include "embedding.h"
 #include "summary.h"
 #include "whisper.h"
 #include "vision.h"
 #include "temporal.h"
 #include "temporal_package.h"
+#include "speech.h"
 #include "whisper_fixture.h"
 
 static char *call(const InferenceRegistry *r,const char *request,const char *error) {
@@ -45,7 +47,20 @@ int main(void){
     char *session=string_field(body,"session_id");free(body);
     char *saved=generate(&registry,"first","same-id",session,"first prompt",NULL);
     body=generate(&registry,"second","same-id",NULL,"different prompt",NULL);CHECK(strstr(body,"second"));free(body);
+    body=generate(&registry,"first","same-id",session,"first prompt",NULL);CHECK(!strcmp(saved,body));free(body);
+    const char *host_platform=inference_host_platform();CHECK(host_platform);
+    const char *foreign_platform=!strncmp(host_platform,"linux",5)?"macos-arm64":"linux-arm64";
+    providers[0].platform=foreign_platform;
+    body=call(&registry,"{\"contract_version\":1,\"op\":\"describe\"}",NULL);CHECK(strstr(body,"\"platform_policy\":\"incompatible\""));CHECK(strstr(body,host_platform));free(body);
+    body=call(&registry,"{\"contract_version\":1,\"op\":\"provider_describe\",\"provider_id\":\"first\"}",NULL);CHECK(strstr(body,"\"platform_policy\":\"incompatible\""));CHECK(strstr(body,"fake_contract_only"));free(body);
+    /* Saved results survive a deployment-target change without executing the
+     * provider. Fresh work refuses and retains that exact failed operation. */
     body=generate(&registry,"first","same-id",session,"first prompt",NULL);CHECK(!strcmp(saved,body));free(body);free(saved);
+    body=generate(&registry,"first","foreign-platform",NULL,"new work","unsupported_provider_platform");free(body);
+    providers[0].platform=host_platform;
+    body=generate(&registry,"first","foreign-platform",NULL,"new work","unsupported_provider_platform");free(body);
+    body=generate(&registry,"first","compatible-platform",NULL,"new work",NULL);free(body);
+    providers[0].platform="unknown-host";CHECK(!strcmp(inference_registry_validate(&registry),"invalid_registry_configuration"));providers[0].platform=NULL;
     body=generate(&registry,"second","foreign-session",session,"prompt","unknown_session");free(body);
     char request[512];snprintf(request,sizeof(request),"{\"contract_version\":1,\"op\":\"session_get\",\"provider_id\":\"first\",\"session_id\":\"%s\"}",session);
     body=call(&registry,request,NULL);CHECK(strstr(body,"\"revision\":1"));free(body);
@@ -72,14 +87,28 @@ int main(void){
     TemporalConfig temporal={.self="/unused/self",.model="/unused/model",.executable="/unused/engine",.model_sha256=sha,.executable_sha256=sha,.manifest_sha256=sha};
     char temporal_sha[65];temporal_package_identity(sha,temporal_sha);temporal.model_sha256=temporal_sha;
     EmbeddingConfig embedding={.model_id="fixture",.model_revision="revision",.model_sha256=sha,.engine_sha256=sha,.tokenizer_hash=sha,.query_prefix="query: ",.document_prefix="document: ",.recipe="fixture",.dimensions=768};
-    InferenceConfig mixed[6];char states[6][256];const char *ids[]={"text","summary","speech-input","image","video","embedding"};
-    for(size_t i=0;i<6;i++){snprintf(states[i],sizeof(states[i]),"%s/modality%zu",root,i);mixed[i]=(InferenceConfig){.provider_id=ids[i],.owner="alice",.context_tokens=4096,.admission_state=states[i]};}
+    InferenceConfig mixed[7];char states[7][256];const char *ids[]={"text","summary","speech-input","image","video","embedding","speech-output"};size_t count=6;
+#ifdef SAMOSA_WITH_SPEECH
+    count=7;SpeechConfig speech={.self="/unused/self",.package="/unused/package",.manifest_sha256=sha};
+#endif
+    for(size_t i=0;i<count;i++){snprintf(states[i],sizeof(states[i]),"%s/modality%zu",root,i);mixed[i]=(InferenceConfig){.provider_id=ids[i],.owner="alice",.context_tokens=4096,.admission_state=states[i]};}
+    mixed[0].endpoint="http://127.0.0.1:1";mixed[0].model_alias="fixture";
     mixed[1].summary=&summary;mixed[2].whisper=&whisper;mixed[3].vision=&vision;mixed[4].temporal=&temporal;mixed[5].embedding=&embedding;mixed[5].endpoint="http://127.0.0.1:18645";
-    InferenceRegistry modalities={mixed,6};CHECK(!inference_registry_validate(&modalities));
+#ifdef SAMOSA_WITH_SPEECH
+    mixed[6].speech=&speech;
+#endif
+    InferenceRegistry modalities={mixed,count};CHECK(!inference_registry_validate(&modalities));
     body=call(&modalities,"{\"contract_version\":1,\"op\":\"describe\"}",NULL);CHECK(strstr(body,"summarize_opening")&&strstr(body,"transcribe")&&strstr(body,"analyze_video_frames")&&strstr(body,"embed_text"));free(body);
-    for(size_t i=0;i<6;i++){
+    for(size_t i=0;i<count;i++){
         snprintf(request,sizeof(request),"{\"contract_version\":1,\"op\":\"provider_describe\",\"provider_id\":\"%s\"}",ids[i]);
         body=call(&modalities,request,NULL);CHECK(strstr(body,ids[i]));if(i==5){CHECK(strstr(body,"text_embeddings"));CHECK(strstr(body,"\"dimensions\":768"));CHECK(!strstr(body,"fake_contract_only"));}free(body);
+    }
+    const char *work_ops[]={"count_tokens","summarize","transcribe","analyze_image","analyze_video_frames","embed_text","speech_generate"};
+    for(size_t i=0;i<count;i++){
+        mixed[i].platform=foreign_platform;
+        snprintf(request,sizeof(request),"{\"contract_version\":1,\"op\":\"%s\",\"provider_id\":\"%s\"}",work_ops[i],ids[i]);
+        refused(&modalities,request,"unsupported_provider_platform");
+        mixed[i].platform=NULL;
     }
     refused(&modalities,"{\"contract_version\":1,\"op\":\"generate\",\"provider_id\":\"embedding\",\"prompt\":\"hidden text\",\"max_output_tokens\":8}","unsupported_operation");
     /* An expired trusted deadline proves embedding request validation reached

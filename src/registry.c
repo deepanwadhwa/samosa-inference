@@ -2,6 +2,7 @@
 #define _DARWIN_C_SOURCE
 #include "registry.h"
 #include "json.h"
+#include "platform.h"
 #include <sys/stat.h>
 
 static int fail(FILE *out,const char *code) {
@@ -61,7 +62,7 @@ const char *inference_registry_validate(const InferenceRegistry *r) {
         unsigned modalities=!!c->whisper+!!c->vision+!!c->temporal+!!c->summary+!!c->embedding+!!c->speech;
         if(!identity(c->provider_id,128)||!identity(c->owner,64)||!path(c->admission_state)||
            c->context_tokens<128||c->context_tokens>131072||c->queue_capacity>8||
-           c->admission_wait_ms>60000||modalities>1||
+           c->admission_wait_ms>60000||!inference_platform_valid(c->platform)||modalities>1||
            (c->endpoint&&modalities&&!c->embedding)||(c->embedding&&!c->endpoint))return "invalid_registry_configuration";
         if(!compiled(c))return "provider_not_compiled";
         for(size_t j=0;j<i;j++){
@@ -95,13 +96,20 @@ static const char *operations(const InferenceConfig *c) {
     if(c->embedding)return "\"embed_text\"";
     return "\"count_tokens\",\"generate\",\"provider_status\",\"session_create\",\"session_get\"";
 }
+static void platform_metadata(const InferenceConfig *c,FILE *out) {
+    const char *host=inference_host_platform();
+    fputs(",\"host_platform\":",out);if(host)json_quote(out,host,strlen(host));else fputs("null",out);
+    fputs(",\"declared_platform\":",out);if(c->platform)json_quote(out,c->platform,strlen(c->platform));else fputs("null",out);
+    fprintf(out,",\"platform_policy\":\"%s\"",!c->platform?"unspecified":inference_platform_allowed(c->platform)?"compatible":"incompatible");
+}
 static int describe(const InferenceRegistry *r,FILE *out) {
     fputs("{\"contract_version\":1,\"component\":\"samosa-inference\",\"version\":\"0.1.0\",\"interface\":\"provider-registry-v1\",\"max_providers\":16,\"providers\":[",out);
     for(size_t i=0;i<r->count;i++){
         const InferenceConfig *c=&r->providers[i];
         if(i)fputc(',',out);
         fputs("{\"provider_id\":",out);json_quote(out,c->provider_id,strlen(c->provider_id));
-        fprintf(out,",\"kind\":\"%s\",\"availability\":\"configured_unqualified\",\"operations\":[\"provider_describe\",\"operation_get\",\"operation_cancel\",%s],\"context_tokens\":%zu}",kind(c),operations(c),c->context_tokens);
+        fprintf(out,",\"kind\":\"%s\",\"availability\":\"configured_unqualified\",\"operations\":[\"provider_describe\",\"operation_get\",\"operation_cancel\",%s],\"context_tokens\":%zu",kind(c),operations(c),c->context_tokens);
+        platform_metadata(c,out);fputc('}',out);
     }
     fputs("]}\n",out);return ferror(out)?1:0;
 }
@@ -142,6 +150,17 @@ int inference_registry_dispatch(const InferenceRegistry *r,const char *input,siz
     if(error){free(id);free(op);return fail(out,error);}
     char *body=NULL;size_t bytes=length;
     if(descriptor||control||(selected->embedding&&!strcmp(op,"embed_text"))){body=forward(&j,descriptor,&bytes);if(!body){free(id);free(op);return fail(out,"resource_limit");}}
-    int rc=inference_dispatch_config(selected,body?body:input,bytes,out);
+    int rc;
+    if(descriptor){
+        char *result=NULL;size_t result_length=0;FILE *capture=open_memstream(&result,&result_length);
+        if(!capture)rc=fail(out,"resource_limit");
+        else{rc=inference_dispatch_config(selected,body,bytes,capture);
+            if(fclose(capture))rc=fail(out,"resource_limit");
+            else if(rc)fwrite(result,1,result_length,out);
+            else{while(result_length&&isspace((unsigned char)result[result_length-1]))result_length--;
+                if(!result_length||result[result_length-1]!='}')rc=fail(out,"invalid_provider_response");
+                else{fwrite(result,1,result_length-1,out);platform_metadata(selected,out);fputs("}\n",out);}}
+            free(result);}
+    }else rc=inference_dispatch_config(selected,body?body:input,bytes,out);
     free(body);free(id);free(op);return rc;
 }

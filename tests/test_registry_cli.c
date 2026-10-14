@@ -2,6 +2,7 @@
 #define _XOPEN_SOURCE 700
 #define _DARWIN_C_SOURCE
 #include "whisper_fixture.h"
+#include "platform.h"
 /* Existing native T5 framing, reused without a new provider protocol. */
 static int engine(int argc,char **argv) {
     if(argc!=11||strcmp(argv[1],"--model"))return -1;
@@ -66,6 +67,21 @@ int main(int argc,char **argv) {
     file_write(config,credential_config);
     body=call(argv[1],config,"{\"contract_version\":1,\"op\":\"describe\"}",0,NULL);CHECK(!strstr(body,secret));CHECK(!strstr(body,key));free(body);
     body=call(argv[1],config,"{\"contract_version\":1,\"op\":\"provider_describe\",\"provider_id\":\"external\"}",0,NULL);CHECK(strstr(body,"llama-native-template-v1"));CHECK(!strstr(body,secret));CHECK(!strstr(body,key));free(body);CHECK(access(untouched,F_OK)<0&&errno==ENOENT);
+    const char *host=inference_host_platform();CHECK(host);
+    const char *foreign=!strncmp(host,"linux",5)?"macos-arm64":"linux-arm64";
+    char platform_config[2048];snprintf(platform_config,sizeof(platform_config),"{\"contract_version\":1,\"owner\":\"alice\",\"providers\":[{\"kind\":\"text\",\"provider_id\":\"external\",\"platform\":\"%s\",\"endpoint\":\"http://127.0.0.1:1\",\"context_tokens\":4096,\"model_alias\":\"configured.gguf\",\"state\":\"%s\"}]}",foreign,untouched);
+    file_write(config,platform_config);
+    body=call(argv[1],config,"{\"contract_version\":1,\"op\":\"describe\"}",0,NULL);CHECK(strstr(body,"\"platform_policy\":\"incompatible\""));CHECK(strstr(body,host));free(body);
+    body=call(argv[1],config,"{\"contract_version\":1,\"op\":\"provider_describe\",\"provider_id\":\"external\"}",0,NULL);CHECK(strstr(body,"\"platform_policy\":\"incompatible\""));free(body);
+    body=call(argv[1],config,"{\"contract_version\":1,\"op\":\"count_tokens\",\"provider_id\":\"external\",\"prompt\":\"no network work\"}",1,"unsupported_provider_platform");free(body);
+    CHECK(access(untouched,F_OK)<0&&errno==ENOENT);
+    const char *bad_platforms[]={"\"unknown-platform\"","null","17","[]","\"\""};
+    for(size_t i=0;i<sizeof(bad_platforms)/sizeof(*bad_platforms);i++){
+        snprintf(platform_config,sizeof(platform_config),"{\"contract_version\":1,\"owner\":\"alice\",\"providers\":[{\"kind\":\"fake_text\",\"provider_id\":\"platform-test\",\"platform\":%s,\"state\":\"%s\"}]}",bad_platforms[i],untouched);
+        file_write(config,platform_config);body=call(argv[1],config,"{}",2,"invalid_registry_configuration");free(body);
+    }
+    file_write(config,credential_config);
+    body=call(argv[1],config,"{\"contract_version\":1,\"op\":\"count_tokens\",\"provider_id\":\"external\",\"prompt\":\"no override\",\"platform\":\"linux-arm64\"}",1,"unknown_field");free(body);
     CHECK(!chmod(key,0644));body=call(argv[1],config,"{}",2,"invalid_registry_credentials");CHECK(!strstr(body,secret));free(body);CHECK(!chmod(key,0600));
     char key_alias[256];snprintf(key_alias,sizeof(key_alias),"%s/key-alias",root);CHECK(!link(key,key_alias));body=call(argv[1],config,"{}",2,"invalid_registry_credentials");free(body);CHECK(!unlink(key_alias));
     file_write(config,"{\"contract_version\":1,\"owner\":\"alice\",\"providers\":[]}");body=call(argv[1],config,"{}",2,"invalid_registry_configuration");free(body);

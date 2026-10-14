@@ -48,7 +48,7 @@ static char *configuration(const char *path,size_t *bytes) {
     close(fd);if(!valid){free(body);return NULL;}body[used]=0;*bytes=used;return body;
 }
 static const char *provider(InferenceRegistryHost *h,const Json *j,int object,size_t i,const char *self,const char *owner) {
-    const char *common="|provider_id|kind|state|context_tokens|queue_capacity|admission_wait_ms|";
+    const char *common="|provider_id|kind|state|platform|context_tokens|queue_capacity|admission_wait_ms|";
     char *kind=string(h,j,object,"kind");if(!kind)return "invalid_registry_configuration";
     int speech=!strcmp(kind,"speech_output"),fake=!strcmp(kind,"fake_text"),text=!strcmp(kind,"text"),embedding=!strcmp(kind,"embeddings"),
         summary=!strcmp(kind,"summarization"),whisper=!strcmp(kind,"transcription"),vision=!strcmp(kind,"image_analysis"),temporal=!strcmp(kind,"video_analysis");
@@ -61,6 +61,7 @@ static const char *provider(InferenceRegistryHost *h,const Json *j,int object,si
     if(!fields(j,object,allowed))return "unknown_registry_field";
     InferenceConfig *c=&h->providers[i];c->owner=owner;
     c->provider_id=string(h,j,object,"provider_id");c->admission_state=string(h,j,object,"state");
+    if(json_get(j,object,"platform")>=0){c->platform=string(h,j,object,"platform");if(!c->platform)return "invalid_registry_configuration";}
     if(!number(j,object,"context_tokens",4096,128,131072,&c->context_tokens)||
        !number(j,object,"queue_capacity",4,0,8,&c->queue_capacity)||
        !number(j,object,"admission_wait_ms",10000,1,60000,&c->admission_wait_ms))return "invalid_registry_configuration";
