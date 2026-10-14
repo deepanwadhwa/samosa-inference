@@ -4,6 +4,7 @@
 #include "package_compatibility.h"
 #include "package_stage.h"
 #include "package_reserve.h"
+#include "package_identity.h"
 #include "catalog.h"
 #include <errno.h>
 #include <fcntl.h>
@@ -29,6 +30,7 @@ const char *package_assemble(const PackageAssembly *c,PackageTreeResult *out){
     struct stat identity;int payload=-1;
     if(fstat(lock,&identity)||!S_ISREG(identity.st_mode)||identity.st_uid!=geteuid()||(identity.st_mode&077)||identity.st_nlink!=1||!bound(c->directory,"assemble.lock",lock))e="unsafe_package_assembly";
     if(!e&&flock(lock,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"package_assembly_busy":"package_assembly_unavailable";
+    if(!e)e=package_identity_bind(c->directory,c->index,c->control,c->context);
     if(!e&&c->reservation_ceiling){PackageReservationResult reservation;
         e=package_reserve_controlled(c->reservation_directory,c->directory,c->index,c->reservation_ceiling,c->reservation_capacity,c->control,c->context,&reservation);}
     if(!e)e=c->control?c->control(c->context):NULL;

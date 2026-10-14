@@ -56,6 +56,11 @@ int main(int argc,char **argv){
             CHECK(!package_assemble(&assembly,&observed));CHECK(observed.files==index->count);
             CHECK(!fstatat(retained,index->files[0].name,&after,AT_SYMLINK_NOFOLLOW));CHECK(before.st_ino==after.st_ino&&before.st_dev==after.st_dev);CHECK(!close(retained));
             CHECK(!package_assemble(&assembly,&observed));
+            /* A changed pin cannot reuse this package directory, even after a
+             * completed installation; existing bytes and identity remain intact. */
+            char previous=index->manifest_sha256[0];index->manifest_sha256[0]=previous=='a'?'b':'a';
+            CHECK(!strcmp(package_assemble(&assembly,&observed),"package_assembly_identity_conflict"));index->manifest_sha256[0]=previous;
+            CHECK(!package_assemble(&assembly,&observed));
             /* A second package assembles directly from the registered artifact
              * store, whose stage/artifact cache names share two links. */
             char store[4096],cache_path[4096];CHECK(snprintf(store,sizeof(store),"%s/artifacts",argv[4])<(int)sizeof(store));

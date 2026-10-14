@@ -275,3 +275,11 @@ controls. Normal/sanitizer tests cover early and pre-publication cancellation,
 uncharged clean output, pre-payload assembly refusal and subsequent successful
 online/offline installation. Persisted charges retain their conservative lifetime;
 reclamation and registered crash recovery remain open.
+
+Package assembly now persists its root/index binding before reservation or file
+acquisition. Restarted work refuses a changed pin or copied identity metadata;
+normal/sanitizer native identity and full local/HTTPS fixture gates pass. See
+[contract](../contracts/package-identity-v1.md) and
+[evidence](PACKAGE_IDENTITY_VERIFICATION.md). This is a coordinator prerequisite;
+registered partial-file recovery, reclamation and public installation controls
+remain open, and it does not qualify readiness or close area 2.

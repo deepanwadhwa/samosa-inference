@@ -388,8 +388,8 @@ test: test-speech-package
 sanitize: sanitize-speech-package
 
 .PHONY: test-package-compatibility sanitize-package-compatibility
-PACKAGE_COMPATIBILITY_SOURCES = src/package_reserve.c src/package_cache.c src/install.c src/package_assemble.c src/package_compatibility.c src/package_stage.c src/package_tree.c src/package_publish.c $(PACKAGE_INDEX_SOURCES) $(SPEECH_PACKAGE_SOURCES) $(SPEECH_LOADER_SOURCES) src/engine_runtime.c
-build/test-package-compatibility: tests/test_package_compatibility.c $(PACKAGE_COMPATIBILITY_SOURCES) src/package_reserve.h src/package_cache.h src/package_assemble.h src/package_compatibility.h src/package_stage.h src/package_tree.h src/package_publish.h src/package_index.h src/catalog.h src/platform.h $(SPEECH_PACKAGE_HEADERS) $(SPEECH_LOADER_HEADERS) | build
+PACKAGE_COMPATIBILITY_SOURCES = src/package_identity.c src/package_reserve.c src/package_cache.c src/install.c src/package_assemble.c src/package_compatibility.c src/package_stage.c src/package_tree.c src/package_publish.c $(PACKAGE_INDEX_SOURCES) $(SPEECH_PACKAGE_SOURCES) $(SPEECH_LOADER_SOURCES) src/engine_runtime.c
+build/test-package-compatibility: tests/test_package_compatibility.c $(PACKAGE_COMPATIBILITY_SOURCES) src/package_identity.h src/package_reserve.h src/package_cache.h src/package_assemble.h src/package_compatibility.h src/package_stage.h src/package_tree.h src/package_publish.h src/package_index.h src/catalog.h src/platform.h $(SPEECH_PACKAGE_HEADERS) $(SPEECH_LOADER_HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc tests/test_package_compatibility.c $(PACKAGE_COMPATIBILITY_SOURCES) -o $@
 test-package-compatibility: build/test-package-compatibility build/test-speech-worker build/speech-worker-fixture.so
 	./build/test-package-compatibility
@@ -472,7 +472,7 @@ sanitize-speech-public: build/samosa-inference-providers-sanitize build/test-spe
 
 .PHONY: test-package-remote sanitize-package-remote
 PACKAGE_REMOTE_SOURCES = src/package_remote_cache.c src/remote_artifact.c $(PACKAGE_COMPATIBILITY_SOURCES)
-build/test-package-remote: tests/test_package_compatibility.c $(PACKAGE_REMOTE_SOURCES) src/remote_artifact.h src/artifact.h src/package_remote_cache.h src/package_reserve.h src/package_cache.h src/package_assemble.h src/package_compatibility.h src/package_stage.h src/package_tree.h src/package_publish.h src/package_index.h src/catalog.h src/platform.h $(SPEECH_PACKAGE_HEADERS) $(SPEECH_LOADER_HEADERS) | build
+build/test-package-remote: tests/test_package_compatibility.c $(PACKAGE_REMOTE_SOURCES) src/remote_artifact.h src/artifact.h src/package_remote_cache.h src/package_identity.h src/package_reserve.h src/package_cache.h src/package_assemble.h src/package_compatibility.h src/package_stage.h src/package_tree.h src/package_publish.h src/package_index.h src/catalog.h src/platform.h $(SPEECH_PACKAGE_HEADERS) $(SPEECH_LOADER_HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(CURL_CFLAGS) -DSAMOSA_PACKAGE_REMOTE_TESTS -DJSON_TOKENS_MAX=8192 -Isrc tests/test_package_compatibility.c $(PACKAGE_REMOTE_SOURCES) $(CURL_LIBS) -o $@
 test-package-remote: build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so
 	python3 tests/package_compatibility_fixture.py $(abspath build/test-package-remote) $(abspath build/test-speech-worker) $(abspath build/speech-worker-fixture.so) --https
@@ -492,3 +492,14 @@ sanitize-package-reserve: | build
 	./build/test-package-reserve-sanitize
 test: test-package-reserve
 sanitize: sanitize-package-reserve
+
+.PHONY: test-package-identity sanitize-package-identity
+build/test-package-identity: tests/test_package_identity.c src/package_identity.c src/package_identity.h src/package_index.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc tests/test_package_identity.c src/package_identity.c -o $@
+test-package-identity: build/test-package-identity
+	./build/test-package-identity
+sanitize-package-identity: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Isrc tests/test_package_identity.c src/package_identity.c -o build/test-package-identity-sanitize
+	./build/test-package-identity-sanitize
+test: test-package-identity
+sanitize: sanitize-package-identity
