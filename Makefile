@@ -565,3 +565,15 @@ sanitize-package-lease: | build
 	./build/test-package-lease-sanitize
 test: test-package-lease
 sanitize: sanitize-package-lease
+
+.PHONY: test-package-removal-record sanitize-package-removal-record
+PACKAGE_REMOVAL_RECORD_SOURCES = src/package_removal_record.c $(PACKAGE_TREE_SOURCES)
+build/test-package-removal-record: tests/test_package_removal_record.c $(PACKAGE_REMOVAL_RECORD_SOURCES) src/package_removal_record.h src/package_tree.h src/package_index.h src/sha256.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc $< $(PACKAGE_REMOVAL_RECORD_SOURCES) -o $@
+test-package-removal-record: build/test-package-removal-record
+	./build/test-package-removal-record
+sanitize-package-removal-record: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_package_removal_record.c $(PACKAGE_REMOVAL_RECORD_SOURCES) -o build/test-package-removal-record-sanitize
+	./build/test-package-removal-record-sanitize
+test: test-package-removal-record
+sanitize: sanitize-package-removal-record
