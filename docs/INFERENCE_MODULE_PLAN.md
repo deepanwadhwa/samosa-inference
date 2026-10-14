@@ -260,3 +260,12 @@ cache with all remote source configuration removed, without new download request
 Normal/sanitizer gates pass locally and join independent native CI. Actual-model
 remote installation, public catalog controls, reservations and recovery remain
 open; area 2 remains active.
+
+
+Native package assembly can now persist shared logical payload-copy reservations
+before writing. Normal/sanitizer unit and complete HTTPS fixture gates verify
+process-exit persistence, idempotency, shared exhaustion and pre-payload refusal.
+See [contract](../contracts/package-reservations-v1.md) and
+[evidence](PACKAGE_RESERVATIONS_VERIFICATION.md). Cache-inclusive accounting,
+reclamation, crash recovery and required public coordinator configuration remain
+open; this does not close acquisition or resource scheduling.

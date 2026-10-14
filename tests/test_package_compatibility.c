@@ -111,7 +111,8 @@ int main(int argc,char **argv){
             PackageRemoteCacheSource remote={.store={.state_path=store,.byte_ceiling=index->payload_bytes,.disk_ceiling=index->payload_bytes*2,.artifact_capacity=PACKAGE_INDEX_FILES,.resume=1},.index=index,.files=downloads,.count=index->count};
             int held=-7;downloads[0].ca_file=NULL;
             CHECK(!strcmp(package_remote_cache_open(&remote,&index->files[0],NULL,NULL,&held),"artifact_tls_verification_failed"));CHECK(held==-7);downloads[0].ca_file=argv[6];
-            PackageAssembly assembly={.directory=remote_directory,.source=-1,.source_open=package_remote_cache_open,.source_context=&remote,.index=index,.payload_path=payload_path,.copy_ceiling=index->payload_bytes};
+            CHECK(!mkdirat(directory,"reservation-pool",0700));int reservation_pool=openat(directory,"reservation-pool",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(reservation_pool>=0);
+            PackageAssembly assembly={.directory=remote_directory,.source=-1,.source_open=package_remote_cache_open,.source_context=&remote,.index=index,.payload_path=payload_path,.copy_ceiling=index->payload_bytes,.reservation_directory=reservation_pool,.reservation_ceiling=index->payload_bytes*2,.reservation_capacity=2};
             PackageTreeResult observed;CHECK(!package_assemble(&assembly,&observed));CHECK(observed.files==index->count);
             remote.files=NULL;CHECK(!package_assemble(&assembly,&observed));
             CHECK(!package_remote_cache_open(&remote,&index->files[0],NULL,NULL,&held));CHECK(!close(held));
@@ -121,7 +122,13 @@ int main(int argc,char **argv){
             char offline_path[4096];CHECK(snprintf(offline_path,sizeof(offline_path),"%s/remote-offline-package/payload",argv[4])<(int)sizeof(offline_path));
             assembly.directory=offline_directory;assembly.payload_path=offline_path;
             CHECK(!package_assemble(&assembly,&observed));CHECK(observed.files==index->count);CHECK(!close(offline_directory));
-            CHECK(!close(remote_directory));CHECK(!close(directory));free(downloads);free(urls);
+            /* The third destination refuses before allocating a payload even
+             * though both prior copies remain independently verified/usable. */
+            CHECK(!mkdirat(directory,"remote-over-quota",0700));int refused=openat(directory,"remote-over-quota",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(refused>=0);
+            char refused_path[4096];CHECK(snprintf(refused_path,sizeof(refused_path),"%s/remote-over-quota/payload",argv[4])<(int)sizeof(refused_path));
+            assembly.directory=refused;assembly.payload_path=refused_path;
+            CHECK(!strcmp(package_assemble(&assembly,&observed),"package_reservation_quota"));CHECK(faccessat(refused,"payload",F_OK,0)<0);CHECK(!close(refused));
+            CHECK(!close(reservation_pool));CHECK(!close(remote_directory));CHECK(!close(directory));free(downloads);free(urls);
             printf("PASS complete HTTPS native package: %zu indexed files; untrusted TLS refusal, pinned acquisition, compatibility, publication and credential-free cache reuse\n",index->count);
         }
 #else

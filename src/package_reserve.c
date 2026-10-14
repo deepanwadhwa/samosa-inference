@@ -1,0 +1,70 @@
+#define _POSIX_C_SOURCE 200809L
+#define _DARWIN_C_SOURCE
+#include "package_reserve.h"
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <unistd.h>
+static int private(int fd,int directory){struct stat s;return !fstat(fd,&s)&&s.st_uid==geteuid()&&!(s.st_mode&077)&&
+    (directory?S_ISDIR(s.st_mode):S_ISREG(s.st_mode)&&s.st_nlink==1);}
+static int bound(int parent,const char *name,int fd){struct stat a,b;return !fstat(fd,&a)&&!fstatat(parent,name,&b,AT_SYMLINK_NOFOLLOW)&&
+    a.st_dev==b.st_dev&&a.st_ino==b.st_ino&&a.st_mode==b.st_mode&&a.st_uid==b.st_uid&&a.st_nlink==b.st_nlink;}
+static int name(char out[128],const char *sha,unsigned long long dev,unsigned long long ino){
+    int n=snprintf(out,128,"%s-%llx-%llx",sha,dev,ino);return n>0&&n<128;
+}
+const char *package_reserve(int pool,int package,const PackageIndex *index,uint64_t ceiling,size_t capacity,PackageReservationResult *out){
+    if(!index||!out||!ceiling||!capacity||capacity>PACKAGE_RESERVATION_CAPACITY||!index->payload_bytes||index->payload_bytes>PACKAGE_PAYLOAD_BYTES||
+        !memchr(index->manifest_sha256,0,sizeof(index->manifest_sha256))||strlen(index->manifest_sha256)!=64||strspn(index->manifest_sha256,"0123456789abcdef")!=64)return "invalid_package_reservation";
+    if(!private(pool,1)||!private(package,1)||(fcntl(pool,F_GETFL)&O_ACCMODE)!=O_RDONLY)return "unsafe_package_reservation";
+    struct stat identity;if(fstat(package,&identity))return "unsafe_package_reservation";
+    unsigned long long dev=(unsigned long long)identity.st_dev,ino=(unsigned long long)identity.st_ino;
+    char target[128];if(!name(target,index->manifest_sha256,dev,ino))return "invalid_package_reservation";
+    int lock=openat(pool,"reserve.lock",O_RDWR|O_CREAT|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC,0600);
+    if(lock<0)return "unsafe_package_reservation";
+    const char *e=NULL;int pending=-1,owned=0,found=0;
+    if(!private(lock,0)||!bound(pool,"reserve.lock",lock))e="unsafe_package_reservation";
+    if(!e&&flock(lock,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"package_reservation_busy":"package_reservation_unavailable";
+    PackageReservationResult result={0};DIR *scan=NULL;
+    if(!e){int fd=openat(pool,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);scan=fd>=0?fdopendir(fd):NULL;if(!scan){if(fd>=0)close(fd);e="package_reservation_unavailable";}}
+    struct dirent *entry;
+    while(!e&&(errno=0,(entry=readdir(scan)))){
+        if(!strcmp(entry->d_name,".")||!strcmp(entry->d_name,"..")||!strcmp(entry->d_name,"reserve.lock"))continue;
+        if(++result.packages>capacity){e="package_reservation_quota";break;}
+        int record=openat(pool,entry->d_name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);struct stat s;char body[256],sha[65],tail,canonical[256],expected_name[128];unsigned long long bytes,d,i;
+        if(record<0||!private(record,0)||fstat(record,&s)||s.st_size<=0||s.st_size>=256||!bound(pool,entry->d_name,record))e="unsafe_package_reservation";
+        else{ssize_t n=pread(record,body,(size_t)s.st_size,0);
+            if(n!=s.st_size)e="unsafe_package_reservation";
+            else{body[n]=0;
+                if(sscanf(body,"samosa.package.reserve.v1\n%64[0123456789abcdef]\n%llu %llu %llu\n%c",sha,&bytes,&d,&i,&tail)!=4||strlen(sha)!=64||!bytes||bytes>PACKAGE_PAYLOAD_BYTES||!name(expected_name,sha,d,i))e="unsafe_package_reservation";
+                else{int length=snprintf(canonical,sizeof(canonical),"samosa.package.reserve.v1\n%s\n%llu %llu %llu\n",sha,bytes,d,i);
+                    if(length!=n||memcmp(canonical,body,(size_t)n)||strcmp(expected_name,entry->d_name)||!bound(pool,entry->d_name,record))e="unsafe_package_reservation";
+                    else if(bytes>ceiling||result.reserved_bytes>ceiling-bytes)e="package_reservation_quota";
+                    else{result.reserved_bytes+=bytes;if(d==dev&&i==ino){
+                        if(strcmp(sha,index->manifest_sha256)||bytes!=index->payload_bytes)e="package_reservation_identity_conflict";else found=1;}}
+                }
+            }
+        }
+        if(record>=0)close(record);
+    }
+    if(!e&&errno)e="package_reservation_unavailable";
+    if(scan)closedir(scan);
+    if(!e&&!found&&(result.packages>=capacity||index->payload_bytes>ceiling||result.reserved_bytes>ceiling-index->payload_bytes))e="package_reservation_quota";
+    if(!e&&!found){
+        char body[256];int length=snprintf(body,sizeof(body),"samosa.package.reserve.v1\n%s\n%llu %llu %llu\n",index->manifest_sha256,(unsigned long long)index->payload_bytes,dev,ino);
+        pending=openat(pool,".reservation.pending",O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0600);
+        if(pending<0)e="unsafe_package_reservation";
+        else{owned=1;size_t at=0;while(at<(size_t)length){ssize_t n=write(pending,body+at,(size_t)length-at);if(n<0&&errno==EINTR)continue;if(n<=0){e="package_reservation_unavailable";break;}at+=(size_t)n;}
+            if(!e&&(fchmod(pending,0400)||fsync(pending)||!bound(pool,".reservation.pending",pending)))e="package_reservation_unavailable";
+            if(!e&&linkat(pool,".reservation.pending",pool,target,0))e="package_reservation_identity_conflict";
+        }
+    }
+    if(owned){if(bound(pool,".reservation.pending",pending)){if(unlinkat(pool,".reservation.pending",0)&&!e)e="package_reservation_unavailable";}else if(!e)e="unsafe_package_reservation";}
+    if(!e&&owned&&(!private(pending,0)||!bound(pool,target,pending)))e="unsafe_package_reservation";
+    if(!e&&(!bound(pool,"reserve.lock",lock)||fsync(pool)))e="package_reservation_unavailable";
+    if(!e){if(!found){result.packages++;result.reserved_bytes+=index->payload_bytes;}*out=result;}
+    if(pending>=0)close(pending);close(lock);return e;
+}

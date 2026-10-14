@@ -11,6 +11,9 @@ typedef struct {
     const PackageIndex *index;
     const char *payload_path;
     uint64_t copy_ceiling;
+    /* Zero ceiling preserves legacy caller-owned reservations. Nonzero charges
+     * the shared pool durably before copying; failed work remains charged. */
+    int reservation_directory;uint64_t reservation_ceiling;size_t reservation_capacity;
     const char *(*control)(void *);
     void *context;
 } PackageAssembly;
