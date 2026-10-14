@@ -21,3 +21,20 @@ This qualifies registered copy recovery, not bootstrap/record-registration crash
 gaps, all installation metadata publication windows, reclamation, production
 catalog entries or actual remote-model readiness. Those remain area-2 work. Work
 continues in installation; no lifecycle/scheduling/service work is opened here.
+
+## Copy-record publication recovery
+
+Normal and ASan/UBSan staging gates now pass 113 checks each. The killed-child
+partial-copy case additionally moves its real persisted record into the pending
+publication name, corrupts one metadata byte and verifies refusal/preservation,
+then restores it. The valid record completes publication during recovery and
+still refuses a substituted copy inode or corrupt data prefix. A separate known
+record/pending hardlink pair exercises the metadata two-link interval before
+successful copy completion. No unregistered copy or malformed tuple is adopted.
+
+Local/cache and complete production HTTPS assembly gates also passed normal and
+ASan/UBSan with this recovery enabled. Log:
+`/private/tmp/samosa-copy-record-publication-recovery.log`. Static analysis of the
+modified copy-record module emitted no diagnostics. This step stays within area
+2 and closes these specific owned-record publication cases; the remaining
+installation recovery and catalog requirements are unchanged.

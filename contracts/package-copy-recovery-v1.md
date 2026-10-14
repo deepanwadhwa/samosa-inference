@@ -29,3 +29,21 @@ state and currently refuse; they are not automatically adopted. Reservation,
 identity and completion-record interrupted publication/reclamation also remain
 separate unfinished installation recovery cases. Area 2 is not closed by this
 registered-copy capability alone.
+
+## Interrupted copy-record publication
+
+A complete pending copy record can now finish publication after every expected
+byte and the current root/parent/copy tuple match. The pending record is synced,
+linked without replacement and its known pending name removed before continuing.
+If published and pending names are the same private two-link metadata inode,
+recovery verifies both bindings and contents, removes only that pending alias,
+syncs the journal and verifies the remaining single-link record. Another alias,
+a different pending inode, mismatched content or a malformed record refuses and
+remains untouched. Recovery is under the caller's package lease and does not
+claim protection against arbitrary same-user writers.
+
+This closes complete pending-record and known metadata two-link publication
+recovery. A temporary copy with no complete matching record, or a torn record
+whose ownership tuple cannot be verified, still refuses. Initial bootstrap,
+reservation/identity/completion metadata recovery and reclamation remain required
+before installation as a whole is complete.

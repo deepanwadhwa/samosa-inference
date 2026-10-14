@@ -323,3 +323,10 @@ partial refusal and the registered two-link publication interval. See
 [evidence](PACKAGE_COPY_RECOVERY_VERIFICATION.md). Registration/bootstrap and
 other installation metadata crash windows remain open; installation is still the
 only active area until its full criteria are met.
+
+Area 2 copy recovery now also finishes complete matching pending copy records and
+cleans verified metadata two-link publication aliases. Malformed metadata,
+substituted inodes and unregistered copies still refuse without deletion.
+Normal/sanitizer staging (113 checks each) and full local/HTTPS assembly gates pass.
+Continue the remaining installation recovery dependencies before catalog closure;
+no downstream area has been opened.

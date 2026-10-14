@@ -65,6 +65,13 @@ int main(void){
     pid_t child=fork();CHECK(child>=0);if(!child)_exit(package_stage_file_registered(root,journal,index,0,input,kill_copy,&interrupted)?2:3);
     int status;CHECK(waitpid(child,&status,0)==child&&WIFSIGNALED(status)&&WTERMSIG(status)==SIGKILL);
     CHECK(!fstatat(parent,temporary,&s,AT_SYMLINK_NOFOLLOW)&&s.st_size==65536);
+    /* Recover a completed registration record interrupted before its link.
+     * Malformed pending metadata is retained; only the exact recorded tuple
+     * can authorize publication and subsequent payload resumption. */
+    char record_name[96],pending_record[112];snprintf(record_name,sizeof(record_name),"copy-0-%s",index->files[0].sha256);snprintf(pending_record,sizeof(pending_record),".pending-%s",record_name);
+    CHECK(!renameat(journal,record_name,journal,pending_record));writer=openat(journal,pending_record,O_RDONLY|O_NOFOLLOW);CHECK(writer>=0);CHECK(!fchmod(writer,0600));CHECK(!close(writer));
+    writer=openat(journal,pending_record,O_RDWR|O_NOFOLLOW);CHECK(writer>=0);char first;CHECK(pread(writer,&first,1,0)==1);CHECK(pwrite(writer,"X",1,0)==1);
+    CHECK(!strcmp(package_stage_file_registered(root,journal,index,0,input,NULL,NULL),"unsafe_package_copy_record"));CHECK(faccessat(journal,pending_record,F_OK,0)==0);CHECK(pwrite(writer,&first,1,0)==1);CHECK(!close(writer));
     /* A recorded name alone cannot authorize a substituted inode or prefix. */
     CHECK(!renameat(parent,temporary,parent,"saved-copy"));writer=openat(parent,temporary,O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(writer>=0);CHECK(write(writer,"foreign",7)==7);CHECK(!close(writer));
     CHECK(!strcmp(package_stage_file_registered(root,journal,index,0,input,NULL,NULL),"unsafe_package_copy_record"));CHECK(!fstatat(parent,temporary,&s,0)&&s.st_size==7);
@@ -72,6 +79,9 @@ int main(void){
     writer=openat(parent,temporary,O_WRONLY|O_NOFOLLOW);CHECK(writer>=0);CHECK(pwrite(writer,"x",1,0)==1);CHECK(!close(writer));
     CHECK(!strcmp(package_stage_file_registered(root,journal,index,0,input,NULL,NULL),"package_copy_prefix_mismatch"));CHECK(!fstatat(parent,temporary,&s,0)&&s.st_size==65536);
     unsigned char original;CHECK(pread(input,&original,1,0)==1);writer=openat(parent,temporary,O_WRONLY|O_NOFOLLOW);CHECK(writer>=0);CHECK(pwrite(writer,&original,1,0)==1);CHECK(!close(writer));
+    /* The prefix checks above also exercise recovered registration. Recreate
+     * its known two-link metadata interval and resume once more. */
+    CHECK(!linkat(journal,record_name,journal,pending_record,0));
     CHECK(!package_stage_file_registered(root,journal,index,0,input,NULL,NULL));CHECK(!package_tree_verify(root,index,NULL,NULL,&result));CHECK(result.payload_bytes==large_size);
     CHECK(faccessat(parent,temporary,F_OK,0)<0);CHECK(lseek(input,0,SEEK_CUR)==1);
     /* Recover the registered two-link publication interval as well as partial

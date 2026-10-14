@@ -9,6 +9,11 @@
 #include <unistd.h>
 static int private(int fd,int directory){struct stat s;return !fstat(fd,&s)&&s.st_uid==geteuid()&&!(s.st_mode&077)&&(directory?S_ISDIR(s.st_mode):S_ISREG(s.st_mode));}
 static int bound(int parent,const char *name,int fd){struct stat a,b;return !fstat(fd,&a)&&!fstatat(parent,name,&b,AT_SYMLINK_NOFOLLOW)&&a.st_dev==b.st_dev&&a.st_ino==b.st_ino&&a.st_mode==b.st_mode&&a.st_nlink==b.st_nlink;}
+static int matches(int directory,const char *name,int fd,const char *body,int length,unsigned links){
+    struct stat s;char actual[768];
+    return private(fd,0)&&!fstat(fd,&s)&&s.st_nlink==links&&s.st_size==length&&
+        pread(fd,actual,(size_t)length,0)==length&&!memcmp(actual,body,(size_t)length)&&bound(directory,name,fd);
+}
 const char *package_copy_record(int journal,int root,int parent,int copy,const PackageIndex *index,size_t selected,int action){
     if(!index||selected>=index->count||index->count>PACKAGE_INDEX_FILES||action<0||action>2||
         !memchr(index->manifest_sha256,0,sizeof(index->manifest_sha256))||strlen(index->manifest_sha256)!=64||strspn(index->manifest_sha256,"0123456789abcdef")!=64)return "invalid_package_copy_record";
@@ -22,10 +27,31 @@ const char *package_copy_record(int journal,int root,int parent,int copy,const P
         (unsigned long long)r.st_dev,(unsigned long long)r.st_ino,(unsigned long long)p.st_dev,(unsigned long long)p.st_ino,(unsigned long long)c.st_dev,(unsigned long long)c.st_ino);
     if(length<=0||(size_t)length>=sizeof(body))return "invalid_package_copy_record";
     int record=openat(journal,name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
-    if(record>=0){struct stat s;char actual[768];
-        const char *e=!private(record,0)||fstat(record,&s)||s.st_nlink!=1||s.st_size!=length||pread(record,actual,(size_t)length,0)!=length||memcmp(actual,body,(size_t)length)||!bound(journal,name,record)?"unsafe_package_copy_record":NULL;
+    if(record>=0){struct stat s;const char *e=NULL;
+        if(fstat(record,&s)||(s.st_nlink!=1&&s.st_nlink!=2)||!matches(journal,name,record,body,length,(unsigned)s.st_nlink))e="unsafe_package_copy_record";
+        int alias=-1;
+        if(!e){alias=openat(journal,pending_name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+            if(s.st_nlink==2){struct stat a;
+                if(alias<0||fstat(alias,&a)||a.st_dev!=s.st_dev||a.st_ino!=s.st_ino||!matches(journal,pending_name,alias,body,length,2))e="unsafe_package_copy_record";
+                else if(unlinkat(journal,pending_name,0)||fsync(journal))e="package_copy_record_failed";
+            }else if(alias>=0||errno!=ENOENT)e="unsafe_package_copy_record";
+        }
+        if(!e&&!matches(journal,name,record,body,length,1))e="unsafe_package_copy_record";
         if(!e&&action==2&&(unlinkat(journal,name,0)||fsync(journal)))e="package_copy_record_failed";
-        close(record);return e;
+        if(alias>=0)close(alias);close(record);return e;
+    }
+    if(errno!=ENOENT)return "unsafe_package_copy_record";
+    /* A fully written pending record proves the exact index/root/parent/copy
+     * tuple. Recover its publication only after comparing every expected byte;
+     * malformed or unrelated pending metadata is never adopted or removed. */
+    int retained=openat(journal,pending_name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+    if(retained>=0){const char *e=NULL;
+        if(!matches(journal,pending_name,retained,body,length,1))e="unsafe_package_copy_record";
+        if(!e&&(fchmod(retained,0400)||fsync(retained)||linkat(journal,pending_name,journal,name,0)))e="package_copy_record_failed";
+        if(!e&&(!bound(journal,pending_name,retained)||unlinkat(journal,pending_name,0)||fsync(journal)))e="package_copy_record_failed";
+        if(!e&&!matches(journal,name,retained,body,length,1))e="unsafe_package_copy_record";
+        if(!e&&action==2&&(unlinkat(journal,name,0)||fsync(journal)))e="package_copy_record_failed";
+        close(retained);return e;
     }
     if(errno!=ENOENT)return "unsafe_package_copy_record";
     if(action!=1)return "package_copy_unregistered";
