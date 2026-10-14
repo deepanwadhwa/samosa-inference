@@ -20,4 +20,7 @@ const char *library_runtime_host_policy(LibraryRuntimePolicy *);
  * Accepts thin 64-bit little-endian shared images and a closed sibling-library
  * search profile (@loader_path / $ORIGIN), plus trusted system dependencies. */
 const char *library_runtime_inspect(int fd, const LibraryRuntimePolicy *, LibraryRuntimeImage *);
+/* Executable counterpart for closed native engine packages. Requires a host
+ * interpreter/entry profile; observes dependencies without loading or launching. */
+const char *library_runtime_inspect_executable(int fd,const LibraryRuntimePolicy *,LibraryRuntimeImage *);
 #endif

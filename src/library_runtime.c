@@ -90,21 +90,26 @@ static const char *dependency(LibraryRuntimeImage *image,const char *name,uint32
     strcpy(image->dependencies[image->count].name,name);
     image->dependencies[image->count++].compatibility_version=compatibility;return NULL;
 }
-static const char *mach(int fd,const unsigned char *h,uint64_t size,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image) {
+static const char *mach(int fd,const unsigned char *h,uint64_t size,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image,int executable) {
     uint32_t subtype=u32(h+8)&0xffffff;
-    if(u32(h+4)!=policy->cpu||u32(h+12)!=6||
+    if(u32(h+4)!=policy->cpu||u32(h+12)!=(executable?2u:6u)||
         (policy->cpu==0x100000c?subtype!=0:subtype!=3)||!(u32(h+24)&0x80)||(u32(h+24)&0x100))return "incompatible_library_binary";
     uint32_t count=u32(h+16),length=u32(h+20);
     if(!count||count>1024||length>65536)return "library_loader_limit";
     unsigned char *commands=malloc(length?length:1);
     if(!commands)return "resource_limit";
     const char *e=NULL;if(!read_at(fd,commands,length,32,size))e="invalid_library_loader";
-    size_t offset=0;unsigned min_count=0,id_count=0;
+    size_t offset=0;unsigned min_count=0,id_count=0,interpreter_count=0,entry_count=0;
     for(uint32_t i=0;!e&&i<count;i++) {
         if(offset>length||length-offset<8){e="invalid_library_loader";break;}
         unsigned char *c=commands+offset;uint32_t cmd=u32(c),n=u32(c+4);
         if(n<8||n>length-offset||(n&7)){e="invalid_library_loader";break;}
-        if(cmd==0x27||cmd==0xe||cmd==0x20)e="unqualified_library_dependencies";
+        if(cmd==0xe&&executable){const char *path=n>=12?cstring(c,n,u32(c+8),12):NULL;
+            if(!path||interpreter_count++)e="invalid_library_loader";
+            else if(strcmp(path,"/usr/lib/dyld"))e="unqualified_library_dependencies";
+        }else if(cmd==0x80000028&&executable){
+            if(n!=24||entry_count++||!u64(c+8)||u64(c+8)>=size)e="invalid_library_loader";
+        }else if(cmd==0x27||cmd==0xe||cmd==0x20)e="unqualified_library_dependencies";
         else if(cmd==0x8000001c) {
             const char *path=n>=12?cstring(c,n,u32(c+8),12):NULL;
             if(!path)e="invalid_library_loader";
@@ -117,7 +122,7 @@ static const char *mach(int fd,const unsigned char *h,uint64_t size,const Librar
                 const char *base=NULL;
                 if(!strncmp(name,"@rpath/",7))base=name+7;
                 else if(!strncmp(name,"@loader_path/",13))base=name+13;
-                if(id_count++)e="invalid_library_loader";
+                if(executable||id_count++)e="invalid_library_loader";
                 else if(!bare_name(base))e="unqualified_library_dependencies";
                 else image->current_version=u32(c+16);
             } else e=dependency(image,name,u32(c+20));
@@ -138,7 +143,8 @@ static const char *mach(int fd,const unsigned char *h,uint64_t size,const Librar
             e="unqualified_library_dependencies";
         offset+=n;
     }
-    if(!e&&(offset!=length||min_count!=1||id_count!=1||!image->minimum_os))e="invalid_library_loader";
+    if(!e&&(offset!=length||min_count!=1||id_count!=(executable?0u:1u)||!image->minimum_os||
+        (executable&&(interpreter_count!=1||entry_count!=1))))e="invalid_library_loader";
     if(!e&&image->minimum_os>policy->os_version)e="incompatible_library_os";
     free(commands);return e;
 }
@@ -188,20 +194,27 @@ static const char *elf_versions(int fd,const ElfMap *map,const char *strings,siz
     }
     return image->minimum_glibc>policy->glibc_version?"incompatible_library_os":NULL;
 }
-static const char *elf(int fd,const unsigned char *h,uint64_t size,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image) {
+static const char *elf(int fd,const unsigned char *h,uint64_t size,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image,int executable) {
     unsigned machine=(unsigned)h[18]|(unsigned)h[19]<<8;
-    if(h[4]!=2||h[5]!=1||h[6]!=1||h[16]!=3||h[17]||machine!=policy->cpu||u32(h+20)!=1||
+    if(h[4]!=2||h[5]!=1||h[6]!=1||(h[16]!=3&&!(executable&&h[16]==2))||h[17]||machine!=policy->cpu||u32(h+20)!=1||(executable&&!u64(h+24))||
         u32(h+48)||h[52]!=64||h[53])return "incompatible_library_binary";
     uint32_t count=(unsigned)h[56]|(unsigned)h[57]<<8;
     if(h[54]!=56||h[55]||!count||count>128)return "library_loader_limit";
     unsigned char headers[128*56];if(!read_at(fd,headers,count*56,u64(h+32),size))return "invalid_library_loader";
-    uint64_t dyn_offset=0,dyn_size=0;unsigned dyn_count=0;
+    uint64_t dyn_offset=0,dyn_size=0;unsigned dyn_count=0,interpreter_count=0;
     for(uint32_t i=0;i<count;i++) {
         const unsigned char *p=headers+i*56;uint64_t offset=u64(p+8),length=u64(p+32);
         if(offset>size||length>size-offset||length>u64(p+40))return "invalid_library_loader";
         if(u32(p)==2){dyn_offset=offset;dyn_size=length;dyn_count++;}
-        if(u32(p)==3)return "unqualified_library_dependencies";
+        if(u32(p)==3){char path[128];
+            if(!executable)return "unqualified_library_dependencies";
+            if(interpreter_count++||length<2||length>sizeof(path)||!read_at(fd,path,(size_t)length,offset,size)||path[length-1]||strlen(path)!=length-1)return "invalid_library_loader";
+            const char *primary=policy->cpu==62?"/lib64/ld-linux-x86-64.so.2":"/lib/ld-linux-aarch64.so.1";
+            const char *alternate=policy->cpu==62?"/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2":"/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1";
+            if(strcmp(path,primary)&&strcmp(path,alternate))return "unqualified_library_dependencies";
+        }
     }
+    if(executable&&interpreter_count!=1)return "invalid_library_loader";
     if(dyn_count!=1||!dyn_size||dyn_size>16384||dyn_size%16)return "library_loader_limit";
     unsigned char dynamic[16384];if(!read_at(fd,dynamic,(size_t)dyn_size,dyn_offset,size))return "invalid_library_loader";
     uint64_t strings=0,string_size=0,version_address=0,version_count=0;unsigned terminated=0;
@@ -228,7 +241,7 @@ static const char *elf(int fd,const unsigned char *h,uint64_t size,const Library
             const char *name=value<=SIZE_MAX?cstring(table,(size_t)string_size,(size_t)value,0):NULL;
             if(!name)e="invalid_library_loader";
             else if(tag==1)e=dependency(image,name,0);
-            else if(tag==14){if(soname++||!bare_name(name)||engine_trusted_system_library(0,name))e="unqualified_library_dependencies";}
+            else if(tag==14){if(executable||soname++||!bare_name(name)||engine_trusted_system_library(0,name))e="unqualified_library_dependencies";}
             else if(image->origin_search||strcmp(name,"$ORIGIN"))e="unqualified_library_dependencies";
             else image->origin_search=1;
         }
@@ -236,7 +249,7 @@ static const char *elf(int fd,const unsigned char *h,uint64_t size,const Library
     if(!e)e=elf_versions(fd,&map,(const char *)table,(size_t)string_size,version_address,version_count,policy,image);
     free(table);return e;
 }
-const char *library_runtime_inspect(int fd,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image) {
+static const char *inspect(int fd,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image,int executable) {
     if(!policy||!image||(policy->mach_o!=0&&policy->mach_o!=1)||
         (policy->mach_o?(policy->cpu!=0x100000c&&policy->cpu!=0x1000007):(policy->cpu!=183&&policy->cpu!=62)))return "invalid_configuration";
     memset(image,0,sizeof(*image));image->mach_o=policy->mach_o;
@@ -244,9 +257,11 @@ const char *library_runtime_inspect(int fd,const LibraryRuntimePolicy *policy,Li
     if(fstat(fd,&before)||!S_ISREG(before.st_mode)||before.st_size<64||
         !read_at(fd,h,64,0,(uint64_t)before.st_size))return "incompatible_library_binary";
     const char *e=NULL;
-    if(policy->mach_o&&u32(h)==0xfeedfacf)e=mach(fd,h,(uint64_t)before.st_size,policy,image);
-    else if(!policy->mach_o&&!memcmp(h,"\177ELF",4))e=elf(fd,h,(uint64_t)before.st_size,policy,image);
+    if(policy->mach_o&&u32(h)==0xfeedfacf)e=mach(fd,h,(uint64_t)before.st_size,policy,image,executable);
+    else if(!policy->mach_o&&!memcmp(h,"\177ELF",4))e=elf(fd,h,(uint64_t)before.st_size,policy,image,executable);
     else e="incompatible_library_binary";
     if(!e&&(fstat(fd,&after)||before.st_dev!=after.st_dev||before.st_ino!=after.st_ino||before.st_size!=after.st_size))e="artifact_changed";
     return e;
 }
+const char *library_runtime_inspect(int fd,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image){return inspect(fd,policy,image,0);}
+const char *library_runtime_inspect_executable(int fd,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image){return inspect(fd,policy,image,1);}

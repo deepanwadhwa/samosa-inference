@@ -14,10 +14,39 @@ static void expect(int fd,unsigned char *bytes,size_t n,const LibraryRuntimePoli
     if(error&&(!e||strcmp(e,error)))fprintf(stderr,"expected %s got %s\n",error,e?e:"success");
     CHECK(error?(e&&!strcmp(e,error)):!e);
 }
+static void expect_engine(int fd,unsigned char *bytes,const LibraryRuntimePolicy *p,const char *error){
+    CHECK(!ftruncate(fd,0));CHECK(pwrite(fd,bytes,4096,0)==4096);LibraryRuntimeImage image;
+    const char *e=library_runtime_inspect_executable(fd,p,&image);
+    if(error&&(!e||strcmp(e,error)))fprintf(stderr,"expected engine %s got %s\n",error,e?e:"success");
+    CHECK(error?(e&&!strcmp(e,error)):!e);
+}
+static void executable_mach(unsigned char *b,uint32_t cpu){
+    memset(b,0,4096);lib_w32(b,0xfeedfacf);lib_w32(b+4,cpu);lib_w32(b+8,cpu==0x100000c?0:3);lib_w32(b+12,2);lib_w32(b+24,0x80);
+    lib_w32(b+32,0x32);lib_w32(b+36,24);lib_w32(b+40,1);lib_w32(b+44,11u<<16);
+    size_t at=lib_command(b,56,0xe,"/usr/lib/dyld",12);
+    lib_w32(b+at,0x80000028);lib_w32(b+at+4,24);lib_w64(b+at+8,1024);at+=24;
+    at=lib_command(b,at,0xc,"/usr/lib/libSystem.B.dylib",24);lib_w32(b+16,4);lib_w32(b+20,(uint32_t)(at-32));
+}
+static void executable_elf(unsigned char *b,uint32_t cpu){
+    lib_elf(b,cpu,"libc.so.6",1);lib_w64(b+24,0x1800);b[56]=3;
+    lib_w32(b+176,3);lib_w64(b+184,768);const char *path=cpu==62?"/lib64/ld-linux-x86-64.so.2":"/lib/ld-linux-aarch64.so.1";
+    strcpy((char *)b+768,path);lib_w64(b+208,strlen(path)+1);lib_w64(b+216,strlen(path)+1);
+    lib_w64(b+560,29);lib_w64(b+568,160);lib_w64(b+576,0);
+}
 int main(void) {
     LibraryRuntimePolicy host;CHECK(!library_runtime_host_policy(&host));CHECK(host.cpu!=0);
     char path[]="/tmp/samosa-library-runtime.XXXXXX";int fd=mkstemp(path);CHECK(fd>=0);CHECK(!unlink(path));
     unsigned char b[4096];LibraryRuntimePolicy mach={1,0x100000c,14u<<16,0};
+    executable_mach(b,mach.cpu);expect_engine(fd,b,&mach,NULL);expect(fd,b,4096,&mach,"incompatible_library_binary");
+    lib_w32(b+4,0x1000007);expect_engine(fd,b,&mach,"incompatible_library_binary");
+    executable_mach(b,mach.cpu);lib_w32(b+44,15u<<16);expect_engine(fd,b,&mach,"incompatible_library_os");
+    executable_mach(b,mach.cpu);strcpy((char *)b+68,"/tmp/dyld");expect_engine(fd,b,&mach,"unqualified_library_dependencies");
+    executable_mach(b,mach.cpu);lib_w32(b+16,2);lib_w32(b+20,56);expect_engine(fd,b,&mach,"invalid_library_loader");
+    LibraryRuntimePolicy engine_elf={0,62,0,2u<<16|40u<<8};executable_elf(b,62);expect_engine(fd,b,&engine_elf,NULL);
+    b[16]=2;expect_engine(fd,b,&engine_elf,NULL);lib_w64(b+24,0);expect_engine(fd,b,&engine_elf,"incompatible_library_binary");
+    executable_elf(b,62);strcpy((char *)b+768,"/tmp/untrusted-loader");lib_w64(b+208,22);lib_w64(b+216,22);expect_engine(fd,b,&engine_elf,"unqualified_library_dependencies");
+    executable_elf(b,183);engine_elf.cpu=183;expect_engine(fd,b,&engine_elf,NULL);engine_elf.cpu=62;expect_engine(fd,b,&engine_elf,"incompatible_library_binary");
+    executable_elf(b,62);b[56]=2;expect_engine(fd,b,&engine_elf,"invalid_library_loader");
     lib_mach(b,mach.cpu,"@rpath/libort.dylib",1);expect(fd,b,4096,&mach,NULL);
     LibraryRuntimeImage image;CHECK(!library_runtime_inspect(fd,&mach,&image));CHECK(image.count==1&&image.origin_search&&image.minimum_os==(11u<<16)&&image.current_version==0x10000);
     mach.cpu=0x1000007;lib_mach(b,mach.cpu,"/usr/lib/libSystem.B.dylib",0);expect(fd,b,4096,&mach,NULL);
