@@ -360,3 +360,13 @@ mismatch/cancellation and descriptor-seek preservation. See
 [contract](../contracts/package-catalog-v1.md) and
 [evidence](PACKAGE_CATALOG_VERIFICATION.md). Continue full catalog/coordinator
 integration within installation; no downstream area is opened.
+
+Area 2 now has one native catalog installation call connecting host policy,
+verified index acquisition/binding, mapped payload acquisition and mandatory
+shared-reservation assembly through compatibility/completion. Normal/sanitizer
+HTTPS gates pass, including missing-policy/foreign-platform refusal and retry
+without remote source configuration. See
+[contract](../contracts/package-installer-v1.md) and
+[evidence](PACKAGE_INSTALLER_VERIFICATION.md). Continue installation's public
+catalog integration, remaining recovery/removal and supported production packages
+before moving to lifecycle.

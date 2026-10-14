@@ -8,6 +8,7 @@
 #include "package_catalog.h"
 #ifdef SAMOSA_PACKAGE_REMOTE_TESTS
 #include "package_remote_cache.h"
+#include "package_installer.h"
 #endif
 #include <sys/file.h>
 #include <fcntl.h>
@@ -167,6 +168,22 @@ int main(int argc,char **argv){
             char refused_path[4096];CHECK(snprintf(refused_path,sizeof(refused_path),"%s/remote-over-quota/payload",argv[4])<(int)sizeof(refused_path));
             assembly.directory=refused;assembly.payload_path=refused_path;
             CHECK(!strcmp(package_assemble(&assembly,&observed),"package_reservation_quota"));CHECK(faccessat(refused,"payload",F_OK,0)<0);CHECK(!close(refused));
+            /* Drive the complete installer from the trusted catalog entry;
+             * its index is independently acquired and verified in the cache. */
+            CHECK(!mkdirat(directory,"catalog-package",0700));int catalog_directory=openat(directory,"catalog-package",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(catalog_directory>=0);
+            char catalog_path[4096];CHECK(snprintf(catalog_path,sizeof(catalog_path),"%s/catalog-package/payload",argv[4])<(int)sizeof(catalog_path));
+            ProviderEntry catalog_entry=entry;CHECK(snprintf(catalog_entry.url,sizeof(catalog_entry.url),"%s/%s",argv[5],index->manifest_sha256)<(int)sizeof(catalog_entry.url));
+            CHECK(!mkdirat(directory,"catalog-reservations",0700));int catalog_reservations=openat(directory,"catalog-reservations",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(catalog_reservations>=0);
+            RemoteArtifactSource index_download={.ca_file=argv[6],.timeout_ms=5000};
+            PackageInstaller installer={.entry=&catalog_entry,.store=remote.store,.index_source=&index_download,.file_sources=downloads,.file_count=index->count,
+                .assembly={.directory=catalog_directory,.payload_path=catalog_path,.copy_ceiling=index->payload_bytes,.reservation_directory=catalog_reservations,.reservation_ceiling=index->payload_bytes,.reservation_capacity=1}};
+            installer.store.disk_ceiling=2*(index->payload_bytes+entry.size);installer.store.artifact_capacity=PACKAGE_INDEX_FILES+1;
+            memset(&observed,0xa5,sizeof(observed));PackageTreeResult unchanged_install=observed;
+            installer.assembly.reservation_ceiling=0;CHECK(!strcmp(package_install_catalog(&installer,&observed),"invalid_package_installer"));CHECK(!memcmp(&observed,&unchanged_install,sizeof(observed)));installer.assembly.reservation_ceiling=index->payload_bytes;
+            char saved_platform[65];strcpy(saved_platform,catalog_entry.platform);strcpy(catalog_entry.platform,!strcmp(saved_platform,"linux-x86_64")?"macos-arm64":"linux-x86_64");
+            CHECK(!strcmp(package_install_catalog(&installer,&observed),"unsupported_provider_platform"));CHECK(!memcmp(&observed,&unchanged_install,sizeof(observed)));strcpy(catalog_entry.platform,saved_platform);
+            CHECK(!package_install_catalog(&installer,&observed));CHECK(observed.files==index->count);CHECK(!strcmp(observed.manifest_sha256,index->manifest_sha256));
+            installer.index_source=NULL;installer.file_sources=NULL;CHECK(!package_install_catalog(&installer,&observed));CHECK(!close(catalog_directory));CHECK(!close(catalog_reservations));
             CHECK(!close(reservation_pool));CHECK(!close(remote_directory));CHECK(!close(directory));free(downloads);free(urls);
             printf("PASS complete HTTPS native package: %zu indexed files; untrusted TLS refusal, pinned acquisition, compatibility, publication and credential-free cache reuse\n",index->count);
         }

@@ -47,6 +47,7 @@ try:
         cert.chmod(0o600)
         key.chmod(0o600)
         payloads = {f["sha256"]: root / f["name"] for f in files}
+        payloads[hashlib.sha256(body).hexdigest()] = index
         class Handler(http.server.BaseHTTPRequestHandler):
             def log_message(self, *unused):
                 pass
@@ -75,7 +76,7 @@ try:
     assert result.returncode == 0, (result.stdout, result.stderr)
     assert "AddressSanitizer" not in result.stderr and "runtime error:" not in result.stderr
     if https:
-        assert served == {f["sha256"] for f in files}, served
+        assert served == {f["sha256"] for f in files} | {hashlib.sha256(body).hexdigest()}, served
         assert len(requests) == len(served), requests
     print(result.stdout, end="")
 finally:
