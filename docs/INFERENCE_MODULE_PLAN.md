@@ -5,7 +5,7 @@ This checklist owns Inference completion; Sources closure does not close these
 gates. Existing S02–S13 documents describe qualified subsets and remain evidence.
 No area is closed by a fixture, a descriptor, or a file move alone.
 
-## 1. Provider and modality integration — active
+## 1. Provider and modality integration — complete (2026-10-14)
 
 Reuse the existing native text, EmbeddingGemma2, T5 summary, Whisper,
 VisionPsy and Molmo2 implementations and their public contracts. Audit native
@@ -86,6 +86,29 @@ Do not introduce a shipped Python runtime.
 - Retire replaced gateway inference routes, model installers, engine ownership
   and private tests after replacement integration qualifies; preserve App-owned
   policy and browser-local capabilities at their proper boundary.
+
+## Dependency order and completion boundaries
+
+Work proceeds one completed prerequisite at a time. The seven area requirements
+above remain intact; downstream work is not a reason to leave a satisfied
+upstream contract permanently open. Reuse the already implemented foundations.
+
+1. Provider contract and native adapters: complete; evidence is in
+   `PROVIDER_INTEGRATION_AUDIT.md`.
+2. Model acquisition and installation: the only active implementation area.
+   Finish its catalogs, supported package compatibility, resumable/recoverable
+   installation and qualified production entries before moving to lifecycle.
+3. Engine lifecycle/readiness builds on installed, verified packages.
+4. Resource scheduling/admission builds on owned engine lifecycle.
+5. Generation/streaming/session recovery builds on lifecycle and scheduling.
+6. Authenticated ingress/controls/shutdown assembles those completed capabilities.
+7. Final qualification/product integration retires the replaced paths after the
+   assembled module qualifies. Per-component validation still happens before
+   each component is declared complete.
+
+Existing code in later areas remains available for reuse; it is not a reason to
+switch the active area. No requirement is deferred or removed. Module completion
+still requires all seven areas and the original release gates.
 
 ## Execution and evidence
 

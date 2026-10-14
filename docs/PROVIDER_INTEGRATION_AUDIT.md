@@ -28,6 +28,41 @@ The broad release is incomplete: full multi-file installation/compatibility,
 persistent engine lifecycle/readiness, global memory/residency scheduling,
 incremental text/session restart coverage, authenticated service and shutdown,
 actual-model platform coverage, final independent engine/package builds and
-legacy Chat retirement remain required under their original areas. Provider
-integration remains active while that acceptance record is finalized; installation
-work can proceed without claiming a complete provider or module release.
+legacy Chat retirement remain required under their original areas. Those are
+separate downstream acceptance requirements; they do not reopen the implemented
+provider integration contract. Area 1 is complete as audited below. The module
+release and areas 2–7 remain incomplete.
+
+
+## Area 1 completion decision — 2026-10-14
+
+Each original area-1 requirement has implementation and qualification evidence in
+the table above: one discovery/dispatch surface, coexisting provider selection,
+common owner/operation/cancel/deadline controls, bounded verified native speech,
+preserved Sources transports/receipts, and supported-model/routing/input/provenance/
+platform reporting gates. No downstream installation, persistent lifecycle,
+global scheduling, token streaming, authenticated ingress or product retirement
+requirement is being substituted for this contract or removed from its own area.
+
+Current source comparison from `c6eceb3` to `b1df2a3` reports no changes in
+`registry.c`, `registry_host.c`, `inference.c`, `speech.c`, `embedding.c`,
+`whisper.c`, `vision.c`, `temporal.c`, `summary.c`, `artifact.c`,
+`engine_process.c`, `operations.c` or `budget.c`. The actual-model records remain
+applicable to those unchanged provider/control implementations: Ornith,
+EmbeddingGemma, T5, Whisper, VisionPsy, Molmo2 and Pocket/Kokoro, including all
+supported Kokoro voice mappings. The evidence records retain model/runtime hashes,
+commands, bounded quality assertions and replay/provenance limits. Actual-model
+coverage is macOS arm64; Linux fixtures do not become Linux model qualification.
+That distinction remains explicit in capability reporting and final area-7 gates.
+
+Current component checks were rerun:
+
+- `make test-registry-modalities sanitize-registry-modalities`: 309 checks each.
+- `make test-registry-cli sanitize-registry-cli`: 584 normal / 587 sanitizer checks.
+
+Log: `/private/tmp/samosa-provider-foundation-closure.log`. These qualify the
+unchanged public routing/control implementation together with the existing
+actual-model evidence, rather than treating fixtures as actual models. Area 1
+is closed; the next active component is model acquisition/installation, whose
+full original criteria remain open. This supersedes historical statements that
+area 1 remained active merely because downstream release work was unfinished.
