@@ -18,6 +18,11 @@
 static unsigned checks;
 #define CHECK(x) do{checks++;if(!(x)){fprintf(stderr,"compatibility failure %d: %s\n",__LINE__,#x);exit(1);}}while(0)
 static const char *cancel(void *unused){(void)unused;return "cancelled";}
+#ifdef SAMOSA_PACKAGE_REMOTE_TESTS
+static const char *reservation_interrupt(void *opaque){int pool=*(int *)opaque;struct stat s;
+    return !fstatat(pool,".reservation.pending",&s,AT_SYMLINK_NOFOLLOW)?"deadline_exceeded":NULL;
+}
+#endif
 int main(int argc,char **argv){
     PackageIndex *index=calloc(1,sizeof(*index));CHECK(index);
     PackageCompatibilityContext context={.payload_path="/unused/private-payload"};
@@ -113,7 +118,12 @@ int main(int argc,char **argv){
             CHECK(!strcmp(package_remote_cache_open(&remote,&index->files[0],NULL,NULL,&held),"artifact_tls_verification_failed"));CHECK(held==-7);downloads[0].ca_file=argv[6];
             CHECK(!mkdirat(directory,"reservation-pool",0700));int reservation_pool=openat(directory,"reservation-pool",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(reservation_pool>=0);
             PackageAssembly assembly={.directory=remote_directory,.source=-1,.source_open=package_remote_cache_open,.source_context=&remote,.index=index,.payload_path=payload_path,.copy_ceiling=index->payload_bytes,.reservation_directory=reservation_pool,.reservation_ceiling=index->payload_bytes*2,.reservation_capacity=2};
-            PackageTreeResult observed;CHECK(!package_assemble(&assembly,&observed));CHECK(observed.files==index->count);
+            PackageTreeResult observed;
+            assembly.control=reservation_interrupt;assembly.context=&reservation_pool;
+            CHECK(!strcmp(package_assemble(&assembly,&observed),"deadline_exceeded"));
+            CHECK(faccessat(remote_directory,"payload",F_OK,0)<0);CHECK(faccessat(reservation_pool,".reservation.pending",F_OK,0)<0);
+            assembly.control=NULL;assembly.context=NULL;
+            CHECK(!package_assemble(&assembly,&observed));CHECK(observed.files==index->count);
             remote.files=NULL;CHECK(!package_assemble(&assembly,&observed));
             CHECK(!package_remote_cache_open(&remote,&index->files[0],NULL,NULL,&held));CHECK(!close(held));
             /* Cold destination installation uses only retained verified cache

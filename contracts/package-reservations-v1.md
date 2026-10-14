@@ -32,3 +32,14 @@ All cooperating installers must use the same trusted pool policy. Public request
 must not select its descriptors, ceiling or capacity. A zero assembly reservation
 ceiling preserves existing callers' explicit ownership of external reservations;
 the eventual public installation coordinator must configure the required pool.
+
+## Request control
+
+`package_reserve_controlled` polls the trusted control before opening pool state,
+between bounded ledger entries, after the scan and before reservation publication.
+Assembly passes its existing request control and context. Request errors propagate
+unchanged; output remains untouched. Pre-publication cancellation removes only
+the pending inode created by that call, leaves no charged record, and prevents
+payload creation. A reservation already committed remains charged if outer work
+subsequently cancels. Filesystem calls retain platform latency. The original
+`package_reserve` entry point remains a wrapper without a control hook.

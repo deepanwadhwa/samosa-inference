@@ -269,3 +269,9 @@ See [contract](../contracts/package-reservations-v1.md) and
 [evidence](PACKAGE_RESERVATIONS_VERIFICATION.md). Cache-inclusive accounting,
 reclamation, crash recovery and required public coordinator configuration remain
 open; this does not close acquisition or resource scheduling.
+
+Shared payload reservation inspection/publication now receives assembly request
+controls. Normal/sanitizer tests cover early and pre-publication cancellation,
+uncharged clean output, pre-payload assembly refusal and subsequent successful
+online/offline installation. Persisted charges retain their conservative lifetime;
+reclamation and registered crash recovery remain open.

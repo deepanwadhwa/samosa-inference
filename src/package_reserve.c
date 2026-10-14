@@ -16,9 +16,10 @@ static int bound(int parent,const char *name,int fd){struct stat a,b;return !fst
 static int name(char out[128],const char *sha,unsigned long long dev,unsigned long long ino){
     int n=snprintf(out,128,"%s-%llx-%llx",sha,dev,ino);return n>0&&n<128;
 }
-const char *package_reserve(int pool,int package,const PackageIndex *index,uint64_t ceiling,size_t capacity,PackageReservationResult *out){
+const char *package_reserve_controlled(int pool,int package,const PackageIndex *index,uint64_t ceiling,size_t capacity,const char *(*control)(void *),void *context,PackageReservationResult *out){
     if(!index||!out||!ceiling||!capacity||capacity>PACKAGE_RESERVATION_CAPACITY||!index->payload_bytes||index->payload_bytes>PACKAGE_PAYLOAD_BYTES||
         !memchr(index->manifest_sha256,0,sizeof(index->manifest_sha256))||strlen(index->manifest_sha256)!=64||strspn(index->manifest_sha256,"0123456789abcdef")!=64)return "invalid_package_reservation";
+    const char *initial=control?control(context):NULL;if(initial)return initial;
     if(!private(pool,1)||!private(package,1)||(fcntl(pool,F_GETFL)&O_ACCMODE)!=O_RDONLY)return "unsafe_package_reservation";
     struct stat identity;if(fstat(package,&identity))return "unsafe_package_reservation";
     unsigned long long dev=(unsigned long long)identity.st_dev,ino=(unsigned long long)identity.st_ino;
@@ -32,6 +33,7 @@ const char *package_reserve(int pool,int package,const PackageIndex *index,uint6
     if(!e){int fd=openat(pool,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);scan=fd>=0?fdopendir(fd):NULL;if(!scan){if(fd>=0)close(fd);e="package_reservation_unavailable";}}
     struct dirent *entry;
     while(!e&&(errno=0,(entry=readdir(scan)))){
+        e=control?control(context):NULL;if(e)break;
         if(!strcmp(entry->d_name,".")||!strcmp(entry->d_name,"..")||!strcmp(entry->d_name,"reserve.lock"))continue;
         if(++result.packages>capacity){e="package_reservation_quota";break;}
         int record=openat(pool,entry->d_name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);struct stat s;char body[256],sha[65],tail,canonical[256],expected_name[128];unsigned long long bytes,d,i;
@@ -52,6 +54,7 @@ const char *package_reserve(int pool,int package,const PackageIndex *index,uint6
     }
     if(!e&&errno)e="package_reservation_unavailable";
     if(scan)closedir(scan);
+    if(!e)e=control?control(context):NULL;
     if(!e&&!found&&(result.packages>=capacity||index->payload_bytes>ceiling||result.reserved_bytes>ceiling-index->payload_bytes))e="package_reservation_quota";
     if(!e&&!found){
         char body[256];int length=snprintf(body,sizeof(body),"samosa.package.reserve.v1\n%s\n%llu %llu %llu\n",index->manifest_sha256,(unsigned long long)index->payload_bytes,dev,ino);
@@ -59,6 +62,7 @@ const char *package_reserve(int pool,int package,const PackageIndex *index,uint6
         if(pending<0)e="unsafe_package_reservation";
         else{owned=1;size_t at=0;while(at<(size_t)length){ssize_t n=write(pending,body+at,(size_t)length-at);if(n<0&&errno==EINTR)continue;if(n<=0){e="package_reservation_unavailable";break;}at+=(size_t)n;}
             if(!e&&(fchmod(pending,0400)||fsync(pending)||!bound(pool,".reservation.pending",pending)))e="package_reservation_unavailable";
+            if(!e)e=control?control(context):NULL;
             if(!e&&linkat(pool,".reservation.pending",pool,target,0))e="package_reservation_identity_conflict";
         }
     }
@@ -67,4 +71,8 @@ const char *package_reserve(int pool,int package,const PackageIndex *index,uint6
     if(!e&&(!bound(pool,"reserve.lock",lock)||fsync(pool)))e="package_reservation_unavailable";
     if(!e){if(!found){result.packages++;result.reserved_bytes+=index->payload_bytes;}*out=result;}
     if(pending>=0)close(pending);close(lock);return e;
+}
+
+const char *package_reserve(int pool,int package,const PackageIndex *index,uint64_t ceiling,size_t capacity,PackageReservationResult *out){
+    return package_reserve_controlled(pool,package,index,ceiling,capacity,NULL,NULL,out);
 }

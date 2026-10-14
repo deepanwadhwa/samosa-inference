@@ -24,3 +24,22 @@ revision. Reservation code requires its own independent CI outcome. These logica
 payload reservations do not qualify actual models or a public installation
 service. Cache-inclusive physical allocation, reclamation, registered crash
 recovery and full catalog/lifecycle integration remain open.
+
+## Controlled reservations
+
+The reservation API now honors trusted request controls before state access,
+between bounded ledger observations and before publishing a reservation. New
+unit checks cancel before lock creation and when the owned pending record exists,
+assert untouched output, absence of pending metadata and absence of charged
+records, then reserve successfully. Normal and ASan/UBSan runs passed with 52
+checks each; final log:
+`/private/tmp/samosa-controlled-package-reserve-final.log`.
+
+The complete HTTPS assembly fixture cancels at pending reservation publication,
+checks that no payload directory or pending record remains, then completes both
+online and offline copies under the original shared ceiling. Normal/sanitizer
+runs passed; log: `/private/tmp/samosa-controlled-reserved-assembly.log`.
+The existing local compatibility fixture also passed both variants. Clang analysis
+of the modified reservation module emitted no diagnostics. This adds cooperative
+request control and does not establish hard filesystem syscall deadlines,
+reclamation, crash recovery or the public installation coordinator.

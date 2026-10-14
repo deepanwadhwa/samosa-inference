@@ -2,6 +2,7 @@
 #define _DARWIN_C_SOURCE
 #include "package_reserve.h"
 #include <fcntl.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,13 +12,23 @@
 #include <unistd.h>
 static unsigned checks;
 #define CHECK(x) do{checks++;if(!(x)){fprintf(stderr,"reservation failure %d: %s\n",__LINE__,#x);exit(1);}}while(0)
+static const char *cancel(void *unused){(void)unused;return "deadline_exceeded";}
+static const char *pending_cancel(void *opaque){int pool=*(int *)opaque;struct stat s;
+    return !fstatat(pool,".reservation.pending",&s,AT_SYMLINK_NOFOLLOW)?"cancelled":NULL;
+}
 int main(void){
     char root[]="/tmp/samosa-reserve-XXXXXX";CHECK(mkdtemp(root));int pool=open(root,O_RDONLY|O_DIRECTORY);CHECK(pool>=0);
     /* Package directories live outside the reserved ledger namespace. */
     char packages[]="/tmp/samosa-reserve-packages-XXXXXX";CHECK(mkdtemp(packages));int owner=open(packages,O_RDONLY|O_DIRECTORY);CHECK(owner>=0);
     int package[3];for(unsigned i=0;i<3;i++){char name[2]={(char)('a'+i),0};CHECK(!mkdirat(owner,name,0700));package[i]=openat(owner,name,O_RDONLY|O_DIRECTORY);CHECK(package[i]>=0);}
     PackageIndex *index=calloc(1,sizeof(*index));CHECK(index);memset(index->manifest_sha256,'a',64);index->payload_bytes=10;
-    PackageReservationResult result;CHECK(!package_reserve(pool,package[0],index,20,2,&result));CHECK(result.packages==1&&result.reserved_bytes==10);
+    PackageReservationResult result;memset(&result,0xa5,sizeof(result));PackageReservationResult pristine=result;
+    CHECK(!strcmp(package_reserve_controlled(pool,package[0],index,20,2,cancel,NULL,&result),"deadline_exceeded"));CHECK(!memcmp(&result,&pristine,sizeof(result)));CHECK(faccessat(pool,"reserve.lock",F_OK,0)<0);
+    CHECK(!strcmp(package_reserve_controlled(pool,package[0],index,20,2,pending_cancel,&pool,&result),"cancelled"));CHECK(!memcmp(&result,&pristine,sizeof(result)));CHECK(faccessat(pool,".reservation.pending",F_OK,0)<0);
+    /* Cancellation before publication leaves no charged record in the pool. */
+    int inspection=openat(pool,".",O_RDONLY|O_DIRECTORY);CHECK(inspection>=0);DIR *entries=fdopendir(inspection);CHECK(entries);struct dirent *entry;
+    while((entry=readdir(entries)))CHECK(!strcmp(entry->d_name,".")||!strcmp(entry->d_name,"..")||!strcmp(entry->d_name,"reserve.lock"));CHECK(!closedir(entries));
+    CHECK(!package_reserve(pool,package[0],index,20,2,&result));CHECK(result.packages==1&&result.reserved_bytes==10);
     CHECK(!package_reserve(pool,package[0],index,20,2,&result));CHECK(result.packages==1&&result.reserved_bytes==10);
     /* A committed reservation survives process exit without automatic release. */
     pid_t child=fork();CHECK(child>=0);if(!child)_exit(package_reserve(pool,package[1],index,20,2,&result)?1:0);

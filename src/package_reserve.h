@@ -8,4 +8,8 @@ typedef struct {uint64_t reserved_bytes;size_t packages;} PackageReservationResu
  * package cleanup protocol. Caller owns pool identity and the package lease.
  * This excludes cache bytes, filesystem allocation and metadata. */
 const char *package_reserve(int,int,const PackageIndex *,uint64_t,size_t,PackageReservationResult *);
+/* Poll trusted request control between bounded ledger observations and before
+ * publication. Committed reservations remain charged if outer work cancels. */
+const char *package_reserve_controlled(int,int,const PackageIndex *,uint64_t,size_t,
+    const char *(*)(void *),void *,PackageReservationResult *);
 #endif
