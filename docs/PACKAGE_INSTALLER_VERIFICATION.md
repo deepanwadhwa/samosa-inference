@@ -82,7 +82,7 @@ Staging now fsyncs completed writes before hash-verification metadata snapshots.
 All 144 staging checks and controlled HTTPS/setup sanitizer gates pass with this
 change. The full actual Pocket normal rerun passed; see
 [actual installation evidence](ACTUAL_PACKAGE_INSTALLATION_VERIFICATION.md).
-Actual sanitizer qualification remains pending. This does not qualify a
+The complete actual Pocket sanitizer gate also passed. This does not qualify a
 production distribution catalog or claim engine readiness. Its normal log is
 `/private/tmp/samosa-pocket-complete-install.log`.
 

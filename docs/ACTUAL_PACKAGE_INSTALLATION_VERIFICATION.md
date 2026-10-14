@@ -31,8 +31,13 @@ python3 tests/package_compatibility_fixture.py \
 
 The initial run exposed `artifact_changed` during copying. Syncing completed
 writes before the hash verifier's metadata snapshots lets the full gate pass;
-normal and ASan/UBSan staging checks also pass. Actual Pocket sanitizer and
-Kokoro complete installation are currently running and not yet qualified.
+normal and ASan/UBSan staging checks also pass. The complete actual Pocket
+native/HTTPS/setup gate also passes with both native harness and setup built under
+ASan/UBSan; log `/private/tmp/samosa-pocket-complete-install-sanitize.log`.
+Kokoro complete installation is being rerun and is not yet qualified. Its first
+run passed native installation but exposed a public setup manifest-parser budget
+mismatch. Speech manifests now own their 8,192-token bound instead of inheriting
+the public request parser's 256-token default or caller build flags.
 This proves observed installation and static compatibility only. It does not
 publish a production distribution catalog, load a model, prove readiness,
 qualify another platform, or close remaining component-2 requirements.

@@ -3,6 +3,12 @@
 #define _DARWIN_C_SOURCE
 #include "speech_package.h"
 #include "artifact.h"
+/* The complete manifest can contain 512 files, independently of the public
+ * request parser's smaller token budget or the caller's build flags. */
+#ifdef JSON_TOKENS_MAX
+#undef JSON_TOKENS_MAX
+#endif
+#define JSON_TOKENS_MAX 8192
 #include "json.h"
 #include "sha256.h"
 #include <dirent.h>
