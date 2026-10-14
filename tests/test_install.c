@@ -17,6 +17,8 @@ static unsigned checks;
 #define CHECK(x) do{checks++;if(!(x)){fprintf(stderr,"FAIL %d: %s\n",__LINE__,#x);exit(1);}}while(0)
 static void status(ArtifactConfig *c,const char *expected){const char *s=NULL;CHECK(!artifact_status(c,&s));CHECK(!strcmp(s,expected));}
 static const char *stop_read(void *p){(void)p;return "cancelled";}
+typedef struct {unsigned calls,target;} ReadStop;
+static int stop_at(void *p){ReadStop *stop=p;return ++stop->calls==stop->target;}
 static int interrupt(void *p){unsigned *calls=p;return ++*calls==2;}
 static int death(void *p){unsigned *calls=p;if(++*calls==2)kill(getpid(),SIGKILL);return 0;}
 static void publication_death(const char *phase,void *p){(void)p;if(!strcmp(phase,"published"))kill(getpid(),SIGKILL);}
@@ -55,6 +57,16 @@ int main(int argc,char **argv){
     int fd=open(ready,O_WRONLY);CHECK(fd>=0);CHECK(pwrite(fd,"x",1,0)==1);CHECK(!close(fd));
     verified=-7;CHECK(!strcmp(artifact_open_verified(&c,NULL,NULL,&verified),"artifact_checksum_mismatch"));CHECK(verified==-7);
     const char *s;CHECK(!strcmp(artifact_status(&c,&s),"artifact_checksum_mismatch"));CHECK(!strcmp(s,"invalid"));
+    /* Four local-copy chunks finish, then cancellation on the second bounded
+     * hash read prevents publication of an otherwise complete staged artifact. */
+    fixture(root,source,state,&c,sha);ReadStop stop={.target=6};c.cancelled=stop_at;c.cancellation=&stop;
+    CHECK(!strcmp(artifact_install(&c),"artifact_interrupted"));CHECK(stop.calls==6);status(&c,"interrupted");
+    c.cancelled=NULL;c.resume=1;CHECK(!artifact_install(&c));status(&c,"verified");
+    CHECK(!unlink(source));stop=(ReadStop){.target=2};c.cancelled=stop_at;
+    CHECK(!strcmp(artifact_install(&c),"artifact_interrupted"));CHECK(stop.calls==2);
+    /* Status remains queryable after a cancelled retry; it does not reuse the
+     * installation cancellation hook or change completion state. */
+    status(&c,"verified");c.cancelled=NULL;CHECK(!artifact_install(&c));
     fixture(root,source,state,&c,sha);unsigned calls=0;c.cancelled=interrupt;c.cancellation=&calls;
     CHECK(!strcmp(artifact_install(&c),"artifact_interrupted"));status(&c,"interrupted");
     c.cancelled=NULL;CHECK(!strcmp(artifact_install(&c),"artifact_resume_required"));c.resume=1;

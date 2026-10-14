@@ -142,13 +142,17 @@ static int scopes_same(const ArtifactConfig *c,Store *s) {
     return root_same(c,s) && path_same(s->root,c->sha256,s->entry) &&
         path_same(s->entry,"stage",s->stage);
 }
-static const char *published(const ArtifactConfig *c,Store *s,int *exists) {
+static const char *install_control(void *context) {
+    const ArtifactConfig *c=context;
+    return c->cancelled&&c->cancelled(c->cancellation)?"artifact_interrupted":NULL;
+}
+static const char *published(const ArtifactConfig *c,Store *s,int *exists,int controlled) {
     *exists=0;int fd=openat(s->entry,"artifact",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
     if(fd<0){struct stat stage;
         return errno==ENOENT&&!fstat(s->stage,&stage)&&stage.st_nlink==1?NULL:"foreign_artifact";}
     *exists=1;struct stat a,b;
     const char *e=fstat(fd,&a)||fstat(s->stage,&b)||a.st_dev!=b.st_dev||a.st_ino!=b.st_ino||a.st_nlink!=2?
-        "foreign_artifact":artifact_verify(fd,c->size,c->byte_ceiling,c->sha256);
+        "foreign_artifact":artifact_verify_controlled(fd,c->size,c->byte_ceiling,c->sha256,controlled?install_control:NULL,(void *)c);
     if(!e && !path_same(s->entry,"artifact",fd))e="artifact_changed";
     close(fd);return e;
 }
@@ -161,7 +165,7 @@ const char *artifact_status(const ArtifactConfig *c,const char **status) {
     else if(!e) {
         e=open_entry(c,&s,0);
         if(e && !strcmp(e,"artifact_absent")){*status="absent";e=NULL;}
-        else if(!e){int exists;e=published(c,&s,&exists);
+        else if(!e){int exists;e=published(c,&s,&exists,0);
             if(!e)*status=exists?"verified":"interrupted";
             if(!e && !scopes_same(c,&s)){*status="invalid";e="artifact_state_changed";}}
     }
@@ -185,7 +189,7 @@ const char *artifact_install(const ArtifactConfig *c) {
     Store s;const char *e=open_store(c,&s,1);int input=-1;
     if(!e)e=quota(c,&s,0);
     if(!e)e=open_entry(c,&s,1);
-    int exists=0;if(!e)e=published(c,&s,&exists);
+    int exists=0;if(!e)e=published(c,&s,&exists,1);
     if(!e && exists){
         if(!scopes_same(c,&s))e="artifact_state_changed";
         else if(fsync(s.entry))e="artifact_publish_failed";
@@ -233,7 +237,7 @@ const char *artifact_install(const ArtifactConfig *c) {
     }
     free(working);
     if(!e && fsync(s.stage))e="artifact_write_failed";
-    if(!e)e=artifact_verify(s.stage,c->size,c->byte_ceiling,c->sha256);
+    if(!e)e=artifact_verify_controlled(s.stage,c->size,c->byte_ceiling,c->sha256,install_control,(void *)c);
     struct stat after,path;
     if(!e && !c->acquire && (fstat(input,&after)||lstat(c->source_path,&path)||
         !unchanged(&before,&after)||
@@ -241,7 +245,7 @@ const char *artifact_install(const ArtifactConfig *c) {
     if(!e && !scopes_same(c,&s))e="artifact_state_changed";
     if(!e && c->cancelled && c->cancelled(c->cancellation))e="artifact_interrupted";
     if(!e && linkat(s.entry,"stage",s.entry,"artifact",0)) {
-        if(errno==EEXIST)e=published(c,&s,&exists);else e="artifact_publish_failed";
+        if(errno==EEXIST)e=published(c,&s,&exists,1);else e="artifact_publish_failed";
     }
 #ifdef SAMOSA_INFERENCE_TEST_FAULTS
     if(!e && c->checkpoint)c->checkpoint("published",c->checkpoint_context);
@@ -255,7 +259,7 @@ done:
 const char *artifact_make_executable(const ArtifactConfig *c) {
     Store s;const char *e=open_store(c,&s,0);int exists=0;
     if(!e)e=open_entry(c,&s,0);
-    if(!e)e=published(c,&s,&exists);
+    if(!e)e=published(c,&s,&exists,0);
     if(!e&&!exists)e="artifact_absent";
     unsigned char header[64];
     if(!e && pread(s.stage,header,sizeof(header),0)!=(ssize_t)sizeof(header))e="unsupported_executable";

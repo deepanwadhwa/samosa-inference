@@ -89,3 +89,29 @@ Normal and ASan/UBSan fixture runs passed on macOS arm64; log:
 cache adapter emitted no diagnostics. These are controlled native-format fixture
 checks, not a new actual-model or Linux qualification claim. Previous actual
 Pocket direct-descriptor results remain tied to their prior revision.
+
+
+## Controlled final artifact hashes
+
+Installation now uses controlled artifact verification for both completed staged
+payloads before publication and verified offline installation retries. Status and
+executable-permission inspection retain their existing read-only inspection
+behavior and do not inherit an install cancellation hook. A targeted local test
+finishes four copy chunks, cancels on the second final-hash read, verifies that no
+artifact was published, and resumes successfully. A separate installed retry
+cancels during hashing with the source removed; completion/status remain intact.
+This resolves the final-hash control gap recorded in the preceding local adapter
+checkpoint. Blocking filesystem calls still have platform latency.
+
+Local macOS arm64 gates passed:
+
+- Native installation: 2366 normal / 2368 sanitizer checks.
+- Package dispatch and 11-file local/cache assembly fixture: normal and sanitizer.
+- Remote artifacts: 167 checks in each normal and sanitizer run.
+- Activation: 110 normal / 118 sanitizer checks.
+- Artifact public CLI: 26 checks.
+
+Logs: `/private/tmp/samosa-controlled-install-hash.log` and
+`/private/tmp/samosa-controlled-install-integrations.log`. This change concerns
+acquisition control rather than model inference; it does not close the larger
+module qualification or package reservation/recovery requirements.

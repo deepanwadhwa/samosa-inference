@@ -235,3 +235,10 @@ and verifying held descriptors before assembly. Controlled local acquisition and
 offline cache checks pass. Per-file remote mapping, prompt control during the
 legacy local installer's final hash, destination reservations and recovery remain
 open; area 2 stays active.
+
+
+The legacy artifact installer's final staged hash and verified offline retries
+now poll installation cancellation between bounded reads. Targeted cancelled
+hash/resumption/status checks and native package, remote artifact, activation and
+CLI integration gates pass locally, including sanitizer variants. Per-file remote
+package mapping, destination reservations and recovery remain open.

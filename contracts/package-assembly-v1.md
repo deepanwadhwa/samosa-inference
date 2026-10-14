@@ -73,11 +73,11 @@ Indexed file names determine paths beneath the trusted source root. Each file's
 size and SHA-256 override the template identity; byte/disk ceilings, identity
 capacity and resume policy remain trusted store configuration. Request controls
 are passed to verified cache reads and bridged to local copying alongside the
-store cancellation hook; the original request error is retained. The existing
-local installer's final whole-file verification is bounded by its read deadline
-but does not yet poll this bridge between verification reads. Do not claim prompt
-whole-acquisition deadline enforcement from the adapter alone. Package staging,
-cache descriptor re-opening and publication retain their controlled verification.
+store cancellation hook; the original request error is retained. The local installer's final staged hash and verified installation retries poll
+this cancellation bridge between bounded reads and before hash completion.
+Package staging, cache descriptor re-opening and publication retain their
+controlled verification. Filesystem syscalls and fsync retain platform latency;
+this is cooperative request control, not a hard wall-clock syscall guarantee.
 
 The adapter supports local acquired files and offline cache hits. It currently
 rejects a template remote `acquire` hook on a cache miss: one fixed hook/URL cannot
