@@ -192,7 +192,14 @@ int main(int argc,char **argv){
             CHECK(!strcmp(package_install_from_file(trusted_catalog,"speech-fixture",&installer,&observed),"invalid_catalog_file"));CHECK(!unlink(catalog_alias));
             CHECK(!symlink(trusted_catalog,catalog_alias));CHECK(!strcmp(package_install_from_file(catalog_alias,"speech-fixture",&installer,&observed),"invalid_catalog_file"));CHECK(!unlink(catalog_alias));
             CHECK(!package_install_from_file(trusted_catalog,"speech-fixture",&installer,&observed));CHECK(observed.files==index->count);CHECK(!strcmp(observed.manifest_sha256,index->manifest_sha256));
-            installer.index_source=NULL;installer.file_sources=NULL;installer.entry=NULL;CHECK(!package_install_from_file(trusted_catalog,"speech-fixture",&installer,&observed));free(catalog);CHECK(!close(catalog_directory));CHECK(!close(catalog_reservations));
+            installer.index_source=NULL;installer.file_sources=NULL;installer.entry=NULL;CHECK(!package_install_from_file(trusted_catalog,"speech-fixture",&installer,&observed));
+            /* Observation needs neither download policy nor a reservation pool. */
+            PackageInstaller status_config=installer;status_config.assembly.reservation_directory=-1;status_config.assembly.reservation_ceiling=0;status_config.assembly.reservation_capacity=0;status_config.assembly.copy_ceiling=0;
+            PackageAssemblyStatus catalog_status;memset(&catalog_status,0xa5,sizeof(catalog_status));PackageAssemblyStatus status_before=catalog_status;
+            CHECK(!strcmp(package_status_from_file(trusted_catalog,"missing",&status_config,&catalog_status),"unknown_provider"));CHECK(!memcmp(&catalog_status,&status_before,sizeof(catalog_status)));
+            status_config.assembly.control=cancel;CHECK(!strcmp(package_status_from_file(trusted_catalog,"speech-fixture",&status_config,&catalog_status),"cancelled"));CHECK(!memcmp(&catalog_status,&status_before,sizeof(catalog_status)));status_config.assembly.control=NULL;
+            CHECK(!package_status_from_file(trusted_catalog,"speech-fixture",&status_config,&catalog_status));CHECK(!strcmp(catalog_status.state,"installed_verified"));CHECK(catalog_status.package.files==index->count);CHECK(!strcmp(catalog_status.package.manifest_sha256,index->manifest_sha256));
+            free(catalog);CHECK(!close(catalog_directory));CHECK(!close(catalog_reservations));
             CHECK(!close(reservation_pool));CHECK(!close(remote_directory));CHECK(!close(directory));free(downloads);free(urls);
             printf("PASS complete HTTPS native package: %zu indexed files; untrusted TLS refusal, pinned acquisition, compatibility, publication and credential-free cache reuse\n",index->count);
         }

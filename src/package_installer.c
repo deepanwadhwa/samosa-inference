@@ -55,3 +55,22 @@ const char *package_install_from_file(const char *path,const char *id,const Pack
     if(!e)e=package_install_selected(catalog,id,config,out);
     free(catalog);return e;
 }
+
+const char *package_status_from_file(const char *path,const char *id,const PackageInstaller *config,PackageAssemblyStatus *out){
+    if(!config||!out)return "invalid_package_installer";
+    const char *e=config->assembly.control?config->assembly.control(config->assembly.context):NULL;if(e)return e;
+    ProviderCatalog *catalog=calloc(1,sizeof(*catalog));PackageIndex *index=calloc(1,sizeof(*index));
+    if(!catalog||!index){free(catalog);free(index);return "allocation_failed";}
+    const ProviderEntry *entry=NULL;char platform[65],os[65];int fd=-1;
+    e=provider_catalog_load(path,catalog);
+    if(!e)e=provider_catalog_host(platform,os);
+    if(!e)e=provider_catalog_select(catalog,id,platform,&entry);
+    if(!e)e=provider_catalog_qualify(entry,os);
+    if(!e){ArtifactConfig artifact=config->store;artifact.sha256=entry->sha256;artifact.size=entry->size;
+        e=artifact_open_verified(&artifact,config->assembly.control,config->assembly.context,&fd);}
+    if(!e)e=package_catalog_read_index(entry,fd,config->assembly.control,config->assembly.context,index);
+    if(fd>=0)close(fd);
+    if(!e){PackageAssembly assembly=config->assembly;assembly.index=index;
+        e=package_assembly_status(&assembly,out);}
+    free(index);free(catalog);return e;
+}

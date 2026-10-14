@@ -46,3 +46,14 @@ and timestamps throughout reading. Symlinks, aliases and public permissions refu
 The path is host configuration; public requests choose IDs. Request controls apply
 before/after catalog reading and throughout the installer. The parsed catalog is
 owned only for the duration of the call and freed on success or failure.
+### Catalog-selected observation
+
+`package_status_from_file` loads the private host-selected catalog, selects the
+public provider ID for the actual host, opens its registered verified cached
+index, binds that index to the catalog, and calls `package_assembly_status`.
+It does not acquire artifacts, reserve copy capacity, copy files, or recover
+interrupted publications. Download credentials and reservation configuration
+are unnecessary. A missing index reports `artifact_absent`; other errors leave
+the result untouched. `installed_verified` proves observed installation bytes
+and static compatibility, without claiming loaded engine readiness.
+

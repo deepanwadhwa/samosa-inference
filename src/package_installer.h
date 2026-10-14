@@ -19,4 +19,8 @@ const char *package_install_selected(const ProviderCatalog *,const char *,const 
 /* Load the host-selected private catalog with existing ownership/binding checks
  * before ID selection. The path is configuration, never request input. */
 const char *package_install_from_file(const char *,const char *,const PackageInstaller *,PackageTreeResult *);
+/* Observe a catalog-selected installation using only its verified cached index.
+ * Ignores acquisition and reservation configuration; never repairs state.
+ * Absence of the index is reported as artifact_absent, not package readiness. */
+const char *package_status_from_file(const char *,const char *,const PackageInstaller *,PackageAssemblyStatus *);
 #endif
