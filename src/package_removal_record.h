@@ -18,4 +18,7 @@ const char *package_removal_record_capture(const PackageIndex *,const PackageTre
  * Caller owns lease/named-root bindings. Outputs untouched on failure. */
 const char *package_removal_record_store(int,const PackageIndex *,const PackageRemovalRecord *,const char *(*)(void *),void *);
 const char *package_removal_record_load(int,const PackageIndex *,const char *(*)(void *),void *,PackageRemovalRecord *);
+/* Reconstruct a complete pending proposal after process death. Read-only;
+ * two-link proposals require the known final alias to be the same inode. */
+const char *package_removal_record_load_pending(int,const PackageIndex *,const char *(*)(void *),void *,PackageRemovalRecord *);
 #endif

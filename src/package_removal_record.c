@@ -69,10 +69,33 @@ static unsigned char *encode(const PackageRemovalRecord *r,size_t *size){
 static int bound(int directory,const char *name,int fd){struct stat a,b;return !fstat(fd,&a)&&!fstatat(directory,name,&b,AT_SYMLINK_NOFOLLOW)&&a.st_dev==b.st_dev&&a.st_ino==b.st_ino&&a.st_mode==b.st_mode&&a.st_nlink==b.st_nlink;}
 static int root_matches(int directory,const PackageRemovalRecord *r){struct stat s;return !fstat(directory,&s)&&S_ISDIR(s.st_mode)&&s.st_uid==geteuid()&&!(s.st_mode&077)&&
     (uint64_t)s.st_dev==r->package.value[0]&&(uint64_t)s.st_ino==r->package.value[1]&&(uint64_t)s.st_mode==r->package.value[3]&&(fcntl(directory,F_GETFL)&O_ACCMODE)==O_RDONLY;}
+static const char *recover(int directory,const PackageRemovalRecord *r,const unsigned char *body,size_t size,const char *(*control)(void *),void *context){
+    int pending=openat(directory,".removal.record.pending",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+    if(pending<0)return "unsafe_package_removal_record";
+    struct stat before,after;const char *e=NULL;int final=-1;unsigned char chunk[65536];
+    if(fstat(pending,&before)||!S_ISREG(before.st_mode)||before.st_uid!=geteuid()||(before.st_mode&077)||(before.st_nlink!=1&&before.st_nlink!=2)||
+        before.st_size!=(off_t)size||!bound(directory,".removal.record.pending",pending))e="unsafe_package_removal_record";
+    for(size_t at=0;!e&&at<size;){e=control?control(context):NULL;if(e)break;size_t n=size-at;if(n>sizeof(chunk))n=sizeof(chunk);
+        ssize_t got=pread(pending,chunk,n,(off_t)at);if(got<0&&errno==EINTR)continue;
+        if(got!=(ssize_t)n||memcmp(chunk,body+at,n)){e="unsafe_package_removal_record";break;}at+=n;}
+    if(!e&&(fstat(pending,&after)||!bound(directory,".removal.record.pending",pending)))e="unsafe_package_removal_record";
+    if(!e){PackageRemovalIdentity a,b;identity(&before,&a);identity(&after,&b);if(memcmp(&a,&b,sizeof(a)))e="unsafe_package_removal_record";}
+    if(!e){final=openat(directory,"removal.record",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+        if(before.st_nlink==2){struct stat named;if(final<0||fstat(final,&named)||named.st_dev!=before.st_dev||named.st_ino!=before.st_ino||!bound(directory,"removal.record",final))e="unsafe_package_removal_record";}
+        else if(final>=0||errno!=ENOENT)e="package_removal_record_conflict";}
+    if(!e&&(fchmod(pending,0400)||fsync(pending)))e="package_removal_record_failed";
+    if(!e)e=control?control(context):NULL;
+    if(!e&&(!root_matches(directory,r)||!bound(directory,".removal.record.pending",pending)))e="unsafe_package_removal_record";
+    if(!e&&final<0&&linkat(directory,".removal.record.pending",directory,"removal.record",0))e="package_removal_record_conflict";
+    if(!e&&(!bound(directory,"removal.record",pending)||unlinkat(directory,".removal.record.pending",0)||fsync(directory)))e="package_removal_record_failed";
+    if(!e&&(fstat(pending,&after)||after.st_nlink!=1||!bound(directory,"removal.record",pending)))e="unsafe_package_removal_record";
+    if(final>=0)close(final);close(pending);return e;
+}
 const char *package_removal_record_store(int directory,const PackageIndex *index,const PackageRemovalRecord *r,const char *(*control)(void *),void *context){
     if(!shape(index,r)||!root_matches(directory,r))return "invalid_package_removal_record";
     const char *e=control?control(context):NULL;if(e)return e;size_t size=0;unsigned char *body=encode(r,&size);if(!body)return "allocation_failed";
-    int pending=openat(directory,".removal.record.pending",O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0600);if(pending<0){free(body);return "unsafe_package_removal_record";}
+    int pending=openat(directory,".removal.record.pending",O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0600);
+    if(pending<0){e=errno==EEXIST?recover(directory,r,body,size,control,context):"unsafe_package_removal_record";free(body);return e;}
     size_t at=0;while(!e&&at<size){e=control?control(context):NULL;if(e)break;size_t n=size-at;if(n>65536)n=65536;ssize_t wrote=write(pending,body+at,n);
         if(wrote<0&&errno==EINTR)continue;if(wrote<=0){e="package_removal_record_failed";break;}at+=(size_t)wrote;}
     if(!e&&(fchmod(pending,0400)||fsync(pending)||!bound(directory,".removal.record.pending",pending)))e="package_removal_record_failed";
@@ -82,10 +105,12 @@ const char *package_removal_record_store(int directory,const PackageIndex *index
     if(!e&&(!bound(directory,"removal.record",pending)||fsync(directory)))e="package_removal_record_failed";
     close(pending);free(body);return e;
 }
-const char *package_removal_record_load(int directory,const PackageIndex *index,const char *(*control)(void *),void *context,PackageRemovalRecord *out){
+static const char *load(int directory,const PackageIndex *index,const char *(*control)(void *),void *context,PackageRemovalRecord *out,int pending){
     if(!out)return "invalid_package_removal_record";const char *e=control?control(context):NULL;if(e)return e;
-    int fd=openat(directory,"removal.record",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);if(fd<0)return errno==ENOENT?"package_removal_record_absent":"unsafe_package_removal_record";
-    struct stat s,after;if(fstat(fd,&s)||!S_ISREG(s.st_mode)||s.st_uid!=geteuid()||(s.st_mode&077)||s.st_nlink!=1||s.st_size<360||s.st_size>PACKAGE_REMOVAL_BYTES||!bound(directory,"removal.record",fd)){close(fd);return "unsafe_package_removal_record";}
+    const char *name=pending?".removal.record.pending":"removal.record";
+    int fd=openat(directory,name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);if(fd<0)return errno==ENOENT?"package_removal_record_absent":"unsafe_package_removal_record";
+    struct stat s,after;if(fstat(fd,&s)||!S_ISREG(s.st_mode)||s.st_uid!=geteuid()||(s.st_mode&077)||(s.st_nlink!=1&&!(pending&&s.st_nlink==2))||s.st_size<360||s.st_size>PACKAGE_REMOVAL_BYTES||!bound(directory,name,fd)){close(fd);return "unsafe_package_removal_record";}
+    if(s.st_nlink==2){struct stat alias;if(fstatat(directory,"removal.record",&alias,AT_SYMLINK_NOFOLLOW)||alias.st_dev!=s.st_dev||alias.st_ino!=s.st_ino){close(fd);return "unsafe_package_removal_record";}}
     size_t size=(size_t)s.st_size,used=0;unsigned char *body=malloc(size);PackageRemovalRecord *r=calloc(1,sizeof(*r));if(!body||!r)e="allocation_failed";
     while(!e&&used<size){e=control?control(context):NULL;if(e)break;size_t n=size-used;if(n>65536)n=65536;ssize_t got=pread(fd,body+used,n,(off_t)used);if(got<0&&errno==EINTR)continue;if(got<=0){e="unsafe_package_removal_record";break;}used+=(size_t)got;}
     const unsigned char *at=body,*end=body?body+size-32:NULL;unsigned char digest[32];
@@ -99,7 +124,10 @@ const char *package_removal_record_load(int directory,const PackageIndex *index,
         if(!n||n>255||end-at<80||(uint64_t)(end-at-80)<n||memchr(at,0,(size_t)n)){e="unsafe_package_removal_record";break;}
         memcpy(r->directories[i].name,at,(size_t)n);at+=(size_t)n;get_node(&at,&r->directories[i].identity);
     }
-    if(!e&&(at!=end||!shape(index,r)||!root_matches(directory,r)||fstat(fd,&after)||!bound(directory,"removal.record",fd)))e="unsafe_package_removal_record";
+    if(!e&&(at!=end||!shape(index,r)||!root_matches(directory,r)||fstat(fd,&after)||!bound(directory,name,fd)))e="unsafe_package_removal_record";
     if(!e){PackageRemovalIdentity original,latest;identity(&s,&original);identity(&after,&latest);if(memcmp(&original,&latest,sizeof(original)))e="unsafe_package_removal_record";}
+    if(!e&&s.st_nlink==2){struct stat alias;if(fstatat(directory,"removal.record",&alias,AT_SYMLINK_NOFOLLOW)||alias.st_dev!=s.st_dev||alias.st_ino!=s.st_ino)e="unsafe_package_removal_record";}
     if(!e)e=control?control(context):NULL;if(!e)*out=*r;free(r);free(body);close(fd);return e;
 }
+const char *package_removal_record_load(int directory,const PackageIndex *index,const char *(*control)(void *),void *context,PackageRemovalRecord *out){return load(directory,index,control,context,out,0);}
+const char *package_removal_record_load_pending(int directory,const PackageIndex *index,const char *(*control)(void *),void *context,PackageRemovalRecord *out){return load(directory,index,control,context,out,1);}

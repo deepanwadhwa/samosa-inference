@@ -35,3 +35,28 @@ ancestor omission and unchanged outputs. Log:
 Interrupted pending/two-link record publication, partial file deletion/recovery,
 completion retirement and quota release remain the following removal steps.
 No package data is removed by this record API; component 2 remains active.
+
+## Interrupted publication recovery
+
+Store now recovers a complete pending proposal only after comparing every encoded
+byte with the expected inventory and rechecking its private inode/name identity.
+It supports a single-link proposal before final publication and the exact known
+pending/final two-link pair. Other aliases, another final inode, malformed bytes
+or changed bindings refuse while preserving retained state. Controls run during
+bounded comparison and before publication; syncing finishes before success.
+
+`package_removal_record_load_pending` reconstructs a complete proposal from disk
+after the original process/in-memory inventory is lost. It performs the same
+bounded checksum/index/root/schema verification as normal loading. Two-link state
+requires the final name to identify the same inode, rechecked after reading.
+Loading never repairs state; the caller can then pass the reconstructed record
+to store for explicit recovery under its exclusive lease.
+
+Normal and ASan/UBSan gates pass 93 checks. A real child is killed after pending
+record fsync and before final linking. Cancelled/corrupt retries preserve the
+proposal; restored bytes load from disk and complete publication. The known
+two-link case also loads/recoveries successfully. An unrelated second alias with
+no known final name refuses both pending load and recovery. Log:
+`/private/tmp/samosa-removal-record-recovery.log`. Torn/unverifiable proposals
+remain fail-closed. File deletion, completion retirement and quota release are
+the following removal steps; no package data is deleted here.
