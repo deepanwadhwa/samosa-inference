@@ -66,7 +66,7 @@ int main(int argc,char **argv){
             int first=openat(root,index->files[0].name,O_RDONLY|O_NOFOLLOW);CHECK(first>=0);
             CHECK(!package_stage_file(retained,index,0,first,NULL,NULL));CHECK(!close(first));
             struct stat before,after;CHECK(!fstatat(retained,index->files[0].name,&before,AT_SYMLINK_NOFOLLOW));
-            CHECK(!package_assemble(&assembly,&observed));CHECK(observed.files==index->count);
+            const char *assembled=package_assemble(&assembly,&observed);if(assembled)fprintf(stderr,"initial complete assembly: %s\n",assembled);CHECK(!assembled);CHECK(observed.files==index->count);
             CHECK(!package_assembly_status(&assembly,&status));CHECK(!strcmp(status.state,"installed_verified"));CHECK(status.package.files==index->count);
             PackageAssembly inspection=assembly;inspection.source=-1;inspection.source_open=NULL;inspection.copy_ceiling=0;
             CHECK(!package_assembly_status(&inspection,&status));CHECK(!strcmp(status.state,"installed_verified"));

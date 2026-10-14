@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Qualified native-format fixture package through concrete recipe dispatch."""
 import hashlib
+import argparse
+import tempfile
 import http.server
 import ssl
 import threading
@@ -11,12 +13,28 @@ import shutil
 import subprocess
 import sys
 
-binary, exporter, library = map(os.path.abspath, sys.argv[1:4])
-https = "--https" in sys.argv[4:]
-assert sys.argv[4:] in ([], ["--https"]) or (https and len(sys.argv) == 7 and sys.argv[5] == "--setup")
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("binary")
+parser.add_argument("exporter")
+parser.add_argument("library")
+parser.add_argument("--https", action="store_true")
+parser.add_argument("--setup")
+parser.add_argument("--actual-package")
+parser.add_argument("--manifest-sha256")
+parser.add_argument("--minimum-os")
+parser.add_argument("--timeout", type=int, default=60)
+options = parser.parse_args()
+assert options.timeout > 0 and (not options.setup or options.https)
+binary, exporter, library = map(os.path.abspath, (options.binary, options.exporter, options.library))
+https = options.https
 server = thread = None
-package = json.loads(subprocess.check_output([exporter, "--export-package", library]))
-base, root = Path(package["base"]), Path(package["package"])
+if options.actual_package:
+    assert options.manifest_sha256 and options.minimum_os
+    package = dict(base=tempfile.mkdtemp(prefix="samosa-actual-install-"), package=os.path.abspath(options.actual_package), manifest_sha256=options.manifest_sha256)
+else:
+    assert not options.manifest_sha256 and not options.minimum_os
+    package = json.loads(subprocess.check_output([exporter, "--export-package", library]))
+base, root = Path(package["base"]).resolve(), Path(package["package"])
 try:
     raw = (root / "manifest.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == package["manifest_sha256"]
@@ -26,7 +44,7 @@ try:
                   bytes=f["bytes"], sha256=f["sha256"]) for f in native["files"]]
     files.append(dict(name="manifest.json", role="metadata", bytes=len(raw), sha256=package["manifest_sha256"]))
     body = json.dumps(dict(format="samosa.inference.package.v1", platform=native["platform"],
-                           minimum_os="1.0", recipe="sherpa-speech-package-v1", files=files)).encode()
+                           minimum_os=options.minimum_os or "1.0", recipe="sherpa-speech-package-v1", files=files)).encode()
     index = base / "index.json"
     index.write_bytes(body)
     index.chmod(0o600)
@@ -57,14 +75,19 @@ try:
                 if path is None:
                     self.send_error(404)
                     return
-                data = path.read_bytes()
-                assert hashlib.sha256(data).hexdigest() == digest
+                checked = hashlib.sha256()
+                with path.open("rb") as payload:
+                    for chunk in iter(lambda: payload.read(65536), b""):
+                        checked.update(chunk)
+                assert checked.hexdigest() == digest
                 served.add(digest)
                 requests.append(digest)
                 self.send_response(200)
-                self.send_header("Content-Length", str(len(data)))
+                self.send_header("Content-Length", str(path.stat().st_size))
                 self.end_headers()
-                self.wfile.write(data)
+                with path.open("rb") as payload:
+                    for chunk in iter(lambda: payload.read(65536), b""):
+                        self.wfile.write(chunk)
         server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
         tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         tls.load_cert_chain(cert, key)
@@ -72,12 +95,12 @@ try:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         arguments += [f"https://127.0.0.1:{server.server_port}", str(cert)]
-    result = subprocess.run(arguments, text=True, capture_output=True, timeout=60)
+    result = subprocess.run(arguments, text=True, capture_output=True, timeout=options.timeout)
     assert result.returncode == 0, (result.stdout, result.stderr)
     assert "AddressSanitizer" not in result.stderr and "runtime error:" not in result.stderr
     expected_downloads = len(served)
-    if "--setup" in sys.argv:
-        setup = os.path.abspath(sys.argv[sys.argv.index("--setup") + 1])
+    if options.setup:
+        setup = os.path.abspath(options.setup)
         package_dir = destination / "setup-package"
         pool = destination / "setup-reservations"
         package_dir.mkdir(mode=0o700)
@@ -90,11 +113,11 @@ try:
         before_setup = len(requests)
         for extra in ({"package_directory": str(package_dir)}, {"digest_endpoint": "https://override.invalid"}):
             invalid = subprocess.run(config, input=json.dumps({"contract_version": 1, "op": "provider_install", "provider_id": "speech-fixture", **extra}),
-                                     text=True, capture_output=True, timeout=60)
+                                     text=True, capture_output=True, timeout=options.timeout)
             assert invalid.returncode == 1 and json.loads(invalid.stdout)["error"]["code"] == "invalid_request", invalid
         package_dir.chmod(0o755)
         unsafe = subprocess.run(config, input=json.dumps({"contract_version": 1, "op": "provider_status", "provider_id": "speech-fixture"}),
-                                text=True, capture_output=True, timeout=60)
+                                text=True, capture_output=True, timeout=options.timeout)
         assert unsafe.returncode == 1 and json.loads(unsafe.stdout)["error"]["code"] == "invalid_package_directory", unsafe
         package_dir.chmod(0o700)
         assert len(requests) == before_setup and not (destination / "setup-artifacts").exists()
@@ -107,11 +130,11 @@ try:
                 # Exercise a genuinely cold cache through public ID selection.
                 invocation += ["--digest-endpoint", f"https://127.0.0.1:{server.server_port}", "--ca-file", str(cert)]
                 untrusted = subprocess.run(invocation[:-2], input=json.dumps({"contract_version": 1, "op": op, "provider_id": "speech-fixture"}),
-                                           text=True, capture_output=True, timeout=60)
+                                           text=True, capture_output=True, timeout=options.timeout)
                 assert untrusted.returncode == 1 and json.loads(untrusted.stdout)["error"]["code"] == "artifact_tls_verification_failed", untrusted
                 assert not (package_dir / "payload").exists()
             response = subprocess.run(invocation, input=json.dumps({"contract_version": 1, "op": op, "provider_id": "speech-fixture"}),
-                                      text=True, capture_output=True, timeout=60)
+                                      text=True, capture_output=True, timeout=options.timeout)
             assert response.returncode == 0, response.stdout + response.stderr
             assert "AddressSanitizer" not in response.stderr and "runtime error:" not in response.stderr
             receipt = json.loads(response.stdout)
@@ -124,10 +147,10 @@ try:
         release_config += ["--reservation-directory", str(destination / "empty-reservations")]
         for expected in ("reservation_released", "reservation_absent"):
             released = subprocess.run(release_config, input=json.dumps({"contract_version": 1, "op": "provider_release_empty", "provider_id": "speech-fixture"}),
-                                      text=True, capture_output=True, timeout=60)
+                                      text=True, capture_output=True, timeout=options.timeout)
             assert released.returncode == 0 and json.loads(released.stdout)["status"] == expected, released
         installed_release = subprocess.run(config + ["--reservation-directory", str(pool)],
-                                           input=json.dumps({"contract_version": 1, "op": "provider_release_empty", "provider_id": "speech-fixture"}), text=True, capture_output=True, timeout=60)
+                                           input=json.dumps({"contract_version": 1, "op": "provider_release_empty", "provider_id": "speech-fixture"}), text=True, capture_output=True, timeout=options.timeout)
         assert installed_release.returncode == 1 and json.loads(installed_release.stdout)["error"]["code"] == "package_reservation_not_empty", installed_release
         assert (package_dir / "complete").is_file()
         print("PASS complete setup CLI: cold HTTPS index/payload acquisition, TLS refusal and offline status/resume")
@@ -135,6 +158,8 @@ try:
         assert served == {f["sha256"] for f in files} | {hashlib.sha256(body).hexdigest()}, served
         assert len(requests) == expected_downloads, requests
     print(result.stdout, end="")
+    if options.actual_package:
+        print(f"PASS actual installation: native manifest {package['manifest_sha256']}; index {hashlib.sha256(body).hexdigest()}; {len(files)} files; {sum(f['bytes'] for f in files)} payload bytes; platform {native['platform']}; minimum OS {options.minimum_os}")
 finally:
     if server is not None:
         if thread is not None and thread.is_alive():

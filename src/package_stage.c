@@ -93,6 +93,9 @@ static const char *stage(int root,int journal,const PackageIndex *index,size_t s
             if(written<0&&errno==EINTR)continue;if(written<=0){e="package_stage_failed";break;}at+=(size_t)written;}
         offset+=(uint64_t)read_bytes;
     }
+    /* Settle buffered writes before comparing the verifier's before/after
+     * metadata snapshots, particularly for large model files. */
+    if(!e&&fsync(output))e="package_stage_failed";
     if(!e)e=artifact_verify_controlled(output,file->bytes,PACKAGE_PAYLOAD_BYTES,file->sha256,control,context);
     if(!e)e=artifact_verify_controlled(input,file->bytes,PACKAGE_PAYLOAD_BYTES,file->sha256,control,context);
     if(!e)e=control?control(context):NULL;

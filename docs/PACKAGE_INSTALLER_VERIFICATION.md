@@ -67,3 +67,20 @@ and the downloader's 188 checks each pass. This qualifies the controlled
 fixture, not a production catalog or engine readiness. Public setup wiring,
 supported production recipes and remaining installation recovery remain open.
 
+## Actual-package HTTPS harness
+
+The complete package fixture accepts `--actual-package`, a required trusted
+`--manifest-sha256` and an explicit `--minimum-os`. It creates a separate private
+temporary destination and never deletes or modifies the original package root.
+The HTTPS server verifies and streams files with 64KiB buffers. `--timeout`
+permits the full actual-model gate to finish; controlled fixtures retain 60s.
+`--setup` exercises a cold public installation, offline status/resume and exact
+empty-charge reclamation in addition to native compatibility/copy/cache tests.
+
+The first actual Pocket run found `artifact_changed` during initial copying.
+Staging now fsyncs completed writes before hash-verification metadata snapshots.
+All 144 staging checks and controlled HTTPS/setup sanitizer gates pass with this
+change. The full actual Pocket rerun is pending; this entry does not qualify a
+production catalog or claim engine readiness. Its log is
+`/private/tmp/samosa-pocket-complete-install.log`.
+
