@@ -13,11 +13,12 @@ static int private(int fd,int directory){struct stat s;return !fstat(fd,&s)&&s.s
     (directory?S_ISDIR(s.st_mode):S_ISREG(s.st_mode)&&s.st_nlink==1);}
 static int bound(int parent,const char *name,int fd){struct stat a,b;return !fstat(fd,&a)&&!fstatat(parent,name,&b,AT_SYMLINK_NOFOLLOW)&&
     a.st_dev==b.st_dev&&a.st_ino==b.st_ino&&a.st_mode==b.st_mode&&a.st_uid==b.st_uid&&a.st_nlink==b.st_nlink;}
-static const char *record(int parent,int marker,const char *expected,int length){
+static const char *record_links(int parent,const char *name,int marker,const char *expected,int length,unsigned links){
     struct stat s;char actual[256];
-    return !private(marker,0)||!bound(parent,"complete",marker)||fstat(marker,&s)||s.st_size!=length||
+    return marker<0||fstat(marker,&s)||!S_ISREG(s.st_mode)||s.st_uid!=geteuid()||(s.st_mode&077)||s.st_nlink!=links||!bound(parent,name,marker)||s.st_size!=length||
         pread(marker,actual,(size_t)length,0)!=length||memcmp(expected,actual,(size_t)length)?"package_identity_conflict":NULL;
 }
+static const char *record(int parent,int marker,const char *expected,int length){return record_links(parent,"complete",marker,expected,length,1);}
 static const char *publication(const PackagePublication *c,PackageTreeResult *out,int create){
     if(!c||!c->index||!c->compatible||!out||!memchr(c->index->manifest_sha256,0,sizeof(c->index->manifest_sha256))||
         strlen(c->index->manifest_sha256)!=64||strspn(c->index->manifest_sha256,"0123456789abcdef")!=64)return "invalid_package_publication";
@@ -25,7 +26,7 @@ static const char *publication(const PackagePublication *c,PackageTreeResult *ou
     if(!private(c->directory,1)||(fcntl(c->directory,F_GETFL)&O_ACCMODE)!=O_RDONLY)return "unsafe_package_publication";
     char platform[65],os[65];e=provider_catalog_host(platform,os);
     if(!e)e=package_index_qualify(c->index,platform,os);if(e)return e;
-    int lock=-1,payload=-1,marker=-1,pending=-1,owned=0;
+    int lock=-1,payload=-1,marker=-1,pending=-1,owned=0,retained=0,alias=0;
     lock=openat(c->directory,"publish.lock",O_RDWR|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC|(create?O_CREAT:0),0600);
     if(lock<0)return errno==ENOENT&&!create?"package_not_published":"unsafe_package_publication";
     if(!private(lock,0)||!bound(c->directory,"publish.lock",lock))e="unsafe_package_publication";
@@ -38,8 +39,21 @@ static const char *publication(const PackagePublication *c,PackageTreeResult *ou
             (unsigned long long)identity.st_dev,(unsigned long long)identity.st_ino);
         if(length<=0||(size_t)length>=sizeof(expected))e="invalid_package_publication";}
     if(!e){marker=openat(c->directory,"complete",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
-        if(marker<0){if(errno!=ENOENT)e="unsafe_package_publication";else if(!create)e="package_not_published";}
-        else e=record(c->directory,marker,expected,length);}
+        if(marker<0){
+            if(errno!=ENOENT)e="unsafe_package_publication";
+            else{pending=openat(c->directory,".complete.pending",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+                if(pending>=0){e=record_links(c->directory,".complete.pending",pending,expected,length,1);if(!e)retained=1;if(!e&&!create)e="package_publication_recovery_required";}
+                else if(errno!=ENOENT)e="unsafe_package_publication";
+                else if(!create)e="package_not_published";}
+        }else{struct stat s;
+            if(fstat(marker,&s))e="package_identity_conflict";
+            else if(s.st_nlink==2){pending=openat(c->directory,".complete.pending",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);struct stat p;
+                e=record_links(c->directory,"complete",marker,expected,length,2);
+                if(!e)e=record_links(c->directory,".complete.pending",pending,expected,length,2);
+                if(!e&&(fstat(pending,&p)||p.st_dev!=s.st_dev||p.st_ino!=s.st_ino))e="package_identity_conflict";
+                if(!e)alias=1;if(!e&&!create)e="package_publication_recovery_required";
+            }else e=record(c->directory,marker,expected,length);}
+    }
     PackageTreeResult observed;
     if(!e)e=package_tree_verify(payload,c->index,c->control,c->context,&observed);
     if(!e)e=c->compatible(payload,c->index,c->compatibility);
@@ -47,8 +61,17 @@ static const char *publication(const PackagePublication *c,PackageTreeResult *ou
      * payload and its named root before making completion visible. */
     if(!e)e=create?package_tree_sync(payload,c->index,c->control,c->context,&observed):package_tree_verify(payload,c->index,c->control,c->context,&observed);
     if(!e&&(!bound(c->directory,"payload",payload)||!bound(c->directory,"publish.lock",lock)))e="package_tree_changed";
-    if(!e&&marker>=0)e=record(c->directory,marker,expected,length);
+    if(!e&&marker>=0)e=record_links(c->directory,"complete",marker,expected,length,alias?2:1);
     if(!e)e=c->control?c->control(c->context):NULL;
+    /* A retained completion proposal never bypasses fresh whole-tree and
+     * backend checks above. Repair names only after those checks succeed. */
+    if(!e&&(retained||alias)){
+        e=record_links(c->directory,".complete.pending",pending,expected,length,alias?2:1);
+        if(!e&&retained&&(fchmod(pending,0400)||fsync(pending)||linkat(c->directory,".complete.pending",c->directory,"complete",0)))e="package_publish_failed";
+        if(!e&&(!bound(c->directory,".complete.pending",pending)||unlinkat(c->directory,".complete.pending",0)))e="package_publish_failed";
+        if(!e)marker=marker>=0?marker:dup(pending);
+        if(!e)e=record(c->directory,marker,expected,length);
+    }
     if(!e&&marker<0){
         pending=openat(c->directory,".complete.pending",O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0600);
         if(pending<0)e=errno==EEXIST?"package_publication_busy":"package_publish_failed";

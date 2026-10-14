@@ -59,6 +59,12 @@ int main(int argc,char **argv){
             CHECK(!package_assembly_status(&assembly,&status));CHECK(!strcmp(status.state,"installed_verified"));CHECK(status.package.files==index->count);
             PackageAssembly inspection=assembly;inspection.source=-1;inspection.source_open=NULL;inspection.copy_ceiling=0;
             CHECK(!package_assembly_status(&inspection,&status));CHECK(!strcmp(status.state,"installed_verified"));
+            inspection.copy_ceiling=assembly.copy_ceiling;
+            CHECK(!renameat(directory,"complete",directory,".complete.pending"));
+            CHECK(!package_assemble(&inspection,&observed));CHECK(!package_assembly_status(&inspection,&status));CHECK(!strcmp(status.state,"installed_verified"));
+            CHECK(!linkat(directory,"complete",directory,".complete.pending",0));
+            CHECK(!strcmp(package_assembly_status(&inspection,&status),"package_publication_recovery_required"));
+            CHECK(!package_assemble(&inspection,&observed));CHECK(!package_assembly_status(&inspection,&status));
             inspection.control=cancel;memset(&status,0xa5,sizeof(status));PackageAssemblyStatus cancelled_status=status;
             CHECK(!strcmp(package_assembly_status(&inspection,&status),"cancelled"));CHECK(!memcmp(&status,&cancelled_status,sizeof(status)));
             CHECK(!fstatat(retained,index->files[0].name,&after,AT_SYMLINK_NOFOLLOW));CHECK(before.st_ino==after.st_ino&&before.st_dev==after.st_dev);CHECK(!close(retained));

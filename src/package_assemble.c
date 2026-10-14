@@ -23,7 +23,7 @@ const char *package_assemble(const PackageAssembly *c,PackageTreeResult *out){
     const char *e=c->control?c->control(c->context):NULL;if(e)return e;
     if(c->index->payload_bytes>c->copy_ceiling)return "package_copy_quota_exceeded";
     if(!memchr(c->index->recipe,0,sizeof(c->index->recipe))||strcmp(c->index->recipe,"sherpa-speech-package-v1"))return "unsupported_package_recipe";
-    if(!private_directory(c->directory)||(!c->source_open&&!private_directory(c->source)))return "unsafe_package_assembly";
+    if(!private_directory(c->directory))return "unsafe_package_assembly";
     char platform[65],os[65];e=provider_catalog_host(platform,os);if(!e)e=package_index_qualify(c->index,platform,os);if(e)return e;
     int lock=openat(c->directory,"assemble.lock",O_RDWR|O_CREAT|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC,0600);
     if(lock<0)return "unsafe_package_assembly";
@@ -34,17 +34,21 @@ const char *package_assemble(const PackageAssembly *c,PackageTreeResult *out){
     if(!e&&c->reservation_ceiling){PackageReservationResult reservation;
         e=package_reserve_controlled(c->reservation_directory,c->directory,c->index,c->reservation_ceiling,c->reservation_capacity,c->control,c->context,&reservation);}
     if(!e)e=c->control?c->control(c->context):NULL;
-    /* Existing completion is never repaired by overwriting or recopying bytes. */
+    /* Completed payloads are never overwritten or recopied. Verifiable
+     * interrupted completion metadata is recovered after all package gates. */
     PackageCompatibilityContext compatibility={.payload_path=c->payload_path,.control=c->control,.context=c->context};
     PackagePublication publication={.directory=c->directory,.index=c->index,.compatible=package_backend_compatible,.compatibility=&compatibility,.control=c->control,.context=c->context};
     PackageTreeResult observed;
     int complete=0;
     if(!e){struct stat marker;if(!fstatat(c->directory,"complete",&marker,AT_SYMLINK_NOFOLLOW))complete=1;
+        else if(errno!=ENOENT)e="unsafe_package_assembly";
+        else if(!fstatat(c->directory,".complete.pending",&marker,AT_SYMLINK_NOFOLLOW))complete=1;
         else if(errno!=ENOENT)e="unsafe_package_assembly";}
     if(!e&&complete){payload=openat(c->directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
         if(payload<0||!private_directory(payload)||!bound(c->directory,"payload",payload)||!path_bound(c->payload_path,payload))e="unsafe_package_assembly";
-        if(!e)e=package_publication_verify(&publication,&observed);}
+        if(!e)e=package_publish(&publication,&observed);}
 
+    if(!e&&!complete&&!c->source_open&&!private_directory(c->source))e="unsafe_package_assembly";
     if(!e&&!complete&&!c->source_open)e=package_tree_verify(c->source,c->index,c->control,c->context,&observed);
     if(!e&&!complete){if(mkdirat(c->directory,"payload",0700)&&errno!=EEXIST)e="package_assembly_failed";
         if(!e){payload=openat(c->directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);

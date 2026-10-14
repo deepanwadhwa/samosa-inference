@@ -31,3 +31,24 @@ The completion helper does not provide that recovery ledger, download/resume,
 coordinated reservations, activation, model readiness or a public install service.
 Sync guarantees retain filesystem/host limitations. Same-user writers outside
 the coordinator are not made immutable by this observation protocol.
+
+## Interrupted completion publication
+
+Explicit publication can recover a complete matching `.complete.pending` proposal
+or a verified `complete`/pending pair bound to the same private two-link inode.
+The expected index and held payload-root identity must match. Recovery never
+bypasses fresh whole-tree hashing, concrete backend compatibility, payload syncing,
+request controls or named-root validation. Only afterward may it publish the
+retained proposal or remove its known metadata alias, sync the package directory
+and verify the remaining single-link completion record. Malformed or mismatched
+proposals refuse and remain intact; foreign pending metadata now reports an
+identity conflict rather than implying a live publication worker.
+
+Read-only `package_publication_verify` returns
+`package_publication_recovery_required` for a matching interrupted publication
+without repairing it. Assembly retries invoke explicit publication for existing
+or proposed completion and therefore recover without acquiring or recopying
+already-present payload files. Source configuration is required only when actual
+copying is needed. Loaded readiness is still a separate capability. Torn/unverifiable
+metadata, reservation recovery, bootstrap ownership and reclamation remain area-2
+requirements; this does not close the full installer.

@@ -337,3 +337,11 @@ never repairs state. Normal/sanitizer gates include real killed-child restart
 recovery (61 identity checks each), plus passing local/HTTPS assembly. Continue
 installation's remaining metadata recovery dependencies before catalog completion;
 no downstream area has been opened.
+
+Area 2 completion publication now recovers matching pending proposals and their
+verified two-link metadata aliases only after fresh integrity/compatibility gates.
+Assembly retries do not need a source when recovering already-present complete
+payloads. Normal/sanitizer publication (83 checks each) and local/HTTPS fixture
+gates pass, including observed killed-child recovery and failed-compatibility
+preservation. Continue remaining installation recovery before catalog closure;
+no downstream implementation area is opened.
