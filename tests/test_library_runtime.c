@@ -35,9 +35,33 @@ static void executable_elf(unsigned char *b,uint32_t cpu){
     strcpy((char *)b+768,path);lib_w64(b+208,strlen(path)+1);lib_w64(b+216,strlen(path)+1);
     lib_w64(b+560,29);lib_w64(b+568,160);lib_w64(b+576,0);
 }
+static const char *graph_cancel(void *unused){(void)unused;return "cancelled";}
+static void test_graph(int fd){
+    unsigned char b[4096];LibraryRuntimePolicy policy={1,0x100000c,14u<<16,0};
+    LibraryRuntimeImage images[3];LibraryRuntimeFile files[3]={{"runtime/engine",LIBRARY_RUNTIME_EXECUTABLE},{"runtime/ort",LIBRARY_RUNTIME_LIBRARY},{"runtime/helper",LIBRARY_RUNTIME_LIBRARY}};
+    executable_mach(b,policy.cpu);size_t dependency_at=32;for(unsigned i=0;i<3;i++)dependency_at+=b[dependency_at+4];
+    strcpy((char *)b+dependency_at+24,"@loader_path/ort");lib_w32(b+dependency_at+20,0x10000);
+    CHECK(!ftruncate(fd,0));CHECK(pwrite(fd,b,4096,0)==4096);CHECK(!library_runtime_inspect_executable(fd,&policy,&images[0]));
+    lib_mach(b,policy.cpu,"@rpath/helper",1);CHECK(pwrite(fd,b,4096,0)==4096);CHECK(!library_runtime_inspect(fd,&policy,&images[1]));
+    lib_mach(b,policy.cpu,NULL,0);CHECK(pwrite(fd,b,4096,0)==4096);CHECK(!library_runtime_inspect(fd,&policy,&images[2]));
+    CHECK(!library_runtime_graph(&policy,files,images,3,NULL,NULL));
+    CHECK(!strcmp(library_runtime_graph(&policy,files,images,3,graph_cancel,NULL),"cancelled"));
+    images[1].current_version=0;CHECK(!strcmp(library_runtime_graph(&policy,files,images,3,NULL,NULL),"incompatible_library_version"));images[1].current_version=0x10000;
+    files[1].kind=LIBRARY_RUNTIME_OTHER;CHECK(!strcmp(library_runtime_graph(&policy,files,images,3,NULL,NULL),"unqualified_library_dependencies"));
+    files[1].kind=LIBRARY_RUNTIME_EXECUTABLE;CHECK(!strcmp(library_runtime_graph(&policy,files,images,3,NULL,NULL),"unqualified_library_dependencies"));files[1].kind=LIBRARY_RUNTIME_LIBRARY;
+    files[2].name="elsewhere/helper";CHECK(!strcmp(library_runtime_graph(&policy,files,images,3,NULL,NULL),"unqualified_library_dependencies"));files[2].name="runtime/helper";
+    images[1].origin_search=0;CHECK(!strcmp(library_runtime_graph(&policy,files,images,3,NULL,NULL),"unqualified_library_dependencies"));images[1].origin_search=1;
+    strcpy(images[0].dependencies[0].name,"@loader_path/../ort");CHECK(!strcmp(library_runtime_graph(&policy,files,images,3,NULL,NULL),"unqualified_library_dependencies"));
+    memset(images[0].dependencies[0].name,'x',256);CHECK(!strcmp(library_runtime_graph(&policy,files,images,3,NULL,NULL),"invalid_library_loader"));
+    policy=(LibraryRuntimePolicy){0,62,0,2u<<16|40u<<8};executable_elf(b,62);CHECK(pwrite(fd,b,4096,0)==4096);CHECK(!library_runtime_inspect_executable(fd,&policy,&images[0]));
+    files[1]=(LibraryRuntimeFile){"runtime/libc.so.6",LIBRARY_RUNTIME_OTHER};files[2].kind=LIBRARY_RUNTIME_OTHER;
+    CHECK(!strcmp(library_runtime_graph(&policy,files,images,3,NULL,NULL),"unqualified_library_dependencies"));
+    files[1].name="runtime/unrelated-data";CHECK(!library_runtime_graph(&policy,files,images,3,NULL,NULL));
+}
 int main(void) {
     LibraryRuntimePolicy host;CHECK(!library_runtime_host_policy(&host));CHECK(host.cpu!=0);
     char path[]="/tmp/samosa-library-runtime.XXXXXX";int fd=mkstemp(path);CHECK(fd>=0);CHECK(!unlink(path));
+    test_graph(fd);
     unsigned char b[4096];LibraryRuntimePolicy mach={1,0x100000c,14u<<16,0};
     executable_mach(b,mach.cpu);expect_engine(fd,b,&mach,NULL);expect(fd,b,4096,&mach,"incompatible_library_binary");
     lib_w32(b+4,0x1000007);expect_engine(fd,b,&mach,"incompatible_library_binary");

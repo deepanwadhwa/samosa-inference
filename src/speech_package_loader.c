@@ -28,21 +28,6 @@ static int open_file(int root,const char *name) {
     }
     int fd=openat(parent,begin,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);close(parent);return fd;
 }
-static int basename_valid(const char *name) {
-    if(!name||!*name||*name=='.'||strlen(name)>255)return 0;
-    for(const unsigned char *p=(const unsigned char *)name;*p;p++)
-        if(!((*p>='a'&&*p<='z')||(*p>='A'&&*p<='Z')||(*p>='0'&&*p<='9')||strchr("-_.",*p)))return 0;
-    return 1;
-}
-static int sibling(const SpeechPackageReceipt *r,size_t source,const char *base) {
-    const char *slash=strrchr(r->files[source].name,'/');
-    size_t prefix=slash?(size_t)(slash-r->files[source].name)+1:0;
-    char name[256];
-    if(prefix+strlen(base)>=sizeof(name))return -1;
-    memcpy(name,r->files[source].name,prefix);strcpy(name+prefix,base);
-    for(size_t i=0;i<r->count;i++)if(!strcmp(name,r->files[i].name))return (int)i;
-    return -1;
-}
 const char *speech_package_loader_verify(int root,const char *path,const char *pin,
     const LibraryRuntimePolicy *policy,const char *(*control)(void *),void *context,SpeechPackageReceipt *r) {
     if(!policy||!r||!r->verified||!r->count||r->count>SPEECH_PACKAGE_FILES)return "invalid_configuration";
@@ -63,29 +48,14 @@ const char *speech_package_loader_verify(int root,const char *path,const char *p
         if(!e&&(fstat(fd,&after)||!same(&before,&after)))e="artifact_changed";
         close(fd);
     }
-    for(size_t i=0;!e&&i<r->count;i++) {
-        if(r->files[i].role!=0&&r->files[i].role!=14)continue;
-        e=control?control(context):NULL;if(e)break;
-        for(size_t k=0;!e&&k<images[i].count;k++) {
-            const char *name=images[i].dependencies[k].name,*base=name;
-            if(engine_trusted_system_library(policy->mach_o,name)) {
-                /* ELF bare system names participate in origin search; refuse
-                 * a package shadow instead of trusting its OS-looking name. */
-                if(!policy->mach_o&&sibling(r,i,name)>=0)e="unqualified_library_dependencies";
-                continue;
-            }
-            if(policy->mach_o) {
-                if(!strncmp(name,"@loader_path/",13))base=name+13;
-                else if(!strncmp(name,"@rpath/",7)&&images[i].origin_search)base=name+7;
-                else {e="unqualified_library_dependencies";break;}
-            } else if(!images[i].origin_search){e="unqualified_library_dependencies";break;}
-            if(!basename_valid(base)){e="unqualified_library_dependencies";break;}
-            int target=sibling(r,i,base);
-            if(target<0||(r->files[target].role!=0&&r->files[target].role!=14))e="unqualified_library_dependencies";
-            else if(policy->mach_o&&images[target].current_version<images[i].dependencies[k].compatibility_version)
-                e="incompatible_library_version";
-        }
+    LibraryRuntimeFile *files=NULL;
+    if(!e){files=calloc(r->count,sizeof(*files));if(!files)e="resource_limit";}
+    for(size_t i=0;!e&&i<r->count;i++){
+        files[i].name=r->files[i].name;
+        files[i].kind=(r->files[i].role==0||r->files[i].role==14)?LIBRARY_RUNTIME_LIBRARY:LIBRARY_RUNTIME_OTHER;
     }
+    if(!e)e=library_runtime_graph(policy,files,images,r->count,control,context);
+    free(files);
     if(!e)e=speech_package_verify(root,path,pin,control,context,r,1);
     free(images);return e;
 }

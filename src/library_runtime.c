@@ -276,3 +276,41 @@ static const char *inspect(int fd,const LibraryRuntimePolicy *policy,LibraryRunt
 }
 const char *library_runtime_inspect(int fd,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image){return inspect(fd,policy,image,0);}
 const char *library_runtime_inspect_executable(int fd,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image){return inspect(fd,policy,image,1);}
+
+static int graph_sibling(const LibraryRuntimeFile *files,size_t count,size_t source,const char *base){
+    const char *slash=strrchr(files[source].name,'/');size_t prefix=slash?(size_t)(slash-files[source].name)+1:0;
+    char name[256];if(prefix+strlen(base)>=sizeof(name))return -1;
+    memcpy(name,files[source].name,prefix);strcpy(name+prefix,base);
+    for(size_t i=0;i<count;i++)if(!strcmp(name,files[i].name))return (int)i;return -1;
+}
+const char *library_runtime_graph(const LibraryRuntimePolicy *policy,const LibraryRuntimeFile *files,const LibraryRuntimeImage *images,size_t count,const char *(*control)(void *),void *context){
+    if(!policy||!files||!images||!count||count>512||(policy->mach_o!=0&&policy->mach_o!=1))return "invalid_configuration";
+    const char *e=control?control(context):NULL;if(e)return e;
+    for(size_t i=0;i<count;i++){
+        if(!files[i].name||!files[i].name[0]||strnlen(files[i].name,256)>255||files[i].kind<LIBRARY_RUNTIME_OTHER||files[i].kind>LIBRARY_RUNTIME_EXECUTABLE)return "invalid_configuration";
+        if(files[i].kind!=LIBRARY_RUNTIME_OTHER&&(images[i].count>LIBRARY_DEPENDENCIES||images[i].mach_o!=policy->mach_o||(images[i].origin_search!=0&&images[i].origin_search!=1)))return "invalid_configuration";
+    }
+    for(size_t i=0;!e&&i<count;i++){
+        if(files[i].kind==LIBRARY_RUNTIME_OTHER)continue;
+        e=control?control(context):NULL;if(e)break;
+        for(size_t k=0;!e&&k<images[i].count;k++){
+            e=control?control(context):NULL;if(e)break;
+            const char *name=images[i].dependencies[k].name,*base=name;
+            if(!memchr(name,0,sizeof(images[i].dependencies[k].name))){e="invalid_library_loader";break;}
+            if(engine_trusted_system_library(policy->mach_o,name)){
+                if(!policy->mach_o&&graph_sibling(files,count,i,name)>=0)e="unqualified_library_dependencies";
+                continue;
+            }
+            if(policy->mach_o){
+                if(!strncmp(name,"@loader_path/",13))base=name+13;
+                else if(!strncmp(name,"@rpath/",7)&&images[i].origin_search)base=name+7;
+                else{e="unqualified_library_dependencies";break;}
+            }else if(!images[i].origin_search){e="unqualified_library_dependencies";break;}
+            if(!bare_name(base)){e="unqualified_library_dependencies";break;}
+            int target=graph_sibling(files,count,i,base);
+            if(target<0||files[target].kind!=LIBRARY_RUNTIME_LIBRARY)e="unqualified_library_dependencies";
+            else if(policy->mach_o&&images[target].current_version<images[i].dependencies[k].compatibility_version)e="incompatible_library_version";
+        }
+    }
+    return e;
+}

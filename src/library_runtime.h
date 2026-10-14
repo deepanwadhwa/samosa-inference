@@ -23,4 +23,10 @@ const char *library_runtime_inspect(int fd, const LibraryRuntimePolicy *, Librar
 /* Executable counterpart for closed native engine packages. Requires a host
  * interpreter/entry profile; observes dependencies without loading or launching. */
 const char *library_runtime_inspect_executable(int fd,const LibraryRuntimePolicy *,LibraryRuntimeImage *);
+enum LibraryRuntimeKind {LIBRARY_RUNTIME_OTHER,LIBRARY_RUNTIME_LIBRARY,LIBRARY_RUNTIME_EXECUTABLE};
+typedef struct {const char *name;enum LibraryRuntimeKind kind;} LibraryRuntimeFile;
+/* Resolve inspected dependencies against a verified closed package file list.
+ * Caller verifies every native image and revalidates package bytes afterwards. */
+const char *library_runtime_graph(const LibraryRuntimePolicy *,const LibraryRuntimeFile *,
+    const LibraryRuntimeImage *,size_t,const char *(*)(void *),void *);
 #endif
