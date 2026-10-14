@@ -25,3 +25,14 @@ This is native installation coordination, not authenticated public ingress or
 loaded readiness. Supported backend recipes, production catalog entries and the
 remaining bootstrap/removal/recovery requirements must still qualify before area 2
 closes. Existing local staging APIs remain available for already-acquired inputs.
+
+## Catalog identity selection
+
+`package_install_selected` accepts a public catalog ID, a trusted parsed
+ProviderCatalog and installer configuration. It resolves host platform through the
+existing catalog selector, rejects unknown/incompatible entries before acquisition,
+and supplies that selected entry to the complete installer. The template's entry
+pointer is ignored, so the caller cannot substitute a different artifact descriptor
+for the selected ID. Cache-only retries use the same selected catalog identity.
+Catalog parsing retains its original 1024-token bound even in builds that use a
+larger JSON token budget for other translation units.

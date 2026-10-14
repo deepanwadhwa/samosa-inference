@@ -182,8 +182,11 @@ int main(int argc,char **argv){
             installer.assembly.reservation_ceiling=0;CHECK(!strcmp(package_install_catalog(&installer,&observed),"invalid_package_installer"));CHECK(!memcmp(&observed,&unchanged_install,sizeof(observed)));installer.assembly.reservation_ceiling=index->payload_bytes;
             char saved_platform[65];strcpy(saved_platform,catalog_entry.platform);strcpy(catalog_entry.platform,!strcmp(saved_platform,"linux-x86_64")?"macos-arm64":"linux-x86_64");
             CHECK(!strcmp(package_install_catalog(&installer,&observed),"unsupported_provider_platform"));CHECK(!memcmp(&observed,&unchanged_install,sizeof(observed)));strcpy(catalog_entry.platform,saved_platform);
-            CHECK(!package_install_catalog(&installer,&observed));CHECK(observed.files==index->count);CHECK(!strcmp(observed.manifest_sha256,index->manifest_sha256));
-            installer.index_source=NULL;installer.file_sources=NULL;CHECK(!package_install_catalog(&installer,&observed));CHECK(!close(catalog_directory));CHECK(!close(catalog_reservations));
+            char catalog_json[4096];CHECK(snprintf(catalog_json,sizeof(catalog_json),"{\"catalog_version\":1,\"revision\":\"fixture-v1\",\"entries\":[{\"id\":\"speech-fixture\",\"version\":\"1\",\"url\":\"%s\",\"license\":\"https://example.invalid/license\",\"platform\":\"%s\",\"minimum_os\":\"%s\",\"runtime\":\"system-runtime-v1\",\"recipe\":\"%s\",\"sha256\":\"%s\",\"size\":%llu}]}",catalog_entry.url,catalog_entry.platform,catalog_entry.minimum_os,catalog_entry.recipe,catalog_entry.sha256,(unsigned long long)catalog_entry.size)<(int)sizeof(catalog_json));
+            ProviderCatalog *catalog=calloc(1,sizeof(*catalog));CHECK(catalog);CHECK(!provider_catalog_parse(catalog_json,strlen(catalog_json),catalog));
+            CHECK(!strcmp(package_install_selected(catalog,"missing",&installer,&observed),"unknown_provider"));CHECK(!memcmp(&observed,&unchanged_install,sizeof(observed)));
+            CHECK(!package_install_selected(catalog,"speech-fixture",&installer,&observed));CHECK(observed.files==index->count);CHECK(!strcmp(observed.manifest_sha256,index->manifest_sha256));
+            installer.index_source=NULL;installer.file_sources=NULL;installer.entry=NULL;CHECK(!package_install_selected(catalog,"speech-fixture",&installer,&observed));free(catalog);CHECK(!close(catalog_directory));CHECK(!close(catalog_reservations));
             CHECK(!close(reservation_pool));CHECK(!close(remote_directory));CHECK(!close(directory));free(downloads);free(urls);
             printf("PASS complete HTTPS native package: %zu indexed files; untrusted TLS refusal, pinned acquisition, compatibility, publication and credential-free cache reuse\n",index->count);
         }

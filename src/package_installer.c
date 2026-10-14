@@ -38,3 +38,10 @@ const char *package_install_catalog(const PackageInstaller *c,PackageTreeResult 
         e=package_assemble(&assembly,out);}
     free(index);return e;
 }
+
+const char *package_install_selected(const ProviderCatalog *catalog,const char *id,const PackageInstaller *config,PackageTreeResult *out){
+    if(!config||!out)return "invalid_package_installer";
+    char platform[65],os[65];const char *e=provider_catalog_host(platform,os);if(e)return e;
+    const ProviderEntry *entry=NULL;e=provider_catalog_select(catalog,id,platform,&entry);if(e)return e;
+    PackageInstaller selected=*config;selected.entry=entry;return package_install_catalog(&selected,out);
+}

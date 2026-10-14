@@ -370,3 +370,10 @@ without remote source configuration. See
 [evidence](PACKAGE_INSTALLER_VERIFICATION.md). Continue installation's public
 catalog integration, remaining recovery/removal and supported production packages
 before moving to lifecycle.
+
+Area 2 catalog selection now feeds the complete native installer by catalog ID,
+ignoring any template entry override. Parsed-catalog HTTPS installation and
+credential-free retry pass normal/sanitizer gates; unknown IDs refuse before
+acquisition and the original catalog suite passes 951 checks in each mode.
+Continue installation's supported-package/public-configuration and production
+qualification requirements before opening lifecycle.

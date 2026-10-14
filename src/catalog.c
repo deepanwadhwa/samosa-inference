@@ -1,4 +1,7 @@
 #include "catalog.h"
+#ifdef JSON_TOKENS_MAX
+#undef JSON_TOKENS_MAX
+#endif
 #define JSON_TOKENS_MAX 1024
 #include "json.h"
 static int field(const Json *j,int t,const char *key,char *out,size_t cap) {

@@ -21,3 +21,18 @@ entry or loaded model readiness. Public installer/configuration integration,
 supported backend package recipes, actual production package qualification and the
 remaining bootstrap/removal recovery requirements remain in area 2. No downstream
 lifecycle/scheduling implementation is opened by this installation call.
+
+## Parsed catalog selection
+
+The production HTTPS fixture now builds and parses a trusted native ProviderCatalog
+containing the pinned package-index entry, then installs by `speech-fixture` ID
+through `package_install_selected`. Unknown ID refusal leaves the output unchanged.
+Removing remote sources and clearing the template entry pointer still permits a
+retry through catalog selection; no new GET is observed. Normal and ASan/UBSan
+complete package gates passed. The original catalog parser suite also passed with
+951 checks in each mode. Log:
+`/private/tmp/samosa-selected-package-installation.log`.
+
+This connects existing catalog parsing/selection to the complete native installer;
+it does not publish the fixture as a production model entry or close the remaining
+area-2 package compatibility, production qualification and recovery requirements.

@@ -13,4 +13,7 @@ typedef struct {
  * publication. Configuration is trusted; public requests select catalog IDs.
  * NULL remote sources permit cache-only retries. Output untouched on failure. */
 const char *package_install_catalog(const PackageInstaller *,PackageTreeResult *);
+/* Select by public identity from a trusted parsed catalog; the template entry
+ * pointer is ignored. No acquisition occurs for unknown/incompatible IDs. */
+const char *package_install_selected(const ProviderCatalog *,const char *,const PackageInstaller *,PackageTreeResult *);
 #endif
