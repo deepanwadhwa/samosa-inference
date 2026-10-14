@@ -9,6 +9,10 @@ Before acquisition, enforce the declared host platform, runtime policy and minim
 OS. Open a verified cached index by the entry's size/hash; only an absent artifact
 may acquire the index through the existing HTTPS downloader. Its URL comes from
 the catalog entry, while CA/credential/redirect policy remains trusted configuration.
+Unsupported backend recipes refuse before opening or acquiring the index and
+before reserving or creating assembly state. Package-mode catalog discovery uses
+the same recipe support definition. This is admission capability, not a claim
+that a particular catalog package has passed static compatibility or model tests.
 Preserve request control and the original store cancellation hook. Corrupt/unsafe/
 busy cache state is never converted into a download miss.
 

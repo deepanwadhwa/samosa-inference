@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "package_installer.h"
 #include "package_reserve.h"
+#include "package_compatibility.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -20,6 +21,7 @@ const char *package_install_catalog(const PackageInstaller *c,PackageTreeResult 
     if(!e&&strcmp(c->entry->platform,platform))e="unsupported_provider_platform";
     if(!e&&strcmp(c->entry->runtime,"system-runtime-v1"))e="unsupported_provider_runtime";
     if(!e)e=provider_catalog_qualify(c->entry,os);if(e)return e;
+    if(!package_recipe_supported(c->entry->recipe))return "unsupported_package_recipe";
     ArtifactConfig artifact=c->store;artifact.sha256=c->entry->sha256;artifact.size=c->entry->size;
     int index_fd=-1;e=artifact_open_verified(&artifact,c->assembly.control,c->assembly.context,&index_fd);
     if(e&&!strcmp(e,"artifact_absent")&&c->index_source){

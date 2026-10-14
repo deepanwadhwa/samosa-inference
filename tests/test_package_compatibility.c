@@ -182,6 +182,8 @@ int main(int argc,char **argv){
                 .assembly={.directory=catalog_directory,.payload_path=catalog_path,.copy_ceiling=index->payload_bytes,.reservation_directory=catalog_reservations,.reservation_ceiling=index->payload_bytes,.reservation_capacity=1}};
             installer.store.disk_ceiling=2*(index->payload_bytes+entry.size);installer.store.artifact_capacity=PACKAGE_INDEX_FILES+1;
             memset(&observed,0xa5,sizeof(observed));PackageTreeResult unchanged_install=observed;
+            char supported_recipe[129];strcpy(supported_recipe,catalog_entry.recipe);strcpy(catalog_entry.recipe,"unimplemented-package-v1");
+            CHECK(!strcmp(package_install_catalog(&installer,&observed),"unsupported_package_recipe"));CHECK(!memcmp(&observed,&unchanged_install,sizeof(observed)));CHECK(faccessat(catalog_directory,"assemble.lock",F_OK,0)<0);strcpy(catalog_entry.recipe,supported_recipe);
             installer.assembly.reservation_ceiling=0;CHECK(!strcmp(package_install_catalog(&installer,&observed),"invalid_package_installer"));CHECK(!memcmp(&observed,&unchanged_install,sizeof(observed)));installer.assembly.reservation_ceiling=index->payload_bytes;
             char saved_platform[65];strcpy(saved_platform,catalog_entry.platform);strcpy(catalog_entry.platform,!strcmp(saved_platform,"linux-x86_64")?"macos-arm64":"linux-x86_64");
             CHECK(!strcmp(package_install_catalog(&installer,&observed),"unsupported_provider_platform"));CHECK(!memcmp(&observed,&unchanged_install,sizeof(observed)));strcpy(catalog_entry.platform,saved_platform);

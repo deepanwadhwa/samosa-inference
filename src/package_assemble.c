@@ -22,7 +22,7 @@ const char *package_assemble(const PackageAssembly *c,PackageTreeResult *out){
         !c->index->count||c->index->count>PACKAGE_INDEX_FILES)return "invalid_package_assembly";
     const char *e=c->control?c->control(c->context):NULL;if(e)return e;
     if(c->index->payload_bytes>c->copy_ceiling)return "package_copy_quota_exceeded";
-    if(!memchr(c->index->recipe,0,sizeof(c->index->recipe))||strcmp(c->index->recipe,"sherpa-speech-package-v1"))return "unsupported_package_recipe";
+    if(!memchr(c->index->recipe,0,sizeof(c->index->recipe))||!package_recipe_supported(c->index->recipe))return "unsupported_package_recipe";
     if(!private_directory(c->directory))return "unsafe_package_assembly";
     char platform[65],os[65];e=provider_catalog_host(platform,os);if(!e)e=package_index_qualify(c->index,platform,os);if(e)return e;
     int lock=openat(c->directory,"assemble.lock",O_RDWR|O_CREAT|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC,0600);

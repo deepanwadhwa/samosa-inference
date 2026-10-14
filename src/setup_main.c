@@ -5,6 +5,7 @@
 #include "private_key.h"
 #include "json.h"
 #include "package_installer.h"
+#include "package_compatibility.h"
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -133,6 +134,7 @@ int main(int argc,char **argv) {
                 const ProviderEntry *e=&catalog->entries[i],*selected=NULL;const char *reason=host_error;
                 if(!reason)reason=provider_catalog_select(catalog,e->id,platform,&selected);
                 if(!reason)reason=provider_catalog_qualify(e,os);
+                if(!reason&&package_path&&!package_recipe_supported(e->recipe))reason="unsupported_package_recipe";
                 if(i)fputc(',',stdout);
                 descriptor(e);fprintf(stdout,",\"supported\":%s",reason?"false":"true");
                 if(reason)property("unavailable_reason",reason);
