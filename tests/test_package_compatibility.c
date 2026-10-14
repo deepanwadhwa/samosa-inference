@@ -5,6 +5,7 @@
 #include "package_assemble.h"
 #include "artifact.h"
 #include "package_cache.h"
+#include "package_catalog.h"
 #ifdef SAMOSA_PACKAGE_REMOTE_TESTS
 #include "package_remote_cache.h"
 #endif
@@ -32,6 +33,14 @@ int main(int argc,char **argv){
         char *body=malloc((size_t)s.st_size);CHECK(body);size_t at=0;
         while(at<(size_t)s.st_size){ssize_t n=read(file,body+at,(size_t)s.st_size-at);CHECK(n>0);at+=(size_t)n;}
         CHECK(!close(file));CHECK(!package_index_parse(body,at,argv[3],index));free(body);
+        /* Reuse the trusted catalog's existing artifact descriptor contract:
+         * declared package policy must agree with the pinned index bytes. */
+        ProviderEntry entry={.size=at};strcpy(entry.sha256,argv[3]);strcpy(entry.runtime,"system-runtime-v1");strcpy(entry.platform,index->platform);strcpy(entry.minimum_os,index->minimum_os);strcpy(entry.recipe,index->recipe);
+        file=open(argv[2],O_RDONLY|O_NOFOLLOW);CHECK(file>=0);CHECK(lseek(file,1,SEEK_SET)==1);
+        PackageIndex *catalog_index=calloc(1,sizeof(*catalog_index));CHECK(catalog_index);
+        CHECK(!package_catalog_read_index(&entry,file,NULL,NULL,catalog_index));CHECK(!strcmp(catalog_index->manifest_sha256,index->manifest_sha256));CHECK(catalog_index->count==index->count);CHECK(lseek(file,0,SEEK_CUR)==1);
+        strcpy(entry.recipe,"another-recipe");CHECK(!strcmp(package_catalog_read_index(&entry,file,NULL,NULL,catalog_index),"package_catalog_identity_conflict"));CHECK(!strcmp(catalog_index->recipe,index->recipe));strcpy(entry.recipe,index->recipe);
+        CHECK(!strcmp(package_catalog_read_index(&entry,file,cancel,NULL,catalog_index),"cancelled"));CHECK(!close(file));free(catalog_index);
         context.payload_path=argv[1];int root=open(argv[1],O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(root>=0);
         const char *e=package_backend_compatible(root,index,&context);if(e)fprintf(stderr,"backend compatibility: %s\n",e);CHECK(!e);
         if(argc>=5){

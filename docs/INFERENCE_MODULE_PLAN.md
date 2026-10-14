@@ -352,3 +352,11 @@ sanitizer gates (66 checks each) cover killed-publisher recovery, cross-package
 refusal, cancellation and reduced-quota preservation; local/HTTPS assembly passes.
 Continue installation recovery/removal and catalog dependencies in order. No
 lifecycle, scheduling or other downstream area is opened.
+
+Area 2 catalog binding now reuses ProviderEntry artifact pins to read complete
+package indexes, enforcing exact platform/minimum-OS/recipe agreement before
+payload acquisition. Native local/HTTPS normal and sanitizer gates pass, including
+mismatch/cancellation and descriptor-seek preservation. See
+[contract](../contracts/package-catalog-v1.md) and
+[evidence](PACKAGE_CATALOG_VERIFICATION.md). Continue full catalog/coordinator
+integration within installation; no downstream area is opened.
