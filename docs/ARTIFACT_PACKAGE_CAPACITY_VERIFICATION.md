@@ -8,7 +8,7 @@ Artifact/setup CLI host flags expose the bound; public requests cannot choose it
 
 Local macOS results:
 
-- `make test-install sanitize-install`:2342 checks per mode, including actual
+- `make test-install sanitize-install`:2340 normal/2342 sanitizer checks, including actual
   installation/publication of513 distinct three-byte artifacts, refusal at the
   configured boundary, the old16-entry default, independent byte quota under a
   larger capacity, retained status and offline verification without original input,
