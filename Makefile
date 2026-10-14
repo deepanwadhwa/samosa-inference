@@ -286,6 +286,18 @@ sanitize-package-tree: | build
 test: test-package-tree
 sanitize: sanitize-package-tree
 
+.PHONY: test-package-stage sanitize-package-stage
+PACKAGE_STAGE_SOURCES = src/package_stage.c $(PACKAGE_TREE_SOURCES)
+build/test-package-stage: tests/test_package_stage.c $(PACKAGE_STAGE_SOURCES) src/package_stage.h src/package_tree.h src/package_index.h src/artifact.h src/catalog.h src/platform.h src/json.h src/sha256.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc tests/test_package_stage.c $(PACKAGE_STAGE_SOURCES) -o $@
+test-package-stage: build/test-package-stage
+	./build/test-package-stage
+sanitize-package-stage: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Isrc tests/test_package_stage.c $(PACKAGE_STAGE_SOURCES) -o build/test-package-stage-sanitize
+	./build/test-package-stage-sanitize
+test: test-package-stage
+sanitize: sanitize-package-stage
+
 SETUP_SOURCES = src/setup_main.c $(CATALOG_SOURCES) src/remote_artifact.c src/artifact.c src/install.c
 SETUP_HEADERS = src/catalog.h src/artifact.h src/remote_artifact.h src/json.h src/private_key.h src/sha256.h
 build/samosa-inference-setup: $(SETUP_SOURCES) $(SETUP_HEADERS) | build

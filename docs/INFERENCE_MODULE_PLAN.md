@@ -190,3 +190,10 @@ mutations. It reuses artifact hashing and runs normal/sanitizer controlled gates
 plus integrity observations over existing actual Pocket/Kokoro trees. See
 [tree evidence](PACKAGE_TREE_VERIFICATION.md). Acquisition, coordinated quota,
 private staging/publication, compatibility and installed lifecycle remain open.
+
+Per-file staging checkpoint: verified cache descriptors can now be copied into
+private indexed payload names with fixed buffers, complete hash checks,
+no-replacement publication and controlled cleanup. See
+[staging evidence](PACKAGE_STAGE_VERIFICATION.md). This is not complete package
+installation; coordination, crash/resume ledger, backend compatibility, whole
+package publication and actual installation still remain required.

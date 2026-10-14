@@ -13,7 +13,8 @@ static int identifier(const char *s){
     for(;*s;s++)if(!((*s>='a'&&*s<='z')||(*s>='A'&&*s<='Z')||(*s>='0'&&*s<='9')||strchr("._-",*s)))return 0;
     return 1;
 }
-static int relative(const char *name,enum PackageFileRole role){
+int package_file_name_valid(const char *name,enum PackageFileRole role){
+    if(!name||!*name||strlen(name)>255||role<PACKAGE_ENGINE||role>PACKAGE_METADATA)return 0;
     unsigned components=0;
     for(const char *p=name;*p;){
         const char *begin=p;if(++components>8||*p=='.')return 0;
@@ -63,7 +64,7 @@ const char *package_index_parse(const char *bytes,size_t length,const char *expe
         PackageFile *file=&next->files[next->count];char selected[32];size_t size;
         if(j->tokens[t].type!=JT_OBJECT||j->tokens[t].count!=4||
            !field(j,t,"name",file->name,sizeof(file->name))||!field(j,t,"role",selected,sizeof(selected))||
-           !(file->role=role(selected))||!relative(file->name,file->role)||
+           !(file->role=role(selected))||!package_file_name_valid(file->name,file->role)||
            !field(j,t,"sha256",file->sha256,sizeof(file->sha256))||!pin(file->sha256)||
            !json_uint(j,json_get(j,t,"bytes"),&size)||!size||size>PACKAGE_PAYLOAD_BYTES-next->payload_bytes)goto done;
         for(size_t i=0;i<next->count;i++)if(conflicts(file->name,next->files[i].name)||

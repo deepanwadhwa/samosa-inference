@@ -17,4 +17,5 @@ const char *package_index_parse(const char *,size_t,const char *,PackageIndex *)
 /* Deployment/minimum-OS policy only; loader/backend compatibility and readiness
  * require their respective qualified package profiles after payload acquisition. */
 const char *package_index_qualify(const PackageIndex *,const char *,const char *);
+int package_file_name_valid(const char *,enum PackageFileRole);
 #endif
