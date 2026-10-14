@@ -204,3 +204,11 @@ queries do not trust marker presence alone. See
 [publication evidence](PACKAGE_PUBLICATION_VERIFICATION.md). The coordinator's
 crash/resume ledger, reservations, acquisition/compatibility profiles, public
 installation controls and actual installed-engine gates remain required.
+
+Concrete compatibility checkpoint: the speech package recipe now reuses complete
+native manifest and host/transitive loader inspection as a publication validator.
+Unknown recipes refuse. Positive native-format fixtures and actual pinned
+Pocket/Kokoro normal/sanitizer inspections pass. See
+[compatibility evidence](PACKAGE_COMPATIBILITY_VERIFICATION.md). Other backend
+recipes, complete acquisition/coordinator recovery and actual installation remain
+required; no full numbered area is closed by this recipe checkpoint.

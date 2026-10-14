@@ -387,6 +387,20 @@ sanitize-speech-package: | build
 test: test-speech-package
 sanitize: sanitize-speech-package
 
+.PHONY: test-package-compatibility sanitize-package-compatibility
+PACKAGE_COMPATIBILITY_SOURCES = src/package_compatibility.c $(PACKAGE_INDEX_SOURCES) $(SPEECH_PACKAGE_SOURCES) $(SPEECH_LOADER_SOURCES) src/engine_runtime.c
+build/test-package-compatibility: tests/test_package_compatibility.c $(PACKAGE_COMPATIBILITY_SOURCES) src/package_compatibility.h src/package_publish.h src/package_index.h src/catalog.h src/platform.h $(SPEECH_PACKAGE_HEADERS) $(SPEECH_LOADER_HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc tests/test_package_compatibility.c $(PACKAGE_COMPATIBILITY_SOURCES) -o $@
+test-package-compatibility: build/test-package-compatibility build/test-speech-worker build/speech-worker-fixture.so
+	./build/test-package-compatibility
+	python3 tests/package_compatibility_fixture.py $(abspath build/test-package-compatibility) $(abspath build/test-speech-worker) $(abspath build/speech-worker-fixture.so)
+sanitize-package-compatibility: build/test-speech-worker build/speech-worker-fixture.so | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DJSON_TOKENS_MAX=8192 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Isrc tests/test_package_compatibility.c $(PACKAGE_COMPATIBILITY_SOURCES) -o build/test-package-compatibility-sanitize
+	./build/test-package-compatibility-sanitize
+	python3 tests/package_compatibility_fixture.py $(abspath build/test-package-compatibility-sanitize) $(abspath build/test-speech-worker) $(abspath build/speech-worker-fixture.so)
+test: test-package-compatibility
+sanitize: sanitize-package-compatibility
+
 LIBRARY_RUNTIME_SOURCES = src/library_runtime.c src/engine_runtime.c
 LIBRARY_RUNTIME_HEADERS = src/library_runtime.h src/engine_runtime.h
 .PHONY: test-library-runtime sanitize-library-runtime test-speech-loader sanitize-speech-loader

@@ -1,0 +1,8 @@
+#ifndef SAMOSA_INFERENCE_PACKAGE_COMPATIBILITY_H
+#define SAMOSA_INFERENCE_PACKAGE_COMPATIBILITY_H
+#include "package_publish.h"
+typedef struct {const char *payload_path;const char *(*control)(void *);void *context;} PackageCompatibilityContext;
+/* Concrete recipe dispatch. Unknown recipes refuse; successful inspection does
+ * not launch a model or establish readiness/loaded runtime ABI. */
+const char *package_backend_compatible(int,const PackageIndex *,void *);
+#endif
