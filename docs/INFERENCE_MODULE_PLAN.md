@@ -197,3 +197,10 @@ no-replacement publication and controlled cleanup. See
 [staging evidence](PACKAGE_STAGE_VERIFICATION.md). This is not complete package
 installation; coordination, crash/resume ledger, backend compatibility, whole
 package publication and actual installation still remain required.
+
+Package completion checkpoint: a required trusted compatibility validator and
+synced full payload checks now gate a no-replacement completion record. Retained
+queries do not trust marker presence alone. See
+[publication evidence](PACKAGE_PUBLICATION_VERIFICATION.md). The coordinator's
+crash/resume ledger, reservations, acquisition/compatibility profiles, public
+installation controls and actual installed-engine gates remain required.

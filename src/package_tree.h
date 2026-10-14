@@ -8,4 +8,6 @@ typedef struct {size_t files,directories;uint64_t payload_bytes;char manifest_sh
  * reads. Output is untouched on failure. This proves observed bytes/identities,
  * not future immutability, named-root binding, loader compatibility or readiness. */
 const char *package_tree_verify(int,const PackageIndex *,const char *(*)(void *),void *,PackageTreeResult *);
+/* Installer variant syncs observed payload files/directories before returning. */
+const char *package_tree_sync(int,const PackageIndex *,const char *(*)(void *),void *,PackageTreeResult *);
 #endif

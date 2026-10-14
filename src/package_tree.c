@@ -15,7 +15,7 @@ typedef struct {char name[256];struct stat identity;} Directory;
 typedef struct {
     const PackageIndex *index;const char *(*control)(void *);void *context;
     struct stat root,files[PACKAGE_INDEX_FILES];Directory directories[TREE_DIRECTORIES];
-    size_t directory_count,visited;unsigned char found[PACKAGE_INDEX_FILES];int recheck;
+    size_t directory_count,visited;unsigned char found[PACKAGE_INDEX_FILES];int recheck,sync;
 } Tree;
 static int same(const struct stat *a,const struct stat *b){
     if(a->st_dev!=b->st_dev||a->st_ino!=b->st_ino||a->st_uid!=b->st_uid||a->st_mode!=b->st_mode||
@@ -40,6 +40,7 @@ static const char *regular(int parent,const char *leaf,const char *path,const st
     if(!e&&(!same(named,&before)||(tree->recheck&&!same(&before,&tree->files[i]))))e="package_tree_changed";
     const PackageFile *file=&tree->index->files[i];
     if(!e&&!tree->recheck)e=artifact_verify_controlled(fd,file->bytes,PACKAGE_PAYLOAD_BYTES,file->sha256,tree->control,tree->context);
+    if(!e&&tree->sync&&!tree->recheck&&fsync(fd))e="package_sync_failed";
     if(!e&&(fstat(fd,&after)||fstatat(parent,leaf,&rebound,AT_SYMLINK_NOFOLLOW)||!same(&before,&after)||!same(&after,&rebound)))e="package_tree_changed";
     if(!e){tree->files[i]=after;tree->found[i]=1;}
     if(fd>=0)close(fd);return e;
@@ -80,6 +81,7 @@ static const char *walk(int fd,const char *prefix,Tree *tree){
                 if(!e){child=openat(fd,entry->d_name,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
                     if(child<0||fstat(child,&held)||!same(&named,&held))e="package_tree_changed";}
                 if(!e)e=walk(child,path,tree);
+                if(!e&&tree->sync&&!tree->recheck&&fsync(child))e="package_sync_failed";
                 if(!e&&(fstat(child,&after)||fstatat(fd,entry->d_name,&rebound,AT_SYMLINK_NOFOLLOW)||
                     !same(&named,&after)||!same(&after,&rebound)))e="package_tree_changed";
                 if(child>=0)close(child);
@@ -89,7 +91,7 @@ static const char *walk(int fd,const char *prefix,Tree *tree){
     }
     closedir(directory);return e;
 }
-const char *package_tree_verify(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out){
+static const char *verify(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out,int sync){
     if(!index||!out||!index->count||index->count>PACKAGE_INDEX_FILES||
        !memchr(index->manifest_sha256,0,sizeof(index->manifest_sha256))||strlen(index->manifest_sha256)!=64||
        strspn(index->manifest_sha256,"0123456789abcdef")!=64)return "invalid_package_index";
@@ -104,7 +106,7 @@ const char *package_tree_verify(int root,const PackageIndex *index,const char *(
     if(expected!=index->payload_bytes)return "invalid_package_index";
     const char *e=control?control(context):NULL;if(e)return e;
     Tree *tree=calloc(1,sizeof(*tree));if(!tree)return "allocation_failed";
-    tree->index=index;tree->control=control;tree->context=context;
+    tree->index=index;tree->control=control;tree->context=context;tree->sync=sync;
     if(fstat(root,&tree->root)||!S_ISDIR(tree->root.st_mode)||!private(tree,&tree->root)||
        (fcntl(root,F_GETFL)&O_ACCMODE)!=O_RDONLY)e="unsupported_package_root";
     if(!e)e=walk(root,"",tree);
@@ -114,9 +116,12 @@ const char *package_tree_verify(int root,const PackageIndex *index,const char *(
     if(!e){tree->recheck=1;tree->visited=0;memset(tree->found,0,sizeof(tree->found));e=walk(root,"",tree);}
     if(!e)for(size_t i=0;i<index->count;i++)if(!tree->found[i]){e="package_file_missing";break;}
     struct stat after;
+    if(!e&&sync&&fsync(root))e="package_sync_failed";
     if(!e&&(fstat(root,&after)||!same(&tree->root,&after)))e="package_tree_changed";
     if(!e)e=control?control(context):NULL;
     if(!e){PackageTreeResult result={.files=index->count,.directories=tree->directory_count,.payload_bytes=expected};
         strcpy(result.manifest_sha256,index->manifest_sha256);*out=result;}
     free(tree);return e;
 }
+const char *package_tree_verify(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out){return verify(root,index,control,context,out,0);}
+const char *package_tree_sync(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out){return verify(root,index,control,context,out,1);}
