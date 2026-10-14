@@ -34,6 +34,8 @@ int main(int argc,char **argv) {
         else if(!strcmp(key,"--state")){bit=2;c.state_path=value;}
         else if(!strcmp(key,"--byte-ceiling")){bit=4;if(!number(value,&c.byte_ceiling))return 2;}
         else if(!strcmp(key,"--disk-ceiling")){bit=8;if(!number(value,&c.disk_ceiling))return 2;}
+        else if(!strcmp(key,"--artifact-capacity")){uint64_t capacity;bit=64;
+            if(!number(value,&capacity)||!capacity||capacity>ARTIFACT_CAPACITY_MAX)return 2;c.artifact_capacity=(size_t)capacity;}
         else if(!strcmp(key,"--ca-file")){bit=16;remote.ca_file=value;}
         else if(!strcmp(key,"--bearer-key-file")){bit=32;key_path=value;}
         else if(!strcmp(key,"--redirect-host")){if(remote.redirect_count==8)return 2;remote.redirect_hosts[remote.redirect_count++]=value;}

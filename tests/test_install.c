@@ -104,6 +104,23 @@ int main(int argc,char **argv){
         fd=open(source,O_WRONLY);CHECK(fd>=0);CHECK(pwrite(fd,data,1,0)==1);CHECK(!close(fd));
         const char *e=artifact_install(&c);if(i<16)CHECK(!e);else CHECK(e&&!strcmp(e,"artifact_quota"));
     }
+    /* A maximal512-file package needs another identity for its pinned index.
+     * Exercise actual acquisition/publication of513 distinct payloads, retaining
+     * the old default limit and independent byte-quota enforcement. */
+    fixture(root,source,state,&c,sha);c.artifact_capacity=513;c.size=c.byte_ceiling=3;c.disk_ceiling=3084;
+    char first_sha[65];
+    for(unsigned i=0;i<514;i++){
+        unsigned char small[]={(unsigned char)i,(unsigned char)(i>>8),'x'};
+        hash_bytes(small,sizeof(small),sha);if(!i)strcpy(first_sha,sha);
+        fd=open(source,O_WRONLY|O_TRUNC);CHECK(fd>=0);CHECK(write(fd,small,sizeof(small))==sizeof(small));CHECK(!close(fd));
+        const char *e=artifact_install(&c);if(i<513)CHECK(!e);else CHECK(e&&!strcmp(e,"artifact_quota"));
+    }
+    strcpy(sha,first_sha);status(&c,"verified");
+    c.artifact_capacity=0;status(&c,"verified");CHECK(!strcmp(artifact_install(&c),"artifact_quota"));
+    c.artifact_capacity=1024;c.disk_ceiling=3076;CHECK(!strcmp(artifact_install(&c),"artifact_quota"));
+    c.disk_ceiling=3084;CHECK(!artifact_install(&c));
+    fixture(root,source,state,&c,sha);c.artifact_capacity=ARTIFACT_CAPACITY_MAX+1u;
+    CHECK(!strcmp(artifact_install(&c),"invalid_artifact_configuration"));CHECK(access(state,F_OK)<0&&errno==ENOENT);
     fixture(root,source,state,&c,sha);fd=open(argv[0],O_RDONLY);CHECK(fd>=0);struct stat executable_before;CHECK(!fstat(fd,&executable_before));
     Sha256 hash;sha256_init(&hash);unsigned char block[65536];
     for(;;){ssize_t n=read(fd,block,sizeof(block));CHECK(n>=0);if(!n)break;sha256_update(&hash,block,(size_t)n);}

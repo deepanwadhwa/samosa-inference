@@ -1,6 +1,9 @@
 #ifndef SAMOSA_ARTIFACT_H
 #define SAMOSA_ARTIFACT_H
 #include <stdint.h>
+#include <stddef.h>
+#define ARTIFACT_CAPACITY_DEFAULT 16u
+#define ARTIFACT_CAPACITY_MAX 1024u
 /* The caller owns the descriptor. Verification never seeks, closes, or writes it.
  * Regular immutable files only; a successful read proves this observation, not
  * future immutability or a relationship with an external engine. */
@@ -21,6 +24,9 @@ struct ArtifactConfig {
      * append only after proving retained bytes; publication stays here. */
     const char *(*acquire)(void *,int,int,uint64_t,const ArtifactConfig *);
     void *acquisition;
+    /* Trusted shared-store bound. Zero preserves the original16 identities;
+     * package coordination may explicitly reserve a larger bounded namespace. */
+    size_t artifact_capacity;
 #ifdef SAMOSA_INFERENCE_TEST_FAULTS
     void (*checkpoint)(const char *,void *);void *checkpoint_context;
 #endif

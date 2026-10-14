@@ -17,6 +17,7 @@ static int number(const char *text,uint64_t *result) {
 }
 int main(int argc,char **argv) {
     ArtifactConfig c={0};
+    int capacity_seen=0;
 #ifdef SAMOSA_REMOTE_ARTIFACTS
     RemoteArtifactSource remote={0};
     const char *key_path=NULL;char key_bytes[130]={0};
@@ -30,6 +31,9 @@ int main(int argc,char **argv) {
         else if(!strcmp(key,"--size")){if(!number(value,&c.size))return 2;}
         else if(!strcmp(key,"--byte-ceiling")){if(!number(value,&c.byte_ceiling))return 2;}
         else if(!strcmp(key,"--disk-ceiling")){if(!number(value,&c.disk_ceiling))return 2;}
+        else if(!strcmp(key,"--artifact-capacity")){uint64_t capacity;
+            if(capacity_seen++||!number(value,&capacity)||!capacity||capacity>ARTIFACT_CAPACITY_MAX)return 2;
+            c.artifact_capacity=(size_t)capacity;}
 #ifdef SAMOSA_REMOTE_ARTIFACTS
         else if(!strcmp(key,"--url"))remote.url=value;
         else if(!strcmp(key,"--ca-file"))remote.ca_file=value;

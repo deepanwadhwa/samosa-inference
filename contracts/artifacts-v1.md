@@ -20,11 +20,23 @@ Model-free builds use libc only for this manager, with no curl or model weights.
 Local regular-file import is implemented. The optional curl-linked downloader
 and catalog setup adapter provide HTTPS acquisition; see remote-artifacts-v1.md
 and provider-catalog-v1.md. The default artifact manager remains libc-only.
-Content artifact_id is SHA256 with an exact configured size. At most16 identities
+Content artifact_id is SHA256 with an exact configured size. By default16 identities
 are retained in one private state root with one nonblocking install lease.
+Trusted `ArtifactConfig.artifact_capacity` may explicitly set1..1024 identities;
+zero retains the original default. Artifact/setup CLIs expose the equivalent
+private `--artifact-capacity` singleton flag (explicit zero, invalid numbers,
+duplicates and values above1024 refuse before state creation). Public JSON cannot
+select it. A512-file package plus its index can use an explicit513-entry bound.
+Lowering the configured capacity refuses further install/resume when the root
+already exceeds that bound; it never evicts entries. Point status remains readable
+for a retained verified identity without enumerating the larger store.
 Conservative disk admission reserves twice declared size for each retained entry
 (stage/publication can share an inode). No eviction or deletion/replacement of
 unknown state. Quota/corruption ambiguity refuses without destructive recovery.
+That reservation bounds logical payload/staging bytes. Filesystem allocation and
+bounded per-entry metadata overhead are not a physical disk quota, and additional
+multi-file package copies/publication must be accounted separately by their
+coordinator. Increasing identity capacity does not increase the byte budget.
 
 Successful install/resume returns status=verified, activation=not_requested and
 readiness=unqualified. Verified bytes do not establish a relationship with an

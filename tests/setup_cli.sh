@@ -52,6 +52,7 @@ checks=$((checks+4))
 printf '%s' "$status" | "$binary" --catalog-file "$fixture/catalog.json" --state "$fixture/state" --byte-ceiling 3 --disk-ceiling 96 > "$fixture/status"
 cmp "$fixture/verified" "$fixture/status";checks=$((checks+1))
 expect_error invalid_request '{"contract_version":1,"op":"provider_install","provider_id":"fixture","url":"https://override.invalid"}' --catalog-file "$fixture/catalog.json"
+expect_error invalid_request '{"contract_version":1,"op":"provider_install","provider_id":"fixture","artifact_capacity":1024}' --catalog-file "$fixture/catalog.json"
 expect_error invalid_request '{"contract_version":1,"op":"provider_catalog","provider_id":"fixture"}' --catalog-file "$fixture/catalog.json"
 expect_error invalid_request '{"contract_version":1,"op":"provider_install"}' --catalog-file "$fixture/catalog.json"
 expect_error unsupported_operation '{"contract_version":1,"op":"provider_activate","provider_id":"fixture"}' --catalog-file "$fixture/catalog.json"
@@ -89,6 +90,14 @@ cmp "$fixture/verified" "$fixture/last-good";checks=$((checks+1))
 kill "$server_pid";wait "$server_pid" || true;server_pid=
 printf '%s' "$install" | "$binary" --catalog-file "$fixture/catalog.json" --state "$fixture/state" --byte-ceiling 3 --disk-ceiling 96 > "$fixture/retry"
 cmp "$fixture/verified" "$fixture/retry";checks=$((checks+1))
+printf '%s' "$install" | "$binary" --catalog-file "$fixture/catalog.json" --state "$fixture/state" --byte-ceiling 3 --disk-ceiling 96 --artifact-capacity 1024 > "$fixture/capacity-retry"
+cmp "$fixture/verified" "$fixture/capacity-retry";checks=$((checks+1))
+for capacity in 0 1025 -1 1.5; do
+    printf '%s' "$install" | "$binary" --catalog-file "$fixture/catalog.json" --state "$fixture/invalid-capacity" --byte-ceiling 3 --disk-ceiling 96 --artifact-capacity "$capacity" > "$fixture/capacity-error" && rc=0 || rc=$?
+    [ "$rc" = 2 ];checks=$((checks+1))
+done
+printf '%s' "$install" | "$binary" --catalog-file "$fixture/catalog.json" --state "$fixture/invalid-capacity" --byte-ceiling 3 --disk-ceiling 96 --artifact-capacity 17 --artifact-capacity 18 > "$fixture/capacity-error" && rc=0 || rc=$?
+[ "$rc" = 2 ];[ ! -e "$fixture/invalid-capacity" ];checks=$((checks+1))
 mkfifo "$fixture/server-input"
 "$openssl_bin" s_server -quiet -ign_eof -accept "127.0.0.1:$port" -cert "$fixture/cert.pem" -key "$fixture/key.pem" < "$fixture/server-input" > "$fixture/stall-server.log" 2>&1 &
 server_pid=$!

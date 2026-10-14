@@ -18,7 +18,7 @@ typedef struct {int root,lock,entry,stage;struct stat root_identity;} Store;
 static const char *valid(const ArtifactConfig *c) {
     if(!c || !c->state_path || c->state_path[0]!='/' || !c->sha256 ||
        strlen(c->sha256)!=64 || !c->size || c->size>INT64_MAX ||
-       c->size>c->byte_ceiling || c->size>c->disk_ceiling/2)
+       c->size>c->byte_ceiling || c->size>c->disk_ceiling/2 || c->artifact_capacity>ARTIFACT_CAPACITY_MAX)
         return "invalid_artifact_configuration";
     for(size_t i=0;i<64;i++)if(!strchr("0123456789abcdef",c->sha256[i]))
         return "invalid_artifact_configuration";
@@ -85,10 +85,11 @@ static int write_all(int fd,const void *data,size_t n) {
 static const char *quota(const ArtifactConfig *c,Store *s,int adding) {
     int scan=openat(s->root,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);
     DIR *d=scan>=0?fdopendir(scan):NULL;if(!d){if(scan>=0)close(scan);return "artifact_state_unavailable";}
-    unsigned count=0;uint64_t reserved=0;const char *error=NULL;struct dirent *e;
+    size_t capacity=c->artifact_capacity?c->artifact_capacity:ARTIFACT_CAPACITY_DEFAULT;
+    size_t count=0;uint64_t reserved=0;const char *error=NULL;struct dirent *e;
     while((e=readdir(d))) {
         if(!strcmp(e->d_name,".")||!strcmp(e->d_name,"..")||!strcmp(e->d_name,"install.lock"))continue;
-        if(++count>16 || strlen(e->d_name)!=64){error="artifact_quota";break;}
+        if(++count>capacity || strlen(e->d_name)!=64){error="artifact_quota";break;}
         int entry=openat(s->root,e->d_name,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
         int meta=entry>=0?openat(entry,"identity",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC):-1;
         char text[128];ssize_t n=identity_read(meta,text);
@@ -101,7 +102,7 @@ static const char *quota(const ArtifactConfig *c,Store *s,int adding) {
         reserved+=2*size;
     }
     closedir(d);
-    if(!error && adding && (count>=16 || reserved>c->disk_ceiling-2*c->size))error="artifact_quota";
+    if(!error && adding && (count>=capacity || reserved>c->disk_ceiling-2*c->size))error="artifact_quota";
     return error;
 }
 static const char *open_entry(const ArtifactConfig *c,Store *s,int create) {

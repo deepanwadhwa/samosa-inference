@@ -48,4 +48,6 @@ Native API: `package_index_parse` in `package_index.h` validates the complete
 manifest pin and metadata; `package_index_qualify` checks explicit deployment/OS
 policy. These are acquisition foundations. No public package-install operation
 or multi-file publisher is claimed by this schema alone. Existing v1 single-file
-catalog/install contracts retain their16-artifact store limit.
+catalog/install contracts retain their16-artifact default. Their trusted host
+configuration can explicitly select a bounded larger store for package work;
+complete multi-file acquisition/publication remains a separate acceptance gate.

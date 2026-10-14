@@ -29,11 +29,15 @@ for model-free component operation. No production engine/model entry is inferred
 from controlled fixture catalogs.
 
 Optional curl-linked samosa-inference-setup takes host flags --catalog-file,
---state, --byte-ceiling, --disk-ceiling, --ca-file, --bearer-key-file and up to8
+--state, --byte-ceiling, --disk-ceiling, --artifact-capacity, --ca-file, --bearer-key-file and up to8
 --redirect-host values. Singleton flags cannot repeat. Native OS/architecture is
 observed, with no public or host flag override. A minimum OS failure precedes
 install state creation. All entries share the install root's global lease and
 aggregate quota; the root already namespaces by pinned artifact identity.
+Capacity defaults to16; an explicitly configured1..1024 bound supports multi-file
+acquisition coordination while retaining the original byte reservation checks.
+This field is a trusted host argument, never part of an install request. It does
+not turn the existing single-file setup adapter into a complete package installer.
 
 One JSON request, maximum4096 bytes, returns one JSON response. Exactly
 {contract_version:1,op:"provider_catalog"} lists generic descriptors, supported
