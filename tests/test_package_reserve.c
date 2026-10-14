@@ -10,11 +10,16 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <signal.h>
 static unsigned checks;
 #define CHECK(x) do{checks++;if(!(x)){fprintf(stderr,"reservation failure %d: %s\n",__LINE__,#x);exit(1);}}while(0)
 static const char *cancel(void *unused){(void)unused;return "deadline_exceeded";}
 static const char *pending_cancel(void *opaque){int pool=*(int *)opaque;struct stat s;
     return !fstatat(pool,".reservation.pending",&s,AT_SYMLINK_NOFOLLOW)?"cancelled":NULL;
+}
+static const char *pending_death(void *opaque){int pool=*(int *)opaque;struct stat s;
+    if(!fstatat(pool,".reservation.pending",&s,AT_SYMLINK_NOFOLLOW))kill(getpid(),SIGKILL);
+    return NULL;
 }
 int main(void){
     char root[]="/tmp/samosa-reserve-XXXXXX";CHECK(mkdtemp(root));int pool=open(root,O_RDONLY|O_DIRECTORY);CHECK(pool>=0);
@@ -28,7 +33,17 @@ int main(void){
     /* Cancellation before publication leaves no charged record in the pool. */
     int inspection=openat(pool,".",O_RDONLY|O_DIRECTORY);CHECK(inspection>=0);DIR *entries=fdopendir(inspection);CHECK(entries);struct dirent *entry;
     while((entry=readdir(entries)))CHECK(!strcmp(entry->d_name,".")||!strcmp(entry->d_name,"..")||!strcmp(entry->d_name,"reserve.lock"));CHECK(!closedir(entries));
+    /* A real killed publisher leaves a proposal; a lower ceiling refuses it
+     * without changing names, and a permitted retry commits one charge. */
+    pid_t publisher=fork();CHECK(publisher>=0);if(!publisher)_exit(package_reserve_controlled(pool,package[0],index,20,2,pending_death,&pool,&result)?2:3);
+    int publisher_status;CHECK(waitpid(publisher,&publisher_status,0)==publisher&&WIFSIGNALED(publisher_status)&&WTERMSIG(publisher_status)==SIGKILL);
+    CHECK(!strcmp(package_reserve(pool,package[1],index,20,2,&result),"unsafe_package_reservation"));CHECK(faccessat(pool,".reservation.pending",F_OK,0)==0);
+    CHECK(!strcmp(package_reserve_controlled(pool,package[0],index,20,2,pending_cancel,&pool,&result),"cancelled"));CHECK(faccessat(pool,".reservation.pending",F_OK,0)==0);
+    CHECK(!strcmp(package_reserve(pool,package[0],index,9,2,&result),"package_reservation_quota"));CHECK(faccessat(pool,".reservation.pending",F_OK,0)==0);
     CHECK(!package_reserve(pool,package[0],index,20,2,&result));CHECK(result.packages==1&&result.reserved_bytes==10);
+    CHECK(faccessat(pool,".reservation.pending",F_OK,0)<0);
+    struct stat package_identity;CHECK(!fstat(package[0],&package_identity));char record_name[128];snprintf(record_name,sizeof(record_name),"%s-%llx-%llx",index->manifest_sha256,(unsigned long long)package_identity.st_dev,(unsigned long long)package_identity.st_ino);
+    CHECK(!linkat(pool,record_name,pool,".reservation.pending",0));CHECK(!package_reserve(pool,package[0],index,20,2,&result));CHECK(result.packages==1&&result.reserved_bytes==10);CHECK(faccessat(pool,".reservation.pending",F_OK,0)<0);
     CHECK(!package_reserve(pool,package[0],index,20,2,&result));CHECK(result.packages==1&&result.reserved_bytes==10);
     /* A committed reservation survives process exit without automatic release. */
     pid_t child=fork();CHECK(child>=0);if(!child)_exit(package_reserve(pool,package[1],index,20,2,&result)?1:0);

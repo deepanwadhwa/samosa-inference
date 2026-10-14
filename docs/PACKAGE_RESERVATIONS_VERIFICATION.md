@@ -43,3 +43,22 @@ The existing local compatibility fixture also passed both variants. Clang analys
 of the modified reservation module emitted no diagnostics. This adds cooperative
 request control and does not establish hard filesystem syscall deadlines,
 reclamation, crash recovery or the public installation coordinator.
+
+## Reservation publication recovery
+
+Normal and ASan/UBSan reservation gates pass with 66 checks each. A real child
+publisher is killed after writing/syncing its reservation proposal. The parent
+observes SIGKILL termination, verifies that another package cannot adopt it,
+checks cancellation and a reduced ceiling both retain the proposal, then commits
+exactly one charge under an admissible ceiling. A reconstructed known record/
+pending two-link interval also recovers without double charging. Existing shared
+quota, conflicting identity, foreign pending metadata, process-exit persistence
+and contention checks remain covered. Final unit log:
+`/private/tmp/samosa-reservation-publication-recovery-final.log`.
+
+Local/cache and complete production HTTPS assembly gates passed normal and
+ASan/UBSan with reservation recovery enabled; log:
+`/private/tmp/samosa-reservation-publication-recovery.log`. Clang static analysis
+of the modified reservation code emitted no diagnostics. This is installation
+recovery work, not live engine scheduling or automatic reclamation. Remaining
+bootstrap/torn-state, owned removal and catalog requirements stay open in area 2.

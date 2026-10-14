@@ -345,3 +345,10 @@ payloads. Normal/sanitizer publication (83 checks each) and local/HTTPS fixture
 gates pass, including observed killed-child recovery and failed-compatibility
 preservation. Continue remaining installation recovery before catalog closure;
 no downstream implementation area is opened.
+
+Area 2 now recovers matching reservation proposals and verified two-link metadata
+aliases only after the complete shared pool passes its byte/count policy. Normal/
+sanitizer gates (66 checks each) cover killed-publisher recovery, cross-package
+refusal, cancellation and reduced-quota preservation; local/HTTPS assembly passes.
+Continue installation recovery/removal and catalog dependencies in order. No
+lifecycle, scheduling or other downstream area is opened.

@@ -43,3 +43,18 @@ the pending inode created by that call, leaves no charged record, and prevents
 payload creation. A reservation already committed remains charged if outer work
 subsequently cancels. Filesystem calls retain platform latency. The original
 `package_reserve` entry point remains a wrapper without a control hook.
+
+## Interrupted reservation publication
+
+A complete matching `.reservation.pending` proposal for the exact held package
+root/index/byte count can now resume publication under the pool lease. The entire
+existing pool is parsed and checked against the current byte/count ceiling before
+any recovery mutation. A lower ceiling, cancellation, another package tuple or
+malformed metadata refuses while retaining the proposal. A known record/pending
+pair bound to the same matching two-link inode is counted once, then its pending
+alias is removed only after quota validation. Syncing and single-link/name checks
+finish before returning the observed charge. No reservation is expired or released.
+
+Other-package pending state is not adopted by a new requester. The coordinator
+must resume the owning package. Torn/unverifiable proposals and bootstrap state
+still refuse; reclamation and the remaining installation requirements are unchanged.
