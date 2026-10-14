@@ -100,6 +100,7 @@ static const char *mach(int fd,const unsigned char *h,uint64_t size,const Librar
     if(!commands)return "resource_limit";
     const char *e=NULL;if(!read_at(fd,commands,length,32,size))e="invalid_library_loader";
     size_t offset=0;unsigned min_count=0,id_count=0,interpreter_count=0,entry_count=0;
+    uint64_t entry_offset=0;
     for(uint32_t i=0;!e&&i<count;i++) {
         if(offset>length||length-offset<8){e="invalid_library_loader";break;}
         unsigned char *c=commands+offset;uint32_t cmd=u32(c),n=u32(c+4);
@@ -109,6 +110,7 @@ static const char *mach(int fd,const unsigned char *h,uint64_t size,const Librar
             else if(strcmp(path,"/usr/lib/dyld"))e="unqualified_library_dependencies";
         }else if(cmd==0x80000028&&executable){
             if(n!=24||entry_count++||!u64(c+8)||u64(c+8)>=size)e="invalid_library_loader";
+            else entry_offset=u64(c+8);
         }else if(cmd==0x27||cmd==0xe||cmd==0x20)e="unqualified_library_dependencies";
         else if(cmd==0x8000001c) {
             const char *path=n>=12?cstring(c,n,u32(c+8),12):NULL;
@@ -145,6 +147,14 @@ static const char *mach(int fd,const unsigned char *h,uint64_t size,const Librar
     }
     if(!e&&(offset!=length||min_count!=1||id_count!=(executable?0u:1u)||!image->minimum_os||
         (executable&&(interpreter_count!=1||entry_count!=1))))e="invalid_library_loader";
+    /* Resolve LC_MAIN only after all segment commands have been validated;
+     * its file offset must belong to one executable file-backed segment. */
+    if(!e&&executable){unsigned mapped_entry=0;size_t at=0;
+        for(uint32_t i=0;i<count;i++){const unsigned char *c=commands+at;
+            if(u32(c)==0x19&&(u32(c+60)&4)&&entry_offset>=u64(c+40)&&entry_offset-u64(c+40)<u64(c+48))mapped_entry++;
+            at+=u32(c+4);}
+        if(mapped_entry!=1)e="invalid_library_loader";
+    }
     if(!e&&image->minimum_os>policy->os_version)e="incompatible_library_os";
     free(commands);return e;
 }
@@ -201,11 +211,12 @@ static const char *elf(int fd,const unsigned char *h,uint64_t size,const Library
     uint32_t count=(unsigned)h[56]|(unsigned)h[57]<<8;
     if(h[54]!=56||h[55]||!count||count>128)return "library_loader_limit";
     unsigned char headers[128*56];if(!read_at(fd,headers,count*56,u64(h+32),size))return "invalid_library_loader";
-    uint64_t dyn_offset=0,dyn_size=0;unsigned dyn_count=0,interpreter_count=0;
+    uint64_t dyn_offset=0,dyn_size=0;unsigned dyn_count=0,interpreter_count=0,mapped_entry=0;
     for(uint32_t i=0;i<count;i++) {
         const unsigned char *p=headers+i*56;uint64_t offset=u64(p+8),length=u64(p+32);
         if(offset>size||length>size-offset||length>u64(p+40))return "invalid_library_loader";
         if(u32(p)==2){dyn_offset=offset;dyn_size=length;dyn_count++;}
+        if(executable&&u32(p)==1&&(u32(p+4)&1)&&u64(h+24)>=u64(p+16)&&u64(h+24)-u64(p+16)<length)mapped_entry++;
         if(u32(p)==3){char path[128];
             if(!executable)return "unqualified_library_dependencies";
             if(interpreter_count++||length<2||length>sizeof(path)||!read_at(fd,path,(size_t)length,offset,size)||path[length-1]||strlen(path)!=length-1)return "invalid_library_loader";
@@ -214,7 +225,7 @@ static const char *elf(int fd,const unsigned char *h,uint64_t size,const Library
             if(strcmp(path,primary)&&strcmp(path,alternate))return "unqualified_library_dependencies";
         }
     }
-    if(executable&&interpreter_count!=1)return "invalid_library_loader";
+    if(executable&&(interpreter_count!=1||mapped_entry!=1))return "invalid_library_loader";
     if(dyn_count!=1||!dyn_size||dyn_size>16384||dyn_size%16)return "library_loader_limit";
     unsigned char dynamic[16384];if(!read_at(fd,dynamic,(size_t)dyn_size,dyn_offset,size))return "invalid_library_loader";
     uint64_t strings=0,string_size=0,version_address=0,version_count=0;unsigned terminated=0;

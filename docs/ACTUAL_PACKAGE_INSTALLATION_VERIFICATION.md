@@ -34,10 +34,26 @@ writes before the hash verifier's metadata snapshots lets the full gate pass;
 normal and ASan/UBSan staging checks also pass. The complete actual Pocket
 native/HTTPS/setup gate also passes with both native harness and setup built under
 ASan/UBSan; log `/private/tmp/samosa-pocket-complete-install-sanitize.log`.
-Kokoro complete installation is being rerun and is not yet qualified. Its first
-run passed native installation but exposed a public setup manifest-parser budget
+Kokoro's first run passed native installation but exposed a public setup manifest-parser budget
 mismatch. Speech manifests now own their 8,192-token bound instead of inheriting
 the public request parser's 256-token default or caller build flags.
 This proves observed installation and static compatibility only. It does not
 publish a production distribution catalog, load a model, prove readiness,
 qualify another platform, or close remaining component-2 requirements.
+
+## Kokoro, macOS arm64
+
+The complete normal native/HTTPS/public-setup gate passed after the manifest
+budget fix. It exercises the same checks listed above, including all nested
+espeak resources and duplicated content identities in the verified cache.
+
+- Native manifest: `8d3ce27844a7147201dbb0520d7407d861de52b9c729e7140175484a7a848aa7`
+- Complete index: `abacddef8cd0e33e7d4d07c0bc434c0996a2b4ab4429fece432897582bb88c81`
+- Complete payload: 365 files, 218,337,007 bytes.
+- Recipe/host/minimum OS declaration: `sherpa-speech-package-v1`, `macos-arm64`, `14.0`.
+- Log: `/private/tmp/samosa-kokoro-complete-install.log`.
+
+Use the command above with `--actual-package /private/tmp/samosa-kokoro-pinned.s5_d_czq`
+and the Kokoro native manifest pin. Actual Kokoro sanitizer qualification remains
+pending; no other platform, runtime readiness or production distribution catalog
+is claimed from this gate.
