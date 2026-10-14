@@ -23,4 +23,9 @@ typedef struct {
  * copy_ceiling bounds payload copies only: the caller owns global reservation,
  * acquisition, directory identity and recovery of interrupted temporary files. */
 const char *package_assemble(const PackageAssembly *,PackageTreeResult *);
+typedef struct {const char *state;PackageTreeResult package;} PackageAssemblyStatus;
+/* No state creation, reservation, acquisition or copying. Verified installation
+ * proves observed bytes/static compatibility, never loaded readiness. Other
+ * states carry no package receipt. Output is untouched on failure. */
+const char *package_assembly_status(const PackageAssembly *,PackageAssemblyStatus *);
 #endif

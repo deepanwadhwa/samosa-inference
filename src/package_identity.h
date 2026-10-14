@@ -5,4 +5,6 @@
  * pinned index across restarts. This is ownership/identity metadata, not payload
  * integrity, completion, readiness or permission to recover unknown inodes. */
 const char *package_identity_bind(int,const PackageIndex *,const char *(*)(void *),void *);
+/* Read-only observation; absent identity returns package_identity_absent. */
+const char *package_identity_verify(int,const PackageIndex *,const char *(*)(void *),void *);
 #endif

@@ -40,12 +40,14 @@ int main(int argc,char **argv){
             int directory=open(argv[4],O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(directory>=0);
             char destination[4096];CHECK(snprintf(destination,sizeof(destination),"%s/payload",argv[4])<(int)sizeof(destination));
             PackageAssembly assembly={.directory=directory,.source=root,.index=index,.payload_path=destination,.copy_ceiling=index->payload_bytes};
-            PackageTreeResult observed;
+            PackageTreeResult observed;PackageAssemblyStatus status;
+            CHECK(!package_assembly_status(&assembly,&status));CHECK(!strcmp(status.state,"unregistered"));CHECK(faccessat(directory,"assemble.lock",F_OK,0)<0);
             assembly.copy_ceiling=index->payload_bytes-1;
             CHECK(!strcmp(package_assemble(&assembly,&observed),"package_copy_quota_exceeded"));
             CHECK(faccessat(directory,"payload",F_OK,0)<0);
             assembly.copy_ceiling=index->payload_bytes;
             int lease=openat(directory,"assemble.lock",O_RDWR|O_CREAT|O_NOFOLLOW,0600);CHECK(lease>=0);CHECK(!flock(lease,LOCK_EX|LOCK_NB));
+            CHECK(!package_assembly_status(&assembly,&status));CHECK(!strcmp(status.state,"busy"));CHECK(!status.package.files);
             CHECK(!strcmp(package_assemble(&assembly,&observed),"package_assembly_busy"));CHECK(!close(lease));
             /* A retained verified file survives resumption without replacement. */
             CHECK(!mkdirat(directory,"payload",0700));
@@ -54,6 +56,11 @@ int main(int argc,char **argv){
             CHECK(!package_stage_file(retained,index,0,first,NULL,NULL));CHECK(!close(first));
             struct stat before,after;CHECK(!fstatat(retained,index->files[0].name,&before,AT_SYMLINK_NOFOLLOW));
             CHECK(!package_assemble(&assembly,&observed));CHECK(observed.files==index->count);
+            CHECK(!package_assembly_status(&assembly,&status));CHECK(!strcmp(status.state,"installed_verified"));CHECK(status.package.files==index->count);
+            PackageAssembly inspection=assembly;inspection.source=-1;inspection.source_open=NULL;inspection.copy_ceiling=0;
+            CHECK(!package_assembly_status(&inspection,&status));CHECK(!strcmp(status.state,"installed_verified"));
+            inspection.control=cancel;memset(&status,0xa5,sizeof(status));PackageAssemblyStatus cancelled_status=status;
+            CHECK(!strcmp(package_assembly_status(&inspection,&status),"cancelled"));CHECK(!memcmp(&status,&cancelled_status,sizeof(status)));
             CHECK(!fstatat(retained,index->files[0].name,&after,AT_SYMLINK_NOFOLLOW));CHECK(before.st_ino==after.st_ino&&before.st_dev==after.st_dev);CHECK(!close(retained));
             CHECK(!package_assemble(&assembly,&observed));
             /* A changed pin cannot reuse this package directory, even after a
@@ -106,6 +113,7 @@ int main(int argc,char **argv){
             int changed=openat(payload,index->files[0].name,O_RDONLY|O_NOFOLLOW);CHECK(changed>=0);CHECK(!fchmod(changed,0600));CHECK(!close(changed));
             changed=openat(payload,index->files[0].name,O_WRONLY|O_NOFOLLOW);CHECK(changed>=0);CHECK(pwrite(changed,"X",1,0)==1);CHECK(!close(changed));
             CHECK(package_assemble(&assembly,&observed));
+            memset(&status,0xa5,sizeof(status));PackageAssemblyStatus unchanged=status;CHECK(package_assembly_status(&assembly,&status));CHECK(!memcmp(&status,&unchanged,sizeof(status)));
             changed=openat(payload,index->files[0].name,O_RDONLY|O_NOFOLLOW);CHECK(changed>=0);char byte;CHECK(pread(changed,&byte,1,0)==1&&byte=='X');CHECK(!close(changed));
             CHECK(!close(payload));CHECK(!close(directory));
             printf("PASS staged native speech publication: %zu files; compatibility, completion, revalidation and cancellation\n",index->count);
@@ -127,6 +135,7 @@ int main(int argc,char **argv){
             assembly.control=reservation_interrupt;assembly.context=&reservation_pool;
             CHECK(!strcmp(package_assemble(&assembly,&observed),"deadline_exceeded"));
             CHECK(faccessat(remote_directory,"payload",F_OK,0)<0);CHECK(faccessat(reservation_pool,".reservation.pending",F_OK,0)<0);
+            PackageAssemblyStatus incomplete;CHECK(!package_assembly_status(&assembly,&incomplete));CHECK(!strcmp(incomplete.state,"incomplete_unverified"));CHECK(!incomplete.package.files);
             assembly.control=NULL;assembly.context=NULL;
             CHECK(!package_assemble(&assembly,&observed));CHECK(observed.files==index->count);
             remote.files=NULL;CHECK(!package_assemble(&assembly,&observed));

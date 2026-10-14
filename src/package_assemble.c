@@ -68,3 +68,44 @@ const char *package_assemble(const PackageAssembly *c,PackageTreeResult *out){
     if(!e)*out=observed;
     if(payload>=0)close(payload);close(lock);return e;
 }
+
+const char *package_assembly_status(const PackageAssembly *c,PackageAssemblyStatus *out){
+    if(!c||!c->index||!out||!c->payload_path||c->payload_path[0]!='/')return "invalid_package_assembly";
+    const char *e=c->control?c->control(c->context):NULL;if(e)return e;
+    if(!private_directory(c->directory))return "unsafe_package_assembly";
+    PackageAssemblyStatus result={.state="unregistered"};int payload=-1;
+    int lock=openat(c->directory,"assemble.lock",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+    if(lock<0){if(errno!=ENOENT)return "unsafe_package_assembly";}
+    else{struct stat s;
+        if(fstat(lock,&s)||!S_ISREG(s.st_mode)||s.st_uid!=geteuid()||(s.st_mode&077)||s.st_nlink!=1||!bound(c->directory,"assemble.lock",lock))e="unsafe_package_assembly";
+        if(!e&&flock(lock,LOCK_EX|LOCK_NB)){
+            if(errno==EWOULDBLOCK)result.state="busy";else e="package_assembly_unavailable";
+        }else if(!e){
+            e=package_identity_verify(c->directory,c->index,c->control,c->context);
+            if(e&&!strcmp(e,"package_identity_absent"))e=NULL;
+            else if(!e){
+                struct stat marker;
+                if(fstatat(c->directory,"complete",&marker,AT_SYMLINK_NOFOLLOW)){
+                    if(errno==ENOENT)result.state="incomplete_unverified";else e="unsafe_package_assembly";
+                }else{
+                    payload=openat(c->directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+                    if(payload<0||!private_directory(payload)||!bound(c->directory,"payload",payload)||!path_bound(c->payload_path,payload))e="unsafe_package_assembly";
+                    PackageCompatibilityContext compatibility={.payload_path=c->payload_path,.control=c->control,.context=c->context};
+                    PackagePublication publication={.directory=c->directory,.index=c->index,.compatible=package_backend_compatible,.compatibility=&compatibility,.control=c->control,.context=c->context};
+                    if(!e)e=package_publication_verify(&publication,&result.package);
+                    if(!e&&(!bound(c->directory,"payload",payload)||!path_bound(c->payload_path,payload)))e="package_tree_changed";
+                    if(!e)result.state="installed_verified";
+                }
+            }
+        }
+        if(!e&&!bound(c->directory,"assemble.lock",lock))e="package_tree_changed";
+    }
+    if(!e)e=c->control?c->control(c->context):NULL;
+    if(!e&&lock>=0&&!bound(c->directory,"assemble.lock",lock))e="package_tree_changed";
+    if(!e&&!strcmp(result.state,"installed_verified")){
+        e=package_identity_verify(c->directory,c->index,c->control,c->context);
+        if(!e&&(!bound(c->directory,"payload",payload)||!path_bound(c->payload_path,payload)))e="package_tree_changed";
+    }
+    if(!e)*out=result;
+    if(payload>=0)close(payload);if(lock>=0)close(lock);return e;
+}

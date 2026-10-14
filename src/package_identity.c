@@ -14,7 +14,7 @@ static int matches(int directory,const char *name,int record,const char *expecte
     return !fstat(record,&s)&&S_ISREG(s.st_mode)&&s.st_uid==geteuid()&&!(s.st_mode&077)&&s.st_nlink==1&&s.st_size==length&&
         pread(record,actual,(size_t)length,0)==length&&!memcmp(actual,expected,(size_t)length)&&bound(directory,name,record);
 }
-const char *package_identity_bind(int directory,const PackageIndex *index,const char *(*control)(void *),void *context){
+static const char *identity(int directory,const PackageIndex *index,const char *(*control)(void *),void *context,int create){
     if(!index||!memchr(index->manifest_sha256,0,sizeof(index->manifest_sha256))||strlen(index->manifest_sha256)!=64||strspn(index->manifest_sha256,"0123456789abcdef")!=64)return "invalid_package_identity";
     const char *e=control?control(context):NULL;if(e)return e;
     struct stat root;
@@ -30,6 +30,7 @@ const char *package_identity_bind(int directory,const PackageIndex *index,const 
         close(record);return e;
     }
     if(errno!=ENOENT)return "unsafe_package_identity";
+    if(!create)return "package_identity_absent";
     int pending=openat(directory,".assembly.identity.pending",O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0600);
     if(pending<0)return "unsafe_package_identity";
     size_t at=0;while(at<(size_t)length){ssize_t n=write(pending,expected+at,(size_t)length-at);
@@ -43,3 +44,6 @@ const char *package_identity_bind(int directory,const PackageIndex *index,const 
     if(!e&&(!matches(directory,"assembly.identity",pending,expected,length)||fsync(directory)))e="package_identity_unavailable";
     close(pending);return e;
 }
+
+const char *package_identity_bind(int directory,const PackageIndex *index,const char *(*control)(void *),void *context){return identity(directory,index,control,context,1);}
+const char *package_identity_verify(int directory,const PackageIndex *index,const char *(*control)(void *),void *context){return identity(directory,index,control,context,0);}

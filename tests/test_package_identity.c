@@ -15,8 +15,9 @@ static const char *pending_cancel(void *opaque){int directory=*(int *)opaque;str
 int main(void){
     char path[]="/tmp/samosa-package-identity-XXXXXX";CHECK(mkdtemp(path));int root=open(path,O_RDONLY|O_DIRECTORY);CHECK(root>=0);
     PackageIndex *index=calloc(1,sizeof(*index));CHECK(index);memset(index->manifest_sha256,'a',64);
+    CHECK(!strcmp(package_identity_verify(root,index,NULL,NULL),"package_identity_absent"));CHECK(faccessat(root,"assembly.identity",F_OK,0)<0);
     CHECK(!strcmp(package_identity_bind(root,index,pending_cancel,&root),"cancelled"));CHECK(faccessat(root,"assembly.identity",F_OK,0)<0);CHECK(faccessat(root,".assembly.identity.pending",F_OK,0)<0);
-    CHECK(!package_identity_bind(root,index,NULL,NULL));CHECK(!package_identity_bind(root,index,NULL,NULL));
+    CHECK(!package_identity_bind(root,index,NULL,NULL));CHECK(!package_identity_verify(root,index,NULL,NULL));CHECK(!package_identity_bind(root,index,NULL,NULL));
     int record=openat(root,"assembly.identity",O_RDONLY|O_NOFOLLOW);CHECK(record>=0);struct stat identity;CHECK(!fstat(record,&identity));CHECK((identity.st_mode&0777)==0400&&identity.st_nlink==1);
     index->manifest_sha256[0]='b';CHECK(!strcmp(package_identity_bind(root,index,NULL,NULL),"package_assembly_identity_conflict"));index->manifest_sha256[0]='a';CHECK(!package_identity_bind(root,index,NULL,NULL));
     /* Copying an identity record into another directory cannot claim ownership

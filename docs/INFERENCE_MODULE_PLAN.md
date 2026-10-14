@@ -283,3 +283,11 @@ normal/sanitizer native identity and full local/HTTPS fixture gates pass. See
 [evidence](PACKAGE_IDENTITY_VERIFICATION.md). This is a coordinator prerequisite;
 registered partial-file recovery, reclamation and public installation controls
 remain open, and it does not qualify readiness or close area 2.
+
+Native installation status is now read-only and distinguishes unregistered,
+actually contended lease, incomplete-unverified and fully reverified installed
+package observations. Normal/sanitizer local/HTTPS fixtures cover busy, incomplete,
+offline inspection, cancellation and corrupt-payload refusal. See
+[contract](../contracts/package-status-v1.md) and
+[evidence](PACKAGE_STATUS_VERIFICATION.md). This remains separate from loaded
+readiness; public installer controls and registered recovery stay open.
