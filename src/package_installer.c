@@ -58,8 +58,8 @@ const char *package_install_from_file(const char *path,const char *id,const Pack
     free(catalog);return e;
 }
 
-const char *package_status_from_file(const char *path,const char *id,const PackageInstaller *config,PackageAssemblyStatus *out){
-    if(!config||!out)return "invalid_package_installer";
+static const char *cached_catalog_operation(const char *path,const char *id,const PackageInstaller *config,PackageAssemblyStatus *out,int *released){
+    if(!config||(!out&&!released))return "invalid_package_installer";
     const char *e=config->assembly.control?config->assembly.control(config->assembly.context):NULL;if(e)return e;
     ProviderCatalog *catalog=calloc(1,sizeof(*catalog));PackageIndex *index=calloc(1,sizeof(*index));
     if(!catalog||!index){free(catalog);free(index);return "allocation_failed";}
@@ -73,6 +73,9 @@ const char *package_status_from_file(const char *path,const char *id,const Packa
     if(!e)e=package_catalog_read_index(entry,fd,config->assembly.control,config->assembly.context,index);
     if(fd>=0)close(fd);
     if(!e){PackageAssembly assembly=config->assembly;assembly.index=index;
-        e=package_assembly_status(&assembly,out);}
+        if(out)e=package_assembly_status(&assembly,out);
+        else e=package_reservation_release_empty(assembly.reservation_directory,assembly.directory,index,assembly.control,assembly.context,released);}
     free(index);free(catalog);return e;
 }
+const char *package_status_from_file(const char *path,const char *id,const PackageInstaller *config,PackageAssemblyStatus *out){return cached_catalog_operation(path,id,config,out,NULL);}
+const char *package_release_empty_from_file(const char *path,const char *id,const PackageInstaller *config,int *out){return cached_catalog_operation(path,id,config,NULL,out);}

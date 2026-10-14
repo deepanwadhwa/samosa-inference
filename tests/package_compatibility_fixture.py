@@ -118,6 +118,18 @@ try:
             assert receipt["status"] == "installed_verified" and receipt["readiness"] == "unqualified", receipt
             assert len(requests) - before_setup == len(served), requests
         expected_downloads += len(served)
+        release_config = config.copy()
+        release_config[release_config.index("--state") + 1] = str(destination / "remote-artifacts")
+        release_config[-1] = str(destination / "empty-package")
+        release_config += ["--reservation-directory", str(destination / "empty-reservations")]
+        for expected in ("reservation_released", "reservation_absent"):
+            released = subprocess.run(release_config, input=json.dumps({"contract_version": 1, "op": "provider_release_empty", "provider_id": "speech-fixture"}),
+                                      text=True, capture_output=True, timeout=60)
+            assert released.returncode == 0 and json.loads(released.stdout)["status"] == expected, released
+        installed_release = subprocess.run(config + ["--reservation-directory", str(pool)],
+                                           input=json.dumps({"contract_version": 1, "op": "provider_release_empty", "provider_id": "speech-fixture"}), text=True, capture_output=True, timeout=60)
+        assert installed_release.returncode == 1 and json.loads(installed_release.stdout)["error"]["code"] == "package_reservation_not_empty", installed_release
+        assert (package_dir / "complete").is_file()
         print("PASS complete setup CLI: cold HTTPS index/payload acquisition, TLS refusal and offline status/resume")
     if https:
         assert served == {f["sha256"] for f in files} | {hashlib.sha256(body).hexdigest()}, served

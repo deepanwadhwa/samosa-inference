@@ -115,6 +115,8 @@ const char *package_reservation_release_empty(int pool,int package,const Package
     struct dirent *entry;while(!e&&(errno=0,(entry=readdir(scan)))){
         e=control?control(context):NULL;if(e)break;
         if(strcmp(entry->d_name,".")&&strcmp(entry->d_name,"..")&&strcmp(entry->d_name,"assemble.lock")&&strcmp(entry->d_name,"assembly.identity"))e="package_reservation_not_empty";
+        if(!e&&!strcmp(entry->d_name,"assembly.identity")){int metadata=openat(package,entry->d_name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+            if(metadata<0||!private(metadata,0)||!bound(package,entry->d_name,metadata))e="unsafe_package_reservation";if(metadata>=0)close(metadata);}
     }
     if(!e&&errno)e="package_reservation_unavailable";if(scan)closedir(scan);
     if(!e){lock=openat(pool,"reserve.lock",O_RDWR|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);if(lock<0||!private(lock,0)||!bound(pool,"reserve.lock",lock))e="unsafe_package_reservation";}

@@ -24,4 +24,7 @@ const char *package_install_from_file(const char *,const char *,const PackageIns
  * Ignores acquisition and reservation configuration; never repairs state.
  * Absence of the index is reported as artifact_absent, not package readiness. */
 const char *package_status_from_file(const char *,const char *,const PackageInstaller *,PackageAssemblyStatus *);
+/* Catalog-selected exact-charge reclamation; verified cached index required.
+ * Never downloads or deletes package contents. Output unchanged on failure. */
+const char *package_release_empty_from_file(const char *,const char *,const PackageInstaller *,int *);
 #endif

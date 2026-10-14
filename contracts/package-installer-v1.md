@@ -88,3 +88,15 @@ single-artifact setup behavior remains available pending integration retirement.
 Setup request controls also verify the package and reservation names still refer
 to their held private directory descriptors throughout installation. Renamed or
 substituted roots fail with `package_tree_changed` before further controlled work.
+
+## Catalog-selected empty release
+
+`package_release_empty_from_file` loads the private catalog and verified cached
+index using the same binding checks as status, then releases only the exact
+empty-package reservation. Setup exposes `provider_release_empty` with the usual
+strict version/op/provider-ID request. Package and reservation directories remain
+host configuration; no acquisition or credentials are required. Success reports
+`reservation_released` or the idempotent `reservation_absent`; activation and
+readiness remain unrequested/unqualified. Any payload, journal, completion,
+unknown package name or unsafe identity metadata refuses. No package files are
+deleted. This does not implement partial/installed package removal.

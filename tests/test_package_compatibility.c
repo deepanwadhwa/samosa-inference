@@ -9,6 +9,7 @@
 #ifdef SAMOSA_PACKAGE_REMOTE_TESTS
 #include "package_remote_cache.h"
 #include "package_installer.h"
+#include "package_reserve.h"
 #endif
 #include <sys/file.h>
 #include <fcntl.h>
@@ -204,6 +205,10 @@ int main(int argc,char **argv){
             CHECK(!strcmp(package_status_from_file(trusted_catalog,"missing",&status_config,&catalog_status),"unknown_provider"));CHECK(!memcmp(&catalog_status,&status_before,sizeof(catalog_status)));
             status_config.assembly.control=cancel;CHECK(!strcmp(package_status_from_file(trusted_catalog,"speech-fixture",&status_config,&catalog_status),"cancelled"));CHECK(!memcmp(&catalog_status,&status_before,sizeof(catalog_status)));status_config.assembly.control=NULL;
             CHECK(!package_status_from_file(trusted_catalog,"speech-fixture",&status_config,&catalog_status));CHECK(!strcmp(catalog_status.state,"installed_verified"));CHECK(catalog_status.package.files==index->count);CHECK(!strcmp(catalog_status.package.manifest_sha256,index->manifest_sha256));
+            /* Leave an exact empty-package charge for the public setup gate. */
+            CHECK(!mkdirat(directory,"empty-package",0700));CHECK(!mkdirat(directory,"empty-reservations",0700));
+            int empty_package=openat(directory,"empty-package",O_RDONLY|O_DIRECTORY|O_NOFOLLOW),empty_pool=openat(directory,"empty-reservations",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(empty_package>=0&&empty_pool>=0);
+            PackageReservationResult empty_charge;CHECK(!package_reserve(empty_pool,empty_package,index,index->payload_bytes,1,&empty_charge));CHECK(!close(empty_package));CHECK(!close(empty_pool));
             free(catalog);CHECK(!close(catalog_directory));CHECK(!close(catalog_reservations));
             CHECK(!close(reservation_pool));CHECK(!close(remote_directory));CHECK(!close(directory));free(downloads);free(urls);
             printf("PASS complete HTTPS native package: %zu indexed files; untrusted TLS refusal, pinned acquisition, compatibility, publication and credential-free cache reuse\n",index->count);
