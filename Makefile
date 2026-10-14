@@ -274,6 +274,18 @@ sanitize-package-index: | build
 test: test-package-index
 sanitize: sanitize-package-index
 
+.PHONY: test-package-tree sanitize-package-tree
+PACKAGE_TREE_SOURCES = src/package_tree.c src/artifact.c $(PACKAGE_INDEX_SOURCES)
+build/test-package-tree: tests/test_package_tree.c $(PACKAGE_TREE_SOURCES) src/package_tree.h src/package_index.h src/artifact.h src/catalog.h src/platform.h src/json.h src/sha256.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc tests/test_package_tree.c $(PACKAGE_TREE_SOURCES) -o $@
+test-package-tree: build/test-package-tree
+	./build/test-package-tree
+sanitize-package-tree: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Isrc tests/test_package_tree.c $(PACKAGE_TREE_SOURCES) -o build/test-package-tree-sanitize
+	./build/test-package-tree-sanitize
+test: test-package-tree
+sanitize: sanitize-package-tree
+
 SETUP_SOURCES = src/setup_main.c $(CATALOG_SOURCES) src/remote_artifact.c src/artifact.c src/install.c
 SETUP_HEADERS = src/catalog.h src/artifact.h src/remote_artifact.h src/json.h src/private_key.h src/sha256.h
 build/samosa-inference-setup: $(SETUP_SOURCES) $(SETUP_HEADERS) | build

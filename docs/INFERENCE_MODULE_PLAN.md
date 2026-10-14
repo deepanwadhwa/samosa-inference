@@ -183,3 +183,10 @@ without increasing the existing single-file install store's16-identity limit.
 See [index evidence](PACKAGE_INDEX_VERIFICATION.md). Package acquisition,
 publication, compatibility, controls and actual installation remain required;
 area2 is active and no complete numbered area is closed by this foundation.
+
+Closed package-tree checkpoint: a generic verifier now checks every indexed
+payload and rejects missing/unlisted entries, links, unsafe modes and observed
+mutations. It reuses artifact hashing and runs normal/sanitizer controlled gates
+plus integrity observations over existing actual Pocket/Kokoro trees. See
+[tree evidence](PACKAGE_TREE_VERIFICATION.md). Acquisition, coordinated quota,
+private staging/publication, compatibility and installed lifecycle remain open.
