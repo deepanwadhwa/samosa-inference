@@ -24,7 +24,9 @@ try:
     index = base / "index.json"
     index.write_bytes(body)
     index.chmod(0o600)
-    result = subprocess.run([binary, str(root), str(index), hashlib.sha256(body).hexdigest()],
+    destination = base / "publication"
+    destination.mkdir(mode=0o700)
+    result = subprocess.run([binary, str(root), str(index), hashlib.sha256(body).hexdigest(), str(destination)],
                             text=True, capture_output=True, timeout=30)
     assert result.returncode == 0, (result.stdout, result.stderr)
     assert "AddressSanitizer" not in result.stderr and "runtime error:" not in result.stderr

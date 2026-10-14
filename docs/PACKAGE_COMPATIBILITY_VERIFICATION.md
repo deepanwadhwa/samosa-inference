@@ -40,3 +40,16 @@ CI can detect that precondition regression without installed actual models.
 Actual loaded ABI and model readiness remain separately qualified runtime gates.
 All original remaining installation/lifecycle/resource/service/release requirements
 remain active; this recipe alone does not close a numbered area.
+
+## Connected staging and publication gate
+
+The controlled native speech fixture now copies all 11 indexed files into a
+new private payload through `package_stage_file`, publishes through the concrete
+`package_backend_compatible` callback, revalidates completion, and repeats
+publication to check idempotency. Cancellation during compatibility still
+refuses a previously completed package. Normal and ASan/UBSan runs passed locally
+on macOS arm64. This is fixture integration evidence; it does not establish
+catalog acquisition, quota reservation, crash recovery, model loading or readiness.
+
+The preceding concrete compatibility revision `7c9ff43` passed independent
+macOS arm64 and Linux x86_64 CI in run 38588798514.

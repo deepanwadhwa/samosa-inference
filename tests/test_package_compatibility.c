@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
 #include "package_compatibility.h"
+#include "package_stage.h"
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +14,7 @@ static const char *cancel(void *unused){(void)unused;return "cancelled";}
 int main(int argc,char **argv){
     PackageIndex *index=calloc(1,sizeof(*index));CHECK(index);
     PackageCompatibilityContext context={.payload_path="/unused/private-payload"};
-    if(argc==4){
+    if(argc==4||argc==5){
         int file=open(argv[2],O_RDONLY|O_NOFOLLOW);struct stat s;CHECK(file>=0&&!fstat(file,&s));
         CHECK(S_ISREG(s.st_mode)&&s.st_uid==geteuid()&&!(s.st_mode&077)&&s.st_nlink==1&&s.st_size>0&&s.st_size<=PACKAGE_INDEX_BYTES);
         char *body=malloc((size_t)s.st_size);CHECK(body);size_t at=0;
@@ -21,6 +22,29 @@ int main(int argc,char **argv){
         CHECK(!close(file));CHECK(!package_index_parse(body,at,argv[3],index));free(body);
         context.payload_path=argv[1];int root=open(argv[1],O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(root>=0);
         const char *e=package_backend_compatible(root,index,&context);if(e)fprintf(stderr,"backend compatibility: %s\n",e);CHECK(!e);
+        if(argc==5){
+            /* Exercise the same verified copies and concrete compatibility gate
+             * a coordinator must use; this harness owns the private destination. */
+            int directory=open(argv[4],O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(directory>=0);
+            CHECK(!mkdirat(directory,"payload",0700));
+            int payload=openat(directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(payload>=0);
+            for(size_t i=0;i<index->count;i++){
+                int input=openat(root,index->files[i].name,O_RDONLY|O_NOFOLLOW);CHECK(input>=0);
+                CHECK(!package_stage_file(payload,index,i,input,NULL,NULL));CHECK(!close(input));
+            }
+            char destination[4096];CHECK(snprintf(destination,sizeof(destination),"%s/payload",argv[4])<(int)sizeof(destination));
+            PackageCompatibilityContext staged={.payload_path=destination};
+            PackagePublication publication={.directory=directory,.index=index,.compatible=package_backend_compatible,.compatibility=&staged};
+            PackageTreeResult observed;
+            CHECK(!package_publish(&publication,&observed));CHECK(observed.files==index->count);
+            CHECK(!package_publication_verify(&publication,&observed));
+            CHECK(!package_publish(&publication,&observed));
+            /* Revocation remains effective even after a completion record exists. */
+            staged.control=cancel;const char *failure=package_publication_verify(&publication,&observed);
+            CHECK(failure&&!strcmp(failure,"cancelled"));
+            CHECK(!close(payload));CHECK(!close(directory));
+            printf("PASS staged native speech publication: %zu files; compatibility, completion, revalidation and cancellation\n",index->count);
+        }
         context.control=cancel;CHECK(!strcmp(package_backend_compatible(root,index,&context),"cancelled"));
         CHECK(!close(root));printf("PASS pinned native speech package compatibility: index %s; closed manifest/graph/host inspection, no model load or readiness claim\n",index->manifest_sha256);free(index);return 0;
     }
