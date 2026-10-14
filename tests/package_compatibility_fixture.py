@@ -12,8 +12,8 @@ import subprocess
 import sys
 
 binary, exporter, library = map(os.path.abspath, sys.argv[1:4])
-https = len(sys.argv) == 5 and sys.argv[4] == "--https"
-assert len(sys.argv) == 4 or https
+https = "--https" in sys.argv[4:]
+assert sys.argv[4:] in ([], ["--https"]) or (https and len(sys.argv) == 7 and sys.argv[5] == "--setup")
 server = thread = None
 package = json.loads(subprocess.check_output([exporter, "--export-package", library]))
 base, root = Path(package["base"]), Path(package["package"])
@@ -73,6 +73,27 @@ try:
         thread.start()
         arguments += [f"https://127.0.0.1:{server.server_port}", str(cert)]
     result = subprocess.run(arguments, text=True, capture_output=True, timeout=60)
+    if "--setup" in sys.argv:
+        setup = os.path.abspath(sys.argv[sys.argv.index("--setup") + 1])
+        package_dir = destination / "setup-package"
+        pool = destination / "setup-reservations"
+        package_dir.mkdir(mode=0o700)
+        pool.mkdir(mode=0o700)
+        config = [setup, "--catalog-file", str(destination / "catalog.json"),
+                  "--state", str(destination / "remote-artifacts"),
+                  "--byte-ceiling", str(len(body) + sum(f["bytes"] for f in files)),
+                  "--disk-ceiling", str(2 * (len(body) + sum(f["bytes"] for f in files))),
+                  "--artifact-capacity", "513", "--package-directory", str(package_dir)]
+        for op in ("provider_install", "provider_status", "provider_resume"):
+            invocation = config.copy()
+            if op != "provider_status":
+                invocation += ["--reservation-directory", str(pool), "--copy-ceiling", str(sum(f["bytes"] for f in files)),
+                               "--reservation-ceiling", str(sum(f["bytes"] for f in files)), "--reservation-capacity", "1"]
+            response = subprocess.run(invocation, input=json.dumps({"contract_version": 1, "op": op, "provider_id": "speech-fixture"}),
+                                      text=True, capture_output=True, timeout=60)
+            assert response.returncode == 0, response.stdout + response.stderr
+            receipt = json.loads(response.stdout)
+            assert receipt["status"] == "installed_verified" and receipt["readiness"] == "unqualified", receipt
     assert result.returncode == 0, (result.stdout, result.stderr)
     assert "AddressSanitizer" not in result.stderr and "runtime error:" not in result.stderr
     if https:

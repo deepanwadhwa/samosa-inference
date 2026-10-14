@@ -4,10 +4,21 @@
 #include "remote_artifact.h"
 #include "private_key.h"
 #include "json.h"
+#include "package_installer.h"
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <signal.h>
 static volatile sig_atomic_t interrupted;
 static void stop(int sig){(void)sig;interrupted=1;}
 static int cancelled(void *context){(void)context;return interrupted!=0;}
+static const char *control(void *context){(void)context;return interrupted?"cancelled":NULL;}
+static int directory(const char *path){
+    if(!path||path[0]!='/'||strlen(path)>4000)return -1;
+    int fd=open(path,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);struct stat held,named;
+    if(fd<0)return -1;
+    if(fstat(fd,&held)||lstat(path,&named)||!S_ISDIR(held.st_mode)||held.st_uid!=geteuid()||(held.st_mode&077)||held.st_dev!=named.st_dev||held.st_ino!=named.st_ino){close(fd);return -1;}return fd;
+}
 static int number(const char *text,uint64_t *result) {
     if(!text||!*text||text[0]<'0'||text[0]>'9')return 0;
     char *end;errno=0;unsigned long long n=strtoull(text,&end,10);
@@ -26,7 +37,8 @@ static void descriptor(const ProviderEntry *e) {
 }
 int main(int argc,char **argv) {
     ArtifactConfig c={.cancelled=cancelled};RemoteArtifactSource remote={0};
-    const char *catalog_path=NULL,*key_path=NULL;unsigned seen=0;
+    const char *catalog_path=NULL,*key_path=NULL,*package_path=NULL,*pool_path=NULL,*digest_url=NULL;unsigned seen=0;
+    uint64_t copy_ceiling=0,pool_ceiling=0,pool_capacity=0;
     for(int i=1;i<argc;i++) {
         if(i+1>=argc)return 2;
         const char *key=argv[i],*value=argv[++i];unsigned bit=0;
@@ -38,6 +50,12 @@ int main(int argc,char **argv) {
             if(!number(value,&capacity)||!capacity||capacity>ARTIFACT_CAPACITY_MAX)return 2;c.artifact_capacity=(size_t)capacity;}
         else if(!strcmp(key,"--ca-file")){bit=16;remote.ca_file=value;}
         else if(!strcmp(key,"--bearer-key-file")){bit=32;key_path=value;}
+        else if(!strcmp(key,"--package-directory")){bit=128;package_path=value;}
+        else if(!strcmp(key,"--reservation-directory")){bit=256;pool_path=value;}
+        else if(!strcmp(key,"--copy-ceiling")){bit=512;if(!number(value,&copy_ceiling))return 2;}
+        else if(!strcmp(key,"--reservation-ceiling")){bit=1024;if(!number(value,&pool_ceiling))return 2;}
+        else if(!strcmp(key,"--reservation-capacity")){bit=2048;if(!number(value,&pool_capacity)||pool_capacity>1024)return 2;}
+        else if(!strcmp(key,"--digest-endpoint")){bit=4096;digest_url=value;}
         else if(!strcmp(key,"--redirect-host")){if(remote.redirect_count==8)return 2;remote.redirect_hosts[remote.redirect_count++]=value;}
         else return 2;
         if(bit&&(seen&bit))return 2;
@@ -63,7 +81,7 @@ int main(int argc,char **argv) {
         if(!error)error=provider_catalog_qualify(entry,os);
         if(!error)provider_catalog_artifact(entry,&c);
     }
-    if(!error&&id&&!strcmp(op,"provider_status"))error=artifact_status(&c,&status);
+    if(!error&&id&&!strcmp(op,"provider_status")&&!package_path)error=artifact_status(&c,&status);
     if(!error&&id&&strcmp(op,"provider_status")) {
         if(key_path&&!private_key_read(key_path,key))error="invalid_provider_credentials";
         if(!error) {
@@ -72,9 +90,24 @@ int main(int argc,char **argv) {
         }
         if(!error) {
             remote.url=entry->url;remote.bearer_key=key_path?key:NULL;
-            c.resume=!strcmp(op,"provider_resume");error=artifact_install_remote(&c,&remote);
-            if(!error)status="verified";
+            c.resume=!strcmp(op,"provider_resume");
+            if(!package_path){error=artifact_install_remote(&c,&remote);if(!error)status="verified";}
         }
+    }
+    if(!error&&id&&package_path){
+        int package=directory(package_path),pool=-1;char payload[4096];
+        if(package<0)error="invalid_package_directory";
+        if(!error&&snprintf(payload,sizeof(payload),"%s/payload",package_path)>=(int)sizeof(payload))error="invalid_package_directory";
+        int observing=!strcmp(op,"provider_status");
+        if(!error&&!observing){pool=directory(pool_path);if(pool<0)error="invalid_reservation_directory";}
+        RemoteArtifactSource digest=remote;digest.url=digest_url;
+        PackageInstaller installer={.entry=entry,.store=c,.index_source=&remote,.digest_source=digest_url?&digest:NULL,
+            .assembly={.directory=package,.source=-1,.payload_path=payload,.copy_ceiling=copy_ceiling,.reservation_directory=pool,.reservation_ceiling=pool_ceiling,.reservation_capacity=(size_t)pool_capacity,.control=control}};
+        if(!error&&observing){PackageAssemblyStatus observed;error=package_status_from_file(catalog_path,id,&installer,&observed);if(!error)status=observed.state;}
+        else if(!error){PackageTreeResult installed;error=package_install_selected(catalog,id,&installer,&installed);if(!error)status="installed_verified";}
+        /* A renamed configuration root cannot produce a successful response. */
+        if(!error){int named=directory(package_path);struct stat a,b;if(named<0||fstat(named,&a)||fstat(package,&b)||a.st_dev!=b.st_dev||a.st_ino!=b.st_ino)error="package_tree_changed";if(named>=0)close(named);}
+        if(pool>=0)close(pool);if(package>=0)close(package);
     }
     fputs("{\"contract_version\":1",stdout);
     if(error){fputs(",\"error\":{\"code\":",stdout);json_quote(stdout,error,strlen(error));fputc('}',stdout);}

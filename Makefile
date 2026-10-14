@@ -310,17 +310,19 @@ sanitize-package-publish: | build
 test: test-package-publish
 sanitize: sanitize-package-publish
 
-SETUP_SOURCES = src/setup_main.c $(CATALOG_SOURCES) src/remote_artifact.c src/artifact.c src/install.c
+SETUP_SOURCES = src/setup_main.c $(PACKAGE_REMOTE_SOURCES)
 SETUP_HEADERS = src/catalog.h src/artifact.h src/remote_artifact.h src/json.h src/private_key.h src/sha256.h
 build/samosa-inference-setup: $(SETUP_SOURCES) $(SETUP_HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(CURL_CFLAGS) $(SETUP_SOURCES) $(CURL_LIBS) -o $@
 
 .PHONY: test-setup sanitize-setup
-test-setup: build/samosa-inference-setup
+test-setup: build/samosa-inference-setup build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so
 	sh tests/setup_cli.sh
-sanitize-setup: | build
+	python3 tests/package_compatibility_fixture.py build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so --https --setup build/samosa-inference-setup
+sanitize-setup: build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(CURL_CFLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer $(SETUP_SOURCES) $(CURL_LIBS) -o build/samosa-inference-setup-sanitize
 	sh tests/setup_cli.sh ./build/samosa-inference-setup-sanitize
+	python3 tests/package_compatibility_fixture.py build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so --https --setup build/samosa-inference-setup-sanitize
 test-native: test-setup
 sanitize-native: sanitize-setup
 

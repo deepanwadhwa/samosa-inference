@@ -66,3 +66,18 @@ SHA-256 recorded in the verified index. TLS, credentials, redirect policy,
 resumable verification and byte limits use the existing downloader. Cache hits
 need no endpoint or credentials. Configuring both source forms refuses; index
 contents cannot substitute the endpoint, transport policy or expected hash.
+
+## Setup command connection
+
+`samosa-inference-setup --package-directory ABSOLUTE_PRIVATE_DIRECTORY` routes
+provider install/resume/status requests through the complete installer. The host
+prepares an owner-private directory for the selected pinned package. Install and
+resume additionally require `--reservation-directory`, `--copy-ceiling`,
+`--reservation-ceiling` and `--reservation-capacity`. `--digest-endpoint` supplies
+the optional payload endpoint; `--state` supplies the verified artifact cache.
+Existing CA, credential, redirect and artifact quota flags still apply. Status
+requires no reservation configuration. Requests remain strict contract-version,
+operation and provider-ID objects; paths and URLs are host CLI configuration.
+Success reports `installed_verified`, `activation:not_requested` and
+`readiness:unqualified`. Without the package-directory option, the existing
+single-artifact setup behavior remains available pending integration retirement.
