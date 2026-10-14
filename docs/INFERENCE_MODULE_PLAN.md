@@ -242,3 +242,13 @@ now poll installation cancellation between bounded reads. Targeted cancelled
 hash/resumption/status checks and native package, remote artifact, activation and
 CLI integration gates pass locally, including sanitizer variants. Per-file remote
 package mapping, destination reservations and recovery remain open.
+
+
+Optional native remote package-cache acquisition now maps each pinned file to
+trusted per-file HTTPS configuration, preserving credential, redirect, resumed
+range and controlled verification behavior. Normal/sanitizer mapping checks and
+production TLS/credential gates pass locally. See
+[contract](../contracts/package-remote-cache-v1.md) and
+[evidence](PACKAGE_REMOTE_CACHE_VERIFICATION.md). Complete remote package
+installation, reservations, coordinator recovery and public catalog integration
+remain open before area 2 can close.

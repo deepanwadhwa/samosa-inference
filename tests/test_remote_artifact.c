@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
 #include "remote_artifact.h"
+#include "package_remote_cache.h"
 #include "sha256.h"
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -16,6 +17,7 @@
 #include <errno.h>
 static unsigned checks;
 #define CHECK(x) do{checks++;if(!(x)){fprintf(stderr,"FAIL remote %d: %s\n",__LINE__,#x);exit(1);}}while(0)
+static const char *package_deadline(void *count){return ++*(unsigned *)count>=2?"deadline_exceeded":NULL;}
 static int cancel(void *count){return ++*(int*)count>1;}
 static int write_all(int fd,const void *bytes,size_t length){const char *p=bytes;while(length){ssize_t n=write(fd,p,length);if(n<0&&errno==EINTR)continue;if(n<=0)return 0;p+=n;length-=(size_t)n;}return 1;}
 static void payload(int fd,char value,unsigned blocks){char block[32768];memset(block,value,sizeof(block));for(unsigned i=0;i<blocks;i++)if(!write_all(fd,block,sizeof(block)))break;}
@@ -148,6 +150,28 @@ int main(void){char root[]="/tmp/samosa-remote-artifact.XXXXXX";CHECK(mkdtemp(ro
     CHECK(!strcmp(artifact_install_remote(&c,&source),"artifact_resume_conflict"));
     changed=open(stage_path,O_WRONLY);CHECK(changed>=0);CHECK(pwrite(changed,"B",1,1048576)==1);CHECK(!close(changed));
     CHECK(!artifact_install_remote(&c,&source));CHECK(!artifact_status(&c,&status)&&!strcmp(status,"verified"));
+    /* Two pinned identities select distinct trusted URLs and credentials;
+     * neither mapping nor package names can substitute a payload identity. */
+    c=config(root,"package-map");c.disk_ceiling=12;
+    PackageIndex *index=calloc(1,sizeof(*index));CHECK(index);index->count=2;
+    strcpy(index->files[0].name,"model.bin");strcpy(index->files[0].sha256,c.sha256);index->files[0].bytes=3;index->files[0].role=PACKAGE_MODEL;
+    strcpy(index->files[1].name,"data/reference.bin");hash_bytes("xyz",3,index->files[1].sha256);index->files[1].bytes=3;index->files[1].role=PACKAGE_DATA;
+    char mapped[2][256];snprintf(mapped[0],sizeof(mapped[0]),"http://127.0.0.1:%u/auth",port);snprintf(mapped[1],sizeof(mapped[1]),"http://127.0.0.1:%u/bad",port);
+    RemoteArtifactSource downloads[2]={{.url=mapped[0],.bearer_key="private-secret",.timeout_ms=1000,.loopback_http=1},
+        {.url=mapped[1],.timeout_ms=1000,.loopback_http=1}};
+    PackageRemoteCacheSource package={.store=c,.index=index,.files=downloads,.count=2};
+    int held=-1;
+    for(size_t i=0;i<2;i++){CHECK(!package_remote_cache_open(&package,&index->files[i],NULL,NULL,&held));CHECK(held>=0);
+        CHECK(!artifact_verify(held,3,3,index->files[i].sha256));CHECK(!close(held));}
+    PackageFile changed_file=index->files[0];changed_file.bytes=4;held=-7;
+    CHECK(!strcmp(package_remote_cache_open(&package,&changed_file,NULL,NULL,&held),"package_remote_identity_conflict"));CHECK(held==-7);
+    package.files=NULL;CHECK(!package_remote_cache_open(&package,&index->files[0],NULL,NULL,&held));CHECK(!close(held));
+    package.count=1;held=-7;CHECK(!strcmp(package_remote_cache_open(&package,&index->files[0],NULL,NULL,&held),"invalid_package_remote_source"));CHECK(held==-7);
+    package.count=2;package.files=downloads;package.store=config(root,"package-deadline");
+    unsigned control_calls=0;held=-7;
+    CHECK(!strcmp(package_remote_cache_open(&package,&index->files[0],package_deadline,&control_calls,&held),"deadline_exceeded"));CHECK(held==-7);
+    package.store.resume=1;CHECK(!package_remote_cache_open(&package,&index->files[0],NULL,NULL,&held));CHECK(!close(held));
+    free(index);
     CHECK(!kill(server,SIGKILL));CHECK(waitpid(server,&result,0)==server);
     credential_redirect(root);
     source.loopback_http=0;CHECK(!strcmp(artifact_install_remote(&c,&source),"invalid_remote_artifact_configuration"));

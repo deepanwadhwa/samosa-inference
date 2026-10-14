@@ -209,7 +209,7 @@ CURL_CFLAGS ?= $(shell curl-config --cflags)
 CURL_LIBS ?= $(shell curl-config --libs)
 NATIVE_FLAGS = -DSAMOSA_WITH_LLAMA -DJSON_TOKENS_MAX=8192 $(CURL_CFLAGS)
 native: build/samosa-inference-llama build/samosa-inference-managed build/samosa-inference-download build/samosa-inference-setup
-build/samosa-inference-download: src/artifact_main.c src/remote_artifact.c src/remote_artifact.h src/artifact.c src/install.c src/artifact.h src/sha256.h src/json.h src/private_key.h | build
+build/samosa-inference-download: src/artifact_main.c src/remote_artifact.c src/remote_artifact.h src/package_remote_cache.h src/package_assemble.h src/package_index.h src/catalog.h src/artifact.c src/install.c src/artifact.h src/sha256.h src/json.h src/private_key.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(CURL_CFLAGS) -DSAMOSA_REMOTE_ARTIFACTS src/artifact_main.c src/remote_artifact.c src/artifact.c src/install.c $(CURL_LIBS) -o $@
 build/samosa-inference-managed: src/managed_main.c src/managed_stream.c src/managed_stream.h src/managed_provider.c src/managed_provider.h src/activation.c src/activation.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h $(SOURCES) src/llama.c $(HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(NATIVE_FLAGS) src/managed_main.c src/managed_stream.c src/managed_provider.c src/activation.c src/artifact.c src/engine_runtime.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) -pthread -o $@
@@ -225,8 +225,8 @@ test-native: native build/test-llama test-remote-artifact test-remote-tls test-r
 	./build/test-llama
 	sh tests/key_cli.sh
 	sh tests/managed_cli.sh
-build/test-remote-artifact: tests/test_remote_artifact.c src/remote_artifact.c src/remote_artifact.h src/artifact.c src/install.c src/artifact.h src/sha256.h | build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(CURL_CFLAGS) -DSAMOSA_INFERENCE_TEST_FAULTS -Isrc tests/test_remote_artifact.c src/remote_artifact.c src/artifact.c src/install.c $(CURL_LIBS) -o $@
+build/test-remote-artifact: tests/test_remote_artifact.c src/package_remote_cache.c src/package_index.c src/catalog_host.c src/remote_artifact.c src/remote_artifact.h src/package_remote_cache.h src/package_assemble.h src/package_index.h src/catalog.h src/artifact.c src/install.c src/artifact.h src/sha256.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(CURL_CFLAGS) -DSAMOSA_INFERENCE_TEST_FAULTS -Isrc tests/test_remote_artifact.c src/package_remote_cache.c src/package_index.c src/catalog_host.c src/remote_artifact.c src/artifact.c src/install.c $(CURL_LIBS) -o $@
 test-remote-artifact: build/test-remote-artifact
 	./build/test-remote-artifact
 test-remote-tls: build/samosa-inference-download
@@ -234,7 +234,7 @@ test-remote-tls: build/samosa-inference-download
 test-remote-key: build/samosa-inference-download
 	sh tests/remote_key_cli.sh
 sanitize-remote-artifact: | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(CURL_CFLAGS) -DSAMOSA_INFERENCE_TEST_FAULTS -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc tests/test_remote_artifact.c src/remote_artifact.c src/artifact.c src/install.c $(CURL_LIBS) -o build/test-remote-artifact-sanitize
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(CURL_CFLAGS) -DSAMOSA_INFERENCE_TEST_FAULTS -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc tests/test_remote_artifact.c src/package_remote_cache.c src/package_index.c src/catalog_host.c src/remote_artifact.c src/artifact.c src/install.c $(CURL_LIBS) -o build/test-remote-artifact-sanitize
 	./build/test-remote-artifact-sanitize
 sanitize-remote-cli: | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(CURL_CFLAGS) -DSAMOSA_REMOTE_ARTIFACTS -fsanitize=address,undefined -fno-omit-frame-pointer src/artifact_main.c src/remote_artifact.c src/artifact.c src/install.c $(CURL_LIBS) -o build/samosa-inference-download-sanitize
