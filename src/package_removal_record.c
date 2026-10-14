@@ -27,7 +27,7 @@ static int shape(const PackageIndex *index,const PackageRemovalRecord *r){
         !memchr(r->index_sha256,0,65)||strcmp(index->manifest_sha256,r->index_sha256)||r->file_count!=index->count||r->directory_count>PACKAGE_TREE_DIRECTORIES||
         !node(&r->package,1)||!node(&r->payload,1)||!node(&r->completion,0)||r->package.value[0]!=r->payload.value[0]||r->package.value[1]==r->payload.value[1])return 0;
     for(size_t i=0;i<index->count;i++){
-        if(!memchr(index->files[i].name,0,256)||!package_file_name_valid(index->files[i].name,index->files[i].role)||!node(&r->files[i],0)||
+        if(!memchr(index->files[i].name,0,256)||!package_file_name_valid(index->files[i].name,index->files[i].role)||!memchr(index->files[i].sha256,0,65)||strlen(index->files[i].sha256)!=64||strspn(index->files[i].sha256,"0123456789abcdef")!=64||!index->files[i].bytes||index->files[i].bytes>PACKAGE_PAYLOAD_BYTES||!node(&r->files[i],0)||
             r->files[i].value[0]!=r->payload.value[0]||r->files[i].value[5]!=index->files[i].bytes)return 0;
         for(size_t k=0;k<i;k++)if(r->files[k].value[1]==r->files[i].value[1])return 0;
     }
