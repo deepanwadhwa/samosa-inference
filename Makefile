@@ -519,3 +519,14 @@ sanitize-package-native-runtime: | build
 	./build/test-package-native-runtime-sanitize
 test: test-package-native-runtime
 sanitize: sanitize-package-native-runtime
+
+.PHONY: test-gguf-metadata sanitize-gguf-metadata
+build/test-gguf-metadata: tests/test_gguf_metadata.c src/gguf_metadata.c src/gguf_metadata.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc $< src/gguf_metadata.c -o $@
+test-gguf-metadata: build/test-gguf-metadata
+	./build/test-gguf-metadata
+sanitize-gguf-metadata: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_gguf_metadata.c src/gguf_metadata.c -o build/test-gguf-metadata-sanitize
+	./build/test-gguf-metadata-sanitize
+test: test-gguf-metadata
+sanitize: sanitize-gguf-metadata
