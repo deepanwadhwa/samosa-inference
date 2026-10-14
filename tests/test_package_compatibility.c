@@ -70,6 +70,11 @@ int main(int argc,char **argv){
             CHECK(!package_assembly_status(&assembly,&status));CHECK(!strcmp(status.state,"installed_verified"));CHECK(status.package.files==index->count);
             PackageAssembly inspection=assembly;inspection.source=-1;inspection.source_open=NULL;inspection.copy_ceiling=0;
             CHECK(!package_assembly_status(&inspection,&status));CHECK(!strcmp(status.state,"installed_verified"));
+            int removal=openat(directory,".removal.record.pending",O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW,0600);CHECK(removal>=0);CHECK(write(removal,"foreign",7)==7);CHECK(!close(removal));
+            PackageAssemblyStatus removal_status=status;PackageTreeResult removal_result=observed;
+            CHECK(!strcmp(package_assembly_status(&inspection,&status),"package_removal_in_progress"));CHECK(!memcmp(&status,&removal_status,sizeof(status)));
+            CHECK(!strcmp(package_assemble(&assembly,&observed),"package_removal_in_progress"));CHECK(!memcmp(&observed,&removal_result,sizeof(observed)));CHECK(faccessat(directory,"complete",F_OK,0)==0);
+            CHECK(!unlinkat(directory,".removal.record.pending",0));CHECK(!package_assembly_status(&inspection,&status));
             inspection.copy_ceiling=assembly.copy_ceiling;
             CHECK(!renameat(directory,"complete",directory,".complete.pending"));
             CHECK(!package_assemble(&inspection,&observed));CHECK(!package_assembly_status(&inspection,&status));CHECK(!strcmp(status.state,"installed_verified"));

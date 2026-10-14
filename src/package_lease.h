@@ -8,4 +8,7 @@
  * named-root bindings and verifies publication while retaining this lease.
  * Output untouched on failure. Descriptor is close-on-exec. */
 const char *package_lease_acquire(int,const PackageIndex *,const char *(*)(void *),void *,int *);
+/* Under the held package lease, refuse any removal intent, including malformed
+ * or pending records. Presence is a barrier, never evidence authorizing deletion. */
+const char *package_lease_removal_state(int);
 #endif

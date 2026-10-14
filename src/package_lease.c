@@ -11,6 +11,14 @@ static int bound(int root,int lock){struct stat held,named;
     return !fstat(lock,&held)&&!fstatat(root,"assemble.lock",&named,AT_SYMLINK_NOFOLLOW)&&S_ISREG(held.st_mode)&&
         held.st_uid==geteuid()&&!(held.st_mode&077)&&held.st_nlink==1&&held.st_dev==named.st_dev&&held.st_ino==named.st_ino&&held.st_mode==named.st_mode&&held.st_nlink==named.st_nlink;
 }
+const char *package_lease_removal_state(int root){
+    const char *names[]={"removal.record",".removal.record.pending"};struct stat s;
+    for(size_t i=0;i<sizeof(names)/sizeof(*names);i++){
+        if(!fstatat(root,names[i],&s,AT_SYMLINK_NOFOLLOW))return "package_removal_in_progress";
+        if(errno!=ENOENT)return "unsafe_package_lease";
+    }
+    return NULL;
+}
 const char *package_lease_acquire(int root,const PackageIndex *index,const char *(*control)(void *),void *context,int *out){
     if(!index||!out)return "invalid_package_lease";
     const char *e=control?control(context):NULL;if(e)return e;
@@ -20,6 +28,7 @@ const char *package_lease_acquire(int root,const PackageIndex *index,const char 
     if(!bound(root,lock))e="unsafe_package_lease";
     if(!e&&flock(lock,LOCK_SH|LOCK_NB))e=errno==EWOULDBLOCK?"package_assembly_busy":"package_assembly_unavailable";
     if(!e)e=package_identity_verify(root,index,control,context);
+    if(!e)e=package_lease_removal_state(root);
     if(!e)e=control?control(context):NULL;
     if(!e&&!bound(root,lock))e="unsafe_package_lease";
     if(!e)*out=lock;else close(lock);return e;

@@ -31,3 +31,21 @@ the consumer releases its hold. Logs `/private/tmp/samosa-package-reader-integra
 `/private/tmp/samosa-llama-reader-normal.log` and
 `/private/tmp/samosa-llama-reader-sanitize.log`. This supplies removal's ownership
 prerequisite within component 2; it does not close removal or lifecycle work.
+
+## Removal admission barrier
+
+After acquiring the package lock, consumer leases, ordinary assembly and read-only
+installed-status verification check for `removal.record` or its pending name.
+Either presence returns `package_removal_in_progress`; malformed bytes or a
+symlink still block admission and are preserved. Presence never authorizes file
+deletion or adopts that record. Only the removal coordinator may recover or finish
+the removal transaction. Outputs remain untouched, and no payload/completion is
+changed by the refusal. This prevents ordinary resume from recreating files during
+partial removal and prevents status from reporting that package installed_verified.
+
+Normal and ASan/UBSan consumer gates now pass 64 checks, including foreign pending
+metadata and a removal-record symlink. Controlled complete HTTPS package gates also
+test status/assembly refusal with unchanged outputs and retained completion;
+removing only the fixture-owned marker restores verified status. Log:
+`/private/tmp/samosa-removal-admission-barrier.log`. File deletion and recovery remain
+the next removal protocol steps within component 2.

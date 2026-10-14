@@ -37,6 +37,9 @@ int main(void){
     CHECK(flock(writer,LOCK_EX|LOCK_NB)<0&&errno==EWOULDBLOCK);CHECK(!kill(child,SIGKILL));int status;CHECK(waitpid(child,&status,0)==child&&WIFSIGNALED(status)&&WTERMSIG(status)==SIGKILL);
     CHECK(!flock(writer,LOCK_EX|LOCK_NB));CHECK(!flock(writer,LOCK_UN));CHECK(!close(ready[0]));CHECK(!close(stay[1]));
     CHECK(!linkat(root,"assemble.lock",root,"alias",0));CHECK(!strcmp(package_lease_acquire(root,index,NULL,NULL,&held),"unsafe_package_lease"));CHECK(held==-7);CHECK(!unlinkat(root,"alias",0));
+    int intent=openat(root,".removal.record.pending",O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(intent>=0);CHECK(write(intent,"foreign",7)==7);CHECK(!close(intent));
+    CHECK(!strcmp(package_lease_acquire(root,index,NULL,NULL,&held),"package_removal_in_progress"));CHECK(held==-7);CHECK(!unlinkat(root,".removal.record.pending",0));
+    CHECK(!symlinkat("assembly.identity",root,"removal.record"));CHECK(!strcmp(package_lease_acquire(root,index,NULL,NULL,&held),"package_removal_in_progress"));CHECK(held==-7);CHECK(!unlinkat(root,"removal.record",0));
     CHECK(!close(writer));CHECK(!unlinkat(root,"assemble.lock",0));CHECK(!symlinkat("assembly.identity",root,"assemble.lock"));CHECK(!strcmp(package_lease_acquire(root,index,NULL,NULL,&held),"unsafe_package_lease"));CHECK(held==-7);
     CHECK(!unlinkat(root,"assemble.lock",0));CHECK(!unlinkat(root,"assembly.identity",0));CHECK(!close(root));CHECK(!rmdir(path));free(index);
     printf("PASS package consumer lease: %u checks; reader sharing, writer exclusion, identity, unsafe aliases, controls and child death\n",checks);return 0;
