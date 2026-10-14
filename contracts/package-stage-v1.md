@@ -25,3 +25,17 @@ package crash recovery or resume. Directory creation may remain after a failed
 copy. Whole-package acquisition, coordinated disk reservations, loader/backend
 compatibility, sealing and atomic package publication are still required. No
 engine is launched and no installed/readiness state is returned by staging alone.
+
+## Registered name reservation
+
+`package_stage_file_registered` durably publishes a copy intent before creating
+its reserved temporary name. The intent binds index hash, file identity/size and
+held payload-root/parent inode identities. After interruption before inode-record
+publication, only this exact intent can authorize registering the retained copy.
+The existing bounded prefix comparison against the fully verified source applies
+before appending; publication still requires full source/destination hashes.
+Unknown temporaries without an intent continue to refuse. Malformed intents are
+preserved. Complete matching pending intents use the same atomic-publication
+recovery as copy records. Success forgets matching intent and inode records.
+Torn intent metadata remains a fail-closed recovery case, not automatically
+discarded state. The legacy staging API retains its original refusal semantics.

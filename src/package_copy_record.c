@@ -14,16 +14,16 @@ static int matches(int directory,const char *name,int fd,const char *body,int le
     return private(fd,0)&&!fstat(fd,&s)&&s.st_nlink==links&&s.st_size==length&&
         pread(fd,actual,(size_t)length,0)==length&&!memcmp(actual,body,(size_t)length)&&bound(directory,name,fd);
 }
-const char *package_copy_record(int journal,int root,int parent,int copy,const PackageIndex *index,size_t selected,int action){
+static const char *record(int journal,int root,int parent,int copy,const PackageIndex *index,size_t selected,int action,int intent){
     if(!index||selected>=index->count||index->count>PACKAGE_INDEX_FILES||action<0||action>2||
         !memchr(index->manifest_sha256,0,sizeof(index->manifest_sha256))||strlen(index->manifest_sha256)!=64||strspn(index->manifest_sha256,"0123456789abcdef")!=64)return "invalid_package_copy_record";
     const PackageFile *file=&index->files[selected];
     if(!memchr(file->sha256,0,sizeof(file->sha256))||strlen(file->sha256)!=64||strspn(file->sha256,"0123456789abcdef")!=64||
         !memchr(file->name,0,sizeof(file->name))||!package_file_name_valid(file->name,file->role))return "invalid_package_copy_record";
-    struct stat r,p,c;
-    if(!private(journal,1)||!private(root,1)||!private(parent,1)||!private(copy,0)||fstat(root,&r)||fstat(parent,&p)||fstat(copy,&c))return "unsafe_package_copy_record";
-    char name[96],pending_name[112],body[768];snprintf(name,sizeof(name),"copy-%zu-%s",selected,file->sha256);snprintf(pending_name,sizeof(pending_name),".pending-%s",name);
-    int length=snprintf(body,sizeof(body),"samosa.package.copy.v1\n%s\n%s\n%s %llu\n%llu %llu %llu %llu %llu %llu\n",index->manifest_sha256,file->name,file->sha256,(unsigned long long)file->bytes,
+    struct stat r,p,c={0};
+    if(!private(journal,1)||!private(root,1)||!private(parent,1)||(!intent&&(!private(copy,0)||fstat(copy,&c)))||fstat(root,&r)||fstat(parent,&p))return "unsafe_package_copy_record";
+    char name[96],pending_name[112],body[768];snprintf(name,sizeof(name),"%s-%zu-%s",intent?"intent":"copy",selected,file->sha256);snprintf(pending_name,sizeof(pending_name),".pending-%s",name);
+    int length=snprintf(body,sizeof(body),"%s\n%s\n%s\n%s %llu\n%llu %llu %llu %llu %llu %llu\n",intent?"samosa.package.copy.intent.v1":"samosa.package.copy.v1",index->manifest_sha256,file->name,file->sha256,(unsigned long long)file->bytes,
         (unsigned long long)r.st_dev,(unsigned long long)r.st_ino,(unsigned long long)p.st_dev,(unsigned long long)p.st_ino,(unsigned long long)c.st_dev,(unsigned long long)c.st_ino);
     if(length<=0||(size_t)length>=sizeof(body))return "invalid_package_copy_record";
     int record=openat(journal,name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
@@ -64,3 +64,5 @@ const char *package_copy_record(int journal,int root,int parent,int copy,const P
     if(!e&&(!bound(journal,name,pending)||fsync(journal)))e="package_copy_record_failed";
     close(pending);return e;
 }
+const char *package_copy_record(int journal,int root,int parent,int copy,const PackageIndex *index,size_t selected,int action){return record(journal,root,parent,copy,index,selected,action,0);}
+const char *package_copy_intent(int journal,int root,int parent,const PackageIndex *index,size_t selected,int action){return record(journal,root,parent,-1,index,selected,action,1);}

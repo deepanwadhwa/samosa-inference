@@ -48,20 +48,26 @@ static const char *stage(int root,int journal,const PackageIndex *index,size_t s
                 if(temporary_fd>=0)close(temporary_fd);}
             if(!e&&!bound(parent,leaf,existing))e="package_tree_changed";
             if(!e&&tracked)e=package_copy_record(journal,root,parent,existing,index,selected,2);
+            if(!e&&journal>=0){e=package_copy_intent(journal,root,parent,index,selected,2);if(e&&!strcmp(e,"package_copy_unregistered"))e=NULL;}
             close(existing);close(parent);return e;
         }else if(errno!=ENOENT)e="unsafe_package_stage";
     }
     /* Reserved names cannot collide with an indexed payload. Never adopt or
      * delete a previous process's partial file without a recovery ledger. */
     if(!e){snprintf(temporary,sizeof(temporary),".copy-%zu-%s",selected,file->sha256);
+        if(journal>=0){struct stat present;
+            if(fstatat(parent,temporary,&present,AT_SYMLINK_NOFOLLOW)&&errno==ENOENT)e=package_copy_intent(journal,root,parent,index,selected,1);
+        }
+        if(e){close(parent);return e;}
         output=openat(parent,temporary,O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0600);
         if(output<0&&errno==EEXIST&&journal>=0){
             output=openat(parent,temporary,O_RDWR|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
             if(output<0&&errno==EACCES)output=openat(parent,temporary,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
             if(output<0)e="unsafe_package_stage";
-            else{e=package_copy_record(journal,root,parent,output,index,selected,0);if(!e)registered=1;}
+            else{e=package_copy_record(journal,root,parent,output,index,selected,0);if(!e)registered=1;
+                else if(!strcmp(e,"package_copy_unregistered"))e=package_copy_intent(journal,root,parent,index,selected,0);}
         }else if(output<0)e=errno==EEXIST?"package_stage_busy":"package_stage_unavailable";else created=1;
-        if(!e&&journal>=0&&!registered){e=package_copy_record(journal,root,parent,output,index,selected,1);if(!e)registered=1;}}
+        if(!e&&journal>=0&&!registered){e=control?control(context):NULL;if(!e)e=package_copy_record(journal,root,parent,output,index,selected,1);if(!e)registered=1;}}
     uint64_t retained=0;
     if(!e&&registered){struct stat s;
         if(fstat(output,&s)||s.st_size<0||(uint64_t)s.st_size>file->bytes||s.st_nlink!=1||!bound(parent,temporary,output))e="unsafe_package_stage";
@@ -96,6 +102,7 @@ static const char *stage(int root,int journal,const PackageIndex *index,size_t s
     if(registered&&output>=0&&fsync(output)&&!e)e="package_stage_failed";
     if(!e&&fsync(parent))e="package_stage_failed";
     if(!e&&registered)e=package_copy_record(journal,root,parent,output,index,selected,2);
+    if(!e&&journal>=0){e=package_copy_intent(journal,root,parent,index,selected,2);if(e&&!strcmp(e,"package_copy_unregistered"))e=NULL;}
     if(output>=0)close(output);close(parent);return e;
 }
 

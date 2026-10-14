@@ -38,3 +38,18 @@ ASan/UBSan with this recovery enabled. Log:
 modified copy-record module emitted no diagnostics. This step stays within area
 2 and closes these specific owned-record publication cases; the remaining
 installation recovery and catalog requirements are unchanged.
+
+## Interruption between copy creation and inode registration
+
+The staging gate kills a real child after creating the zero-byte temporary but
+before inode registration. The durable index/root/parent copy intent survives.
+A corrupted intent refuses and preserves the temporary; restoring the exact
+intent permits registration, copy completion and closed-tree verification. A
+separate temporary created without an intent still refuses. Existing killed
+partial-copy, inode-substitution, corrupt-prefix and two-link recovery cases
+continue to pass normally and under ASan/UBSan. Logs:
+`/private/tmp/samosa-copy-intent-stage.log` and
+`/private/tmp/samosa-copy-intent-final.log` (complete HTTPS package gates).
+This closes the copy-creation/inode-registration interruption after durable intent
+publication. Torn initial intent metadata, other installation metadata windows,
+reclamation and supported production packages remain open within area 2.

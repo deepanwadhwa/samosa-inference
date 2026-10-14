@@ -24,6 +24,9 @@ static const char *kill_copy(void *p){CopyCancel *c=p;struct stat s;
     if(!fstatat(c->root,c->path,&s,AT_SYMLINK_NOFOLLOW)&&s.st_size>0)kill(getpid(),SIGKILL);
     return NULL;
 }
+static const char *kill_bootstrap(void *p){CopyCancel *c=p;
+    if(!faccessat(c->root,c->path,F_OK,0))kill(getpid(),SIGKILL);return NULL;
+}
 int main(void){
     char base[]="/tmp/samosa-package-stage.XXXXXX";CHECK(mkdtemp(base));char root_path[256],source_path[256];
     snprintf(root_path,sizeof(root_path),"%s/payload",base);snprintf(source_path,sizeof(source_path),"%s/source",base);
@@ -62,6 +65,18 @@ int main(void){
     CHECK(!unlinkat(parent,"model.gguf",0));
     char journal_path[256];snprintf(journal_path,sizeof(journal_path),"%s/journal",base);CHECK(!mkdir(journal_path,0700));int journal=open(journal_path,O_RDONLY|O_DIRECTORY);CHECK(journal>=0);
     snprintf(temporary,sizeof(temporary),".copy-0-%s",index->files[0].sha256);snprintf(partial,sizeof(partial),"models/%s",temporary);interrupted=(CopyCancel){root,partial};
+    /* No durable reservation means an existing temporary remains foreign. */
+    writer=openat(parent,temporary,O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(writer>=0);CHECK(!close(writer));
+    CHECK(!strcmp(package_stage_file_registered(root,journal,index,0,input,NULL,NULL),"package_copy_unregistered"));CHECK(!unlinkat(parent,temporary,0));
+    pid_t bootstrap=fork();CHECK(bootstrap>=0);if(!bootstrap)_exit(package_stage_file_registered(root,journal,index,0,input,kill_bootstrap,&interrupted)?2:3);
+    int bootstrap_status;CHECK(waitpid(bootstrap,&bootstrap_status,0)==bootstrap&&WIFSIGNALED(bootstrap_status)&&WTERMSIG(bootstrap_status)==SIGKILL);
+    CHECK(!fstatat(parent,temporary,&s,AT_SYMLINK_NOFOLLOW)&&s.st_size==0);
+    char intent_name[96];snprintf(intent_name,sizeof(intent_name),"intent-0-%s",index->files[0].sha256);
+    writer=openat(journal,intent_name,O_RDONLY|O_NOFOLLOW);CHECK(writer>=0);CHECK(!fchmod(writer,0600));CHECK(!close(writer));
+    writer=openat(journal,intent_name,O_RDWR|O_NOFOLLOW);CHECK(writer>=0);char intent_first;CHECK(pread(writer,&intent_first,1,0)==1);CHECK(pwrite(writer,"X",1,0)==1);
+    CHECK(!strcmp(package_stage_file_registered(root,journal,index,0,input,NULL,NULL),"unsafe_package_copy_record"));CHECK(!fstatat(parent,temporary,&s,0)&&s.st_size==0);
+    CHECK(pwrite(writer,&intent_first,1,0)==1);CHECK(!fchmod(writer,0400));CHECK(!close(writer));
+    CHECK(!package_stage_file_registered(root,journal,index,0,input,NULL,NULL));CHECK(!package_tree_verify(root,index,NULL,NULL,&result));CHECK(!unlinkat(parent,"model.gguf",0));
     pid_t child=fork();CHECK(child>=0);if(!child)_exit(package_stage_file_registered(root,journal,index,0,input,kill_copy,&interrupted)?2:3);
     int status;CHECK(waitpid(child,&status,0)==child&&WIFSIGNALED(status)&&WTERMSIG(status)==SIGKILL);
     CHECK(!fstatat(parent,temporary,&s,AT_SYMLINK_NOFOLLOW)&&s.st_size==65536);
