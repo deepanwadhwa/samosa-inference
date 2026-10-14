@@ -100,3 +100,29 @@ host configuration; no acquisition or credentials are required. Success reports
 readiness remain unrequested/unqualified. Any payload, journal, completion,
 unknown package name or unsafe identity metadata refuses. No package files are
 deleted. This does not implement partial/installed package removal.
+
+## Llama installation recipe
+
+`llama-gguf-package-v1` requires a host-qualified LlamaPackagePolicy before
+catalog acquisition or assembly state creation. Missing or malformed policy
+refuses. Publication and installed-status verification invoke the complete
+llama descriptor/GGUF/native graph verifier with that policy; no manifest may
+qualify its own runtime. Staged engine files become private read/execute (`0500`),
+while other payloads retain private read-only (`0400`) permissions.
+
+Setup accepts host-only `--llama-runtime-revision`, `--llama-kind`,
+`--llama-architecture` and `--llama-engine-sha256`. All four are required together
+and validated before request handling. Public request fields remain version/op/ID;
+catalog discovery marks this recipe unavailable without policy. Policy flags are
+operator configuration for an independently qualified runtime, not declarations
+accepted from a downloaded package. Success still reports readiness unqualified.
+
+Normal and ASan/UBSan actual EmbeddingGemma assembly/publication/status gates pass
+for index `6e61ef6a8aba534521b6dd3a4bf1f0e0c0df04c785b5666d3b01ac458f875865`,
+including missing-policy refusal before state creation and executable engine mode.
+Logs: `/private/tmp/samosa-llama-installed-normal.log` and
+`/private/tmp/samosa-llama-installed-sanitize.log`. Controlled complete HTTPS and
+setup regression gates pass in both builds, including absent/invalid policy
+before index acquisition; logs `/private/tmp/samosa-llama-install-native.log`
+and `/private/tmp/samosa-llama-setup-final.log`. Actual catalog/HTTPS llama setup
+qualification remains the next installation gate; this does not close component 2.

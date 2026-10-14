@@ -99,7 +99,7 @@ static const char *stage(int root,int journal,const PackageIndex *index,size_t s
     if(!e)e=artifact_verify_controlled(output,file->bytes,PACKAGE_PAYLOAD_BYTES,file->sha256,control,context);
     if(!e)e=artifact_verify_controlled(input,file->bytes,PACKAGE_PAYLOAD_BYTES,file->sha256,control,context);
     if(!e)e=control?control(context):NULL;
-    if(!e&&(!bound(parent,temporary,output)||fchmod(output,0400)||fsync(output)))e="package_stage_failed";
+    if(!e&&(!bound(parent,temporary,output)||fchmod(output,file->role==PACKAGE_ENGINE?0500:0400)||fsync(output)))e="package_stage_failed";
     if(!e){
         /* linkat refuses an existing final name; no foreign file is overwritten.
          * The caller's lease covers the brief two-link publication interval. */

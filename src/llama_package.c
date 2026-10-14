@@ -8,6 +8,11 @@
 #include <string.h>
 #include <unistd.h>
 static int pin(const char *s,size_t n){return s&&strnlen(s,n+1)==n&&strspn(s,"0123456789abcdef")==n;}
+int llama_package_policy_valid(const LlamaPackagePolicy *policy){
+    if(!policy||!pin(policy->runtime_revision,40)||!pin(policy->engine_sha256,64)||!policy->kind||strnlen(policy->kind,16)>=16||
+        (strcmp(policy->kind,"text")&&strcmp(policy->kind,"embedding"))||!policy->architecture||!policy->architecture[0]||strnlen(policy->architecture,65)>64)return 0;
+    for(const unsigned char *p=(const unsigned char *)policy->architecture;*p;p++)if(!((*p>='a'&&*p<='z')||(*p>='0'&&*p<='9')||strchr("._-",*p)))return 0;return 1;
+}
 static int open_file(int root,const char *name){
     char path[256];strcpy(path,name);int parent=openat(root,".",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);if(parent<0)return -1;
     char *leaf=path;for(char *slash=strchr(leaf,'/');slash;slash=strchr(leaf,'/')){
@@ -15,8 +20,7 @@ static int open_file(int root,const char *name){
     int fd=openat(parent,leaf,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);close(parent);return fd;
 }
 const char *llama_package_verify(int root,const PackageIndex *index,const LlamaPackagePolicy *policy,const char *(*control)(void *),void *context,LlamaPackageDescriptor *out){
-    if(!index||!out||!policy||!index->count||index->count>PACKAGE_INDEX_FILES||!pin(policy->runtime_revision,40)||!pin(policy->engine_sha256,64)||
-        !policy->kind||(strcmp(policy->kind,"text")&&strcmp(policy->kind,"embedding"))||!policy->architecture||!policy->architecture[0]||strnlen(policy->architecture,65)>64)return "invalid_llama_package_policy";
+    if(!index||!out||!index->count||index->count>PACKAGE_INDEX_FILES||!llama_package_policy_valid(policy))return "invalid_llama_package_policy";
     const char *e=control?control(context):NULL;if(e)return e;
     const PackageFile *manifest=NULL;
     for(size_t i=0;i<index->count;i++){

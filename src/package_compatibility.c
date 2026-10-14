@@ -2,12 +2,16 @@
 #include "speech_package_loader.h"
 #include <stdlib.h>
 #include <string.h>
-int package_recipe_supported(const char *recipe){return recipe&&!strcmp(recipe,"sherpa-speech-package-v1");}
+int package_recipe_supported(const char *recipe){return recipe&&(!strcmp(recipe,"sherpa-speech-package-v1")||!strcmp(recipe,"llama-gguf-package-v1"));}
 const char *package_backend_compatible(int root,const PackageIndex *index,void *context){
     PackageCompatibilityContext *c=context;
     if(!index||!c||!c->payload_path||c->payload_path[0]!='/'||!index->count||index->count>PACKAGE_INDEX_FILES||
         !memchr(index->recipe,0,sizeof(index->recipe)))return "invalid_package_compatibility";
     if(!package_recipe_supported(index->recipe))return "unsupported_package_recipe";
+    if(!strcmp(index->recipe,"llama-gguf-package-v1")){
+        if(!c->llama_policy)return "unqualified_llama_package_runtime";
+        LlamaPackageDescriptor observed;return llama_package_verify(root,index,c->llama_policy,c->control,c->context,&observed);
+    }
     const PackageFile *manifest=NULL;
     for(size_t i=0;i<index->count;i++){
         if(!memchr(index->files[i].name,0,sizeof(index->files[i].name)))return "invalid_package_index";

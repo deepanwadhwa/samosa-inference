@@ -2,6 +2,9 @@
 #define _DARWIN_C_SOURCE
 #include "package_native_runtime.h"
 #include "llama_package.h"
+#ifdef SAMOSA_LLAMA_INSTALL_TEST
+#include "package_assemble.h"
+#endif
 #include "library_runtime.h"
 #include "catalog.h"
 #include "library_fixture.h"
@@ -19,12 +22,24 @@ static void put(int root,PackageFile *file,const void *data,size_t bytes){
     file->bytes=bytes;hash_bytes(data,bytes,file->sha256);
 }
 int main(int argc,char **argv){
-    if(argc==4||argc==5){int root=open(argv[1],O_RDONLY|O_DIRECTORY|O_NOFOLLOW),fd=open(argv[2],O_RDONLY|O_NOFOLLOW);struct stat s;
+    if(argc==4||argc==5||argc==6){int root=open(argv[1],O_RDONLY|O_DIRECTORY|O_NOFOLLOW),fd=open(argv[2],O_RDONLY|O_NOFOLLOW);struct stat s;
         CHECK(root>=0&&fd>=0&&!fstat(fd,&s)&&S_ISREG(s.st_mode)&&s.st_uid==geteuid()&&!(s.st_mode&077)&&s.st_nlink==1&&s.st_size>0&&s.st_size<=PACKAGE_INDEX_BYTES);
         char *body=malloc((size_t)s.st_size);PackageIndex *index=calloc(1,sizeof(*index));CHECK(body&&index);size_t at=0;
         while(at<(size_t)s.st_size){ssize_t n=read(fd,body+at,(size_t)s.st_size-at);CHECK(n>0);at+=(size_t)n;}
         CHECK(!package_index_parse(body,at,argv[3],index));const char *e;
-        if(argc==5){CHECK(!strcmp(argv[4],"llama"));LlamaPackagePolicy policy={.runtime_revision="4fbc76dec51d0add466f0210855c0596589b60d4",.kind="embedding",.architecture="gemma-embedding2",.engine_sha256="958601dbd22ab2f5857e09860247f30c74153cb0f3914b8d62f2bacbba9aab97"};LlamaPackageDescriptor descriptor;e=llama_package_verify(root,index,&policy,NULL,NULL,&descriptor);}
+        if(argc>=5){CHECK(!strcmp(argv[4],"llama"));LlamaPackagePolicy policy={.runtime_revision="4fbc76dec51d0add466f0210855c0596589b60d4",.kind="embedding",.architecture="gemma-embedding2",.engine_sha256="958601dbd22ab2f5857e09860247f30c74153cb0f3914b8d62f2bacbba9aab97"};LlamaPackageDescriptor descriptor;e=llama_package_verify(root,index,&policy,NULL,NULL,&descriptor);
+#ifdef SAMOSA_LLAMA_INSTALL_TEST
+            if(!e&&argc==6){int destination=open(argv[5],O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(destination>=0);char payload[4096];CHECK(snprintf(payload,sizeof(payload),"%s/payload",argv[5])<(int)sizeof(payload));
+                PackageAssembly assembly={.directory=destination,.source=root,.index=index,.payload_path=payload,.copy_ceiling=index->payload_bytes};PackageTreeResult installed;
+                CHECK(!strcmp(package_assemble(&assembly,&installed),"unqualified_llama_package_runtime"));CHECK(faccessat(destination,"assemble.lock",F_OK,0)<0);
+                assembly.llama_policy=&policy;CHECK(!package_assemble(&assembly,&installed));CHECK(installed.files==index->count);
+                PackageAssemblyStatus status;assembly.source=-1;CHECK(!package_assembly_status(&assembly,&status));CHECK(!strcmp(status.state,"installed_verified"));
+                CHECK(!fstatat(destination,"payload/llama-server",&s,AT_SYMLINK_NOFOLLOW));CHECK((s.st_mode&0777)==0500);CHECK(!close(destination));
+                puts("PASS actual llama installation: missing-policy refusal, complete publication, offline status and executable engine mode");}
+#else
+            CHECK(argc!=6);
+#endif
+        }
         else e=package_native_runtime_verify(root,index,NULL,NULL);if(e)fprintf(stderr,"actual native runtime: %s\n",e);CHECK(!e);
         printf("PASS actual native runtime package: %zu files; %llu pinned bytes; index %s; loader compatibility only\n",index->count,(unsigned long long)index->payload_bytes,index->manifest_sha256);
         free(index);free(body);CHECK(!close(fd));CHECK(!close(root));return 0;

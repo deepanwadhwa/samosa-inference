@@ -23,6 +23,8 @@ const char *package_assemble(const PackageAssembly *c,PackageTreeResult *out){
     const char *e=c->control?c->control(c->context):NULL;if(e)return e;
     if(c->index->payload_bytes>c->copy_ceiling)return "package_copy_quota_exceeded";
     if(!memchr(c->index->recipe,0,sizeof(c->index->recipe))||!package_recipe_supported(c->index->recipe))return "unsupported_package_recipe";
+    if(!strcmp(c->index->recipe,"llama-gguf-package-v1")&&!c->llama_policy)return "unqualified_llama_package_runtime";
+    if(!strcmp(c->index->recipe,"llama-gguf-package-v1")&&!llama_package_policy_valid(c->llama_policy))return "invalid_llama_package_policy";
     if(!private_directory(c->directory))return "unsafe_package_assembly";
     char platform[65],os[65];e=provider_catalog_host(platform,os);if(!e)e=package_index_qualify(c->index,platform,os);if(e)return e;
     int lock=openat(c->directory,"assemble.lock",O_RDWR|O_CREAT|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC,0600);
@@ -36,7 +38,7 @@ const char *package_assemble(const PackageAssembly *c,PackageTreeResult *out){
     if(!e)e=c->control?c->control(c->context):NULL;
     /* Completed payloads are never overwritten or recopied. Verifiable
      * interrupted completion metadata is recovered after all package gates. */
-    PackageCompatibilityContext compatibility={.payload_path=c->payload_path,.control=c->control,.context=c->context};
+    PackageCompatibilityContext compatibility={.payload_path=c->payload_path,.control=c->control,.context=c->context,.llama_policy=c->llama_policy};
     PackagePublication publication={.directory=c->directory,.index=c->index,.compatible=package_backend_compatible,.compatibility=&compatibility,.control=c->control,.context=c->context};
     PackageTreeResult observed;
     int complete=0;
@@ -97,7 +99,7 @@ const char *package_assembly_status(const PackageAssembly *c,PackageAssemblyStat
                 }else{
                     payload=openat(c->directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
                     if(payload<0||!private_directory(payload)||!bound(c->directory,"payload",payload)||!path_bound(c->payload_path,payload))e="unsafe_package_assembly";
-                    PackageCompatibilityContext compatibility={.payload_path=c->payload_path,.control=c->control,.context=c->context};
+                    PackageCompatibilityContext compatibility={.payload_path=c->payload_path,.control=c->control,.context=c->context,.llama_policy=c->llama_policy};
                     PackagePublication publication={.directory=c->directory,.index=c->index,.compatible=package_backend_compatible,.compatibility=&compatibility,.control=c->control,.context=c->context};
                     if(!e)e=package_publication_verify(&publication,&result.package);
                     if(!e&&(!bound(c->directory,"payload",payload)||!path_bound(c->payload_path,payload)))e="package_tree_changed";
