@@ -220,3 +220,10 @@ concrete speech completion publication. See
 [contract](../contracts/package-assembly-v1.md) and
 [evidence](PACKAGE_ASSEMBLY_VERIFICATION.md). Public catalog acquisition, shared
 reservation and crash recovery remain open; this does not close area 2.
+
+
+Acquired artifact-cache descriptors now feed native package assembly directly,
+without an intermediate closed-tree copy. The bridge retains verified cache
+identity, request controls and independent single-link installed payloads; normal
+and sanitizer fixture/Pocket gates pass. Shared destination reservations, catalog
+package acquisition and crash recovery remain required before area 2 closes.

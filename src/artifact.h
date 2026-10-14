@@ -35,6 +35,11 @@ struct ArtifactConfig {
  * It does not activate an engine. Errors never delete foreign files. */
 const char *artifact_install(const ArtifactConfig *);
 const char *artifact_status(const ArtifactConfig *,const char **status);
+/* Acquire a held read-only verified published descriptor under the store lease.
+ * Output is untouched on failure; caller closes on success. The descriptor may
+ * have the registered two cache links. It is an observation, not immutability.
+ * Explicit request control applies between bounded verification reads. */
+const char *artifact_open_verified(const ArtifactConfig *,const char *(*)(void *),void *,int *);
 /* Only the registered native artifact inode is changed; never a source path. */
 const char *artifact_make_executable(const ArtifactConfig *);
 #endif

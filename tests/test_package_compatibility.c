@@ -3,6 +3,7 @@
 #include "package_compatibility.h"
 #include "package_stage.h"
 #include "package_assemble.h"
+#include "artifact.h"
 #include <sys/file.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -13,6 +14,10 @@
 static unsigned checks;
 #define CHECK(x) do{checks++;if(!(x)){fprintf(stderr,"compatibility failure %d: %s\n",__LINE__,#x);exit(1);}}while(0)
 static const char *cancel(void *unused){(void)unused;return "cancelled";}
+static const char *cached(void *context,const PackageFile *file,const char *(*control)(void *),void *request,int *out){
+    ArtifactConfig config=*(ArtifactConfig *)context;config.sha256=file->sha256;config.size=file->bytes;
+    return artifact_open_verified(&config,control,request,out);
+}
 int main(int argc,char **argv){
     PackageIndex *index=calloc(1,sizeof(*index));CHECK(index);
     PackageCompatibilityContext context={.payload_path="/unused/private-payload"};
@@ -46,6 +51,27 @@ int main(int argc,char **argv){
             CHECK(!package_assemble(&assembly,&observed));CHECK(observed.files==index->count);
             CHECK(!fstatat(retained,index->files[0].name,&after,AT_SYMLINK_NOFOLLOW));CHECK(before.st_ino==after.st_ino&&before.st_dev==after.st_dev);CHECK(!close(retained));
             CHECK(!package_assemble(&assembly,&observed));
+            /* A second package assembles directly from the registered artifact
+             * store, whose stage/artifact cache names share two links. */
+            char store[4096],cache_path[4096];CHECK(snprintf(store,sizeof(store),"%s/artifacts",argv[4])<(int)sizeof(store));
+            ArtifactConfig cache={.state_path=store,.byte_ceiling=index->payload_bytes,.disk_ceiling=index->payload_bytes*2,.artifact_capacity=PACKAGE_INDEX_FILES};
+            for(size_t i=0;i<index->count;i++){
+                char source[4096];CHECK(snprintf(source,sizeof(source),"%s/%s",argv[1],index->files[i].name)<(int)sizeof(source));
+                cache.source_path=source;cache.sha256=index->files[i].sha256;cache.size=index->files[i].bytes;CHECK(!artifact_install(&cache));
+            }
+            CHECK(!mkdirat(directory,"cached-package",0700));int cache_directory=openat(directory,"cached-package",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(cache_directory>=0);
+            CHECK(snprintf(cache_path,sizeof(cache_path),"%s/cached-package/payload",argv[4])<(int)sizeof(cache_path));
+            PackageAssembly from_cache={.directory=cache_directory,.source=-1,.source_open=cached,.source_context=&cache,.index=index,.payload_path=cache_path,.copy_ceiling=index->payload_bytes};
+            CHECK(!package_assemble(&from_cache,&observed));CHECK(observed.files==index->count);CHECK(!package_assemble(&from_cache,&observed));CHECK(!close(cache_directory));
+            char bad_cache[8192];CHECK(snprintf(bad_cache,sizeof(bad_cache),"%s/%s/artifact",store,index->files[0].sha256)<(int)sizeof(bad_cache));
+            int broken=open(bad_cache,O_WRONLY|O_NOFOLLOW);CHECK(broken>=0);CHECK(pwrite(broken,"X",1,0)==1);CHECK(!close(broken));
+            CHECK(!mkdirat(directory,"rejected-package",0700));int rejected=openat(directory,"rejected-package",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(rejected>=0);
+            char rejected_path[4096];CHECK(snprintf(rejected_path,sizeof(rejected_path),"%s/rejected-package/payload",argv[4])<(int)sizeof(rejected_path));
+            PackageAssembly rejected_assembly=from_cache;rejected_assembly.directory=rejected;rejected_assembly.payload_path=rejected_path;
+            CHECK(!strcmp(package_assemble(&rejected_assembly,&observed),"artifact_checksum_mismatch"));CHECK(faccessat(rejected,"complete",F_OK,0)<0);CHECK(!close(rejected));
+            /* Completed package verification is independent of cache survival. */
+            cache_directory=openat(directory,"cached-package",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(cache_directory>=0);from_cache.directory=cache_directory;
+            CHECK(!package_assemble(&from_cache,&observed));CHECK(!close(cache_directory));
             int payload=openat(directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(payload>=0);
             PackageCompatibilityContext staged={.payload_path=destination};
             PackagePublication publication={.directory=directory,.index=index,.compatible=package_backend_compatible,.compatibility=&staged};

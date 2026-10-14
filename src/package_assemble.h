@@ -1,15 +1,20 @@
 #ifndef SAMOSA_INFERENCE_PACKAGE_ASSEMBLE_H
 #define SAMOSA_INFERENCE_PACKAGE_ASSEMBLE_H
 #include "package_tree.h"
+/* Trusted native acquisition adapter returns an owned read-only descriptor.
+ * It must honor request controls during verification; caller closes the result.
+ * Never supplied by public JSON or an untrusted package manifest. */
+typedef const char *(*PackageSourceOpen)(void *,const PackageFile *,const char *(*)(void *),void *,int *);
 typedef struct {
     int directory,source;
+    PackageSourceOpen source_open;void *source_context;
     const PackageIndex *index;
     const char *payload_path;
     uint64_t copy_ceiling;
     const char *(*control)(void *);
     void *context;
 } PackageAssembly;
-/* Assemble an already acquired, closed source tree into an installer-owned
+/* Assemble an acquired closed tree or trusted descriptor source into an installer-owned
  * private package directory. Serializes cooperating assemblies, resumes verified
  * files, and publishes only through the concrete backend compatibility gate.
  * copy_ceiling bounds payload copies only: the caller owns global reservation,

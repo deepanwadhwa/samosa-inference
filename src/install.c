@@ -167,6 +167,20 @@ const char *artifact_status(const ArtifactConfig *c,const char **status) {
     }
     close_store(&s);return e;
 }
+const char *artifact_open_verified(const ArtifactConfig *c,const char *(*control)(void *),void *context,int *out) {
+    if(!out)return "invalid_artifact_configuration";
+    const char *e=control?control(context):NULL;if(e)return e;
+    Store s;e=open_store(c,&s,0);int fd=-1;
+    if(!e)e=open_entry(c,&s,0);
+    if(!e){fd=openat(s.entry,"artifact",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+        if(fd<0)e=errno==ENOENT?"artifact_absent":"foreign_artifact";}
+    struct stat a,b;
+    if(!e&&(fstat(fd,&a)||fstat(s.stage,&b)||a.st_dev!=b.st_dev||a.st_ino!=b.st_ino||a.st_nlink!=2))e="foreign_artifact";
+    if(!e)e=artifact_verify_controlled(fd,c->size,c->byte_ceiling,c->sha256,control,context);
+    if(!e&&(!private_fd(s.entry,1)||!private_fd(s.lock,0)||!scopes_same(c,&s)||!path_same(s.entry,"artifact",fd)))e="artifact_state_changed";
+    if(!e){*out=fd;fd=-1;}
+    if(fd>=0)close(fd);close_store(&s);return e;
+}
 const char *artifact_install(const ArtifactConfig *c) {
     Store s;const char *e=open_store(c,&s,1);int input=-1;
     if(!e)e=quota(c,&s,0);

@@ -16,6 +16,7 @@
 static unsigned checks;
 #define CHECK(x) do{checks++;if(!(x)){fprintf(stderr,"FAIL %d: %s\n",__LINE__,#x);exit(1);}}while(0)
 static void status(ArtifactConfig *c,const char *expected){const char *s=NULL;CHECK(!artifact_status(c,&s));CHECK(!strcmp(s,expected));}
+static const char *stop_read(void *p){(void)p;return "cancelled";}
 static int interrupt(void *p){unsigned *calls=p;return ++*calls==2;}
 static int death(void *p){unsigned *calls=p;if(++*calls==2)kill(getpid(),SIGKILL);return 0;}
 static void publication_death(const char *phase,void *p){(void)p;if(!strcmp(phase,"published"))kill(getpid(),SIGKILL);}
@@ -45,10 +46,14 @@ int main(int argc,char **argv){
     (void)argc;CHECK(argv[0][0]=='/');
     char root[64],source[128],state[128],sha[65];ArtifactConfig c;
     fixture(root,source,state,&c,sha);status(&c,"absent");CHECK(!artifact_install(&c));status(&c,"verified");
+    int verified=-7;CHECK(!artifact_open_verified(&c,NULL,NULL,&verified));CHECK(verified>=0);
+    CHECK((fcntl(verified,F_GETFL)&O_ACCMODE)==O_RDONLY);CHECK(!artifact_verify(verified,c.size,c.byte_ceiling,c.sha256));CHECK(!close(verified));
+    verified=-7;CHECK(!strcmp(artifact_open_verified(&c,stop_read,NULL,&verified),"cancelled"));CHECK(verified==-7);
     const char *executable_error=artifact_make_executable(&c);CHECK(executable_error&&!strcmp(executable_error,"unsupported_executable"));
     CHECK(!unlink(source));CHECK(!artifact_install(&c)); /* exact installed retry is offline */
     char ready[256];snprintf(ready,sizeof(ready),"%s/%s/artifact",state,sha);
     int fd=open(ready,O_WRONLY);CHECK(fd>=0);CHECK(pwrite(fd,"x",1,0)==1);CHECK(!close(fd));
+    verified=-7;CHECK(!strcmp(artifact_open_verified(&c,NULL,NULL,&verified),"artifact_checksum_mismatch"));CHECK(verified==-7);
     const char *s;CHECK(!strcmp(artifact_status(&c,&s),"artifact_checksum_mismatch"));CHECK(!strcmp(s,"invalid"));
     fixture(root,source,state,&c,sha);unsigned calls=0;c.cancelled=interrupt;c.cancellation=&calls;
     CHECK(!strcmp(artifact_install(&c),"artifact_interrupted"));status(&c,"interrupted");

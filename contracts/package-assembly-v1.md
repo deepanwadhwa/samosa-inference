@@ -33,3 +33,26 @@ refuse; assembly never guesses ownership or deletes such files. The lease
 coordinates cooperating API callers, not arbitrary same-user filesystem writers.
 This API assembles an acquired tree; it is not yet the public catalog/download
 installation service.
+
+
+## Acquired artifact descriptor adapter
+
+A trusted native `source_open` adapter may supply one owned read-only file
+descriptor for each indexed file instead of a closed source directory. The
+assembler checks request control before the adapter call, passes the same control
+to it, stages and verifies every returned file and closes returned descriptors
+on success and failure. The adapter must honor controls during acquisition or
+verification. Destination whole-tree and concrete compatibility gates still run;
+no caller-supplied adapter can waive those gates. The adapter is not a public
+request callback. Completed package verification never invokes the adapter.
+
+`artifact_open_verified` provides the artifact-store bridge: it obtains the
+existing install lease, opens the registered identity and published artifact,
+checks the registered two-link inode relationship, verifies declared bytes and
+SHA-256 with bounded controlled reads, and rechecks named bindings/private state.
+Only success transfers a held read-only descriptor to the caller; failure leaves
+output untouched. Absent, partial, busy, foreign and corrupt entries refuse. The
+store lease is released before returning; the held descriptor is reverified by
+per-file staging and does not establish future immutability. This lets cache
+stage/artifact aliases remain two-link files while installed payload files are
+separate single-link copies. It does not reserve destination disk capacity.
