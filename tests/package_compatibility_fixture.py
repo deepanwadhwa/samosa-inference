@@ -73,6 +73,9 @@ try:
         thread.start()
         arguments += [f"https://127.0.0.1:{server.server_port}", str(cert)]
     result = subprocess.run(arguments, text=True, capture_output=True, timeout=60)
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    assert "AddressSanitizer" not in result.stderr and "runtime error:" not in result.stderr
+    expected_downloads = len(served)
     if "--setup" in sys.argv:
         setup = os.path.abspath(sys.argv[sys.argv.index("--setup") + 1])
         package_dir = destination / "setup-package"
@@ -80,25 +83,45 @@ try:
         package_dir.mkdir(mode=0o700)
         pool.mkdir(mode=0o700)
         config = [setup, "--catalog-file", str(destination / "catalog.json"),
-                  "--state", str(destination / "remote-artifacts"),
+                  "--state", str(destination / "setup-artifacts"),
                   "--byte-ceiling", str(len(body) + sum(f["bytes"] for f in files)),
                   "--disk-ceiling", str(2 * (len(body) + sum(f["bytes"] for f in files))),
                   "--artifact-capacity", "513", "--package-directory", str(package_dir)]
+        before_setup = len(requests)
+        for extra in ({"package_directory": str(package_dir)}, {"digest_endpoint": "https://override.invalid"}):
+            invalid = subprocess.run(config, input=json.dumps({"contract_version": 1, "op": "provider_install", "provider_id": "speech-fixture", **extra}),
+                                     text=True, capture_output=True, timeout=60)
+            assert invalid.returncode == 1 and json.loads(invalid.stdout)["error"]["code"] == "invalid_request", invalid
+        package_dir.chmod(0o755)
+        unsafe = subprocess.run(config, input=json.dumps({"contract_version": 1, "op": "provider_status", "provider_id": "speech-fixture"}),
+                                text=True, capture_output=True, timeout=60)
+        assert unsafe.returncode == 1 and json.loads(unsafe.stdout)["error"]["code"] == "invalid_package_directory", unsafe
+        package_dir.chmod(0o700)
+        assert len(requests) == before_setup and not (destination / "setup-artifacts").exists()
         for op in ("provider_install", "provider_status", "provider_resume"):
             invocation = config.copy()
             if op != "provider_status":
                 invocation += ["--reservation-directory", str(pool), "--copy-ceiling", str(sum(f["bytes"] for f in files)),
                                "--reservation-ceiling", str(sum(f["bytes"] for f in files)), "--reservation-capacity", "1"]
+            if op == "provider_install":
+                # Exercise a genuinely cold cache through public ID selection.
+                invocation += ["--digest-endpoint", f"https://127.0.0.1:{server.server_port}", "--ca-file", str(cert)]
+                untrusted = subprocess.run(invocation[:-2], input=json.dumps({"contract_version": 1, "op": op, "provider_id": "speech-fixture"}),
+                                           text=True, capture_output=True, timeout=60)
+                assert untrusted.returncode == 1 and json.loads(untrusted.stdout)["error"]["code"] == "artifact_tls_verification_failed", untrusted
+                assert not (package_dir / "payload").exists()
             response = subprocess.run(invocation, input=json.dumps({"contract_version": 1, "op": op, "provider_id": "speech-fixture"}),
                                       text=True, capture_output=True, timeout=60)
             assert response.returncode == 0, response.stdout + response.stderr
+            assert "AddressSanitizer" not in response.stderr and "runtime error:" not in response.stderr
             receipt = json.loads(response.stdout)
             assert receipt["status"] == "installed_verified" and receipt["readiness"] == "unqualified", receipt
-    assert result.returncode == 0, (result.stdout, result.stderr)
-    assert "AddressSanitizer" not in result.stderr and "runtime error:" not in result.stderr
+            assert len(requests) - before_setup == len(served), requests
+        expected_downloads += len(served)
+        print("PASS complete setup CLI: cold HTTPS index/payload acquisition, TLS refusal and offline status/resume")
     if https:
         assert served == {f["sha256"] for f in files} | {hashlib.sha256(body).hexdigest()}, served
-        assert len(requests) == len(served), requests
+        assert len(requests) == expected_downloads, requests
     print(result.stdout, end="")
 finally:
     if server is not None:

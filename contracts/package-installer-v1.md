@@ -81,3 +81,6 @@ operation and provider-ID objects; paths and URLs are host CLI configuration.
 Success reports `installed_verified`, `activation:not_requested` and
 `readiness:unqualified`. Without the package-directory option, the existing
 single-artifact setup behavior remains available pending integration retirement.
+Setup request controls also verify the package and reservation names still refer
+to their held private directory descriptors throughout installation. Renamed or
+substituted roots fail with `package_tree_changed` before further controlled work.

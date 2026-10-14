@@ -12,7 +12,15 @@
 static volatile sig_atomic_t interrupted;
 static void stop(int sig){(void)sig;interrupted=1;}
 static int cancelled(void *context){(void)context;return interrupted!=0;}
-static const char *control(void *context){(void)context;return interrupted?"cancelled":NULL;}
+typedef struct {const char *package_path,*pool_path;int package,pool;} SetupControl;
+static int named_directory(const char *path,int fd){struct stat held,named;
+    return path&&fd>=0&&!fstat(fd,&held)&&!lstat(path,&named)&&S_ISDIR(named.st_mode)&&named.st_uid==geteuid()&&!(named.st_mode&077)&&held.st_dev==named.st_dev&&held.st_ino==named.st_ino;
+}
+static const char *control(void *context){SetupControl *c=context;
+    if(interrupted)return "cancelled";
+    if(c&&(!named_directory(c->package_path,c->package)||(c->pool>=0&&!named_directory(c->pool_path,c->pool))))return "package_tree_changed";
+    return NULL;
+}
 static int directory(const char *path){
     if(!path||path[0]!='/'||strlen(path)>4000)return -1;
     int fd=open(path,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);struct stat held,named;
@@ -101,8 +109,11 @@ int main(int argc,char **argv) {
         int observing=!strcmp(op,"provider_status");
         if(!error&&!observing){pool=directory(pool_path);if(pool<0)error="invalid_reservation_directory";}
         RemoteArtifactSource digest=remote;digest.url=digest_url;
+        /* Recheck host-selected names throughout acquisition/publication, not
+         * only once when opening the descriptors. */
+        SetupControl controls={.package_path=package_path,.pool_path=pool_path,.package=package,.pool=pool};
         PackageInstaller installer={.entry=entry,.store=c,.index_source=&remote,.digest_source=digest_url?&digest:NULL,
-            .assembly={.directory=package,.source=-1,.payload_path=payload,.copy_ceiling=copy_ceiling,.reservation_directory=pool,.reservation_ceiling=pool_ceiling,.reservation_capacity=(size_t)pool_capacity,.control=control}};
+            .assembly={.directory=package,.source=-1,.payload_path=payload,.copy_ceiling=copy_ceiling,.reservation_directory=pool,.reservation_ceiling=pool_ceiling,.reservation_capacity=(size_t)pool_capacity,.control=control,.context=&controls}};
         if(!error&&observing){PackageAssemblyStatus observed;error=package_status_from_file(catalog_path,id,&installer,&observed);if(!error)status=observed.state;}
         else if(!error){PackageTreeResult installed;error=package_install_selected(catalog,id,&installer,&installed);if(!error)status="installed_verified";}
         /* A renamed configuration root cannot produce a successful response. */
