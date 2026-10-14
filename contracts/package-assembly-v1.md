@@ -56,3 +56,30 @@ store lease is released before returning; the held descriptor is reverified by
 per-file staging and does not establish future immutability. This lets cache
 stage/artifact aliases remain two-link files while installed payload files are
 separate single-link copies. It does not reserve destination disk capacity.
+
+
+## Production local acquisition adapter
+
+`PackageCacheSource` combines the trusted artifact-store policy with an optional
+absolute local source directory. `package_cache_open` verifies the registered
+cache entry first. With no source directory it operates only on the cache. With
+a local source it acquires only `artifact_absent` entries through
+`artifact_install`, then reopens and verifies the published descriptor. Partial
+entries follow the existing explicit `resume` policy; corrupt, foreign, busy or
+unsafe cache entries refuse instead of falling back to acquisition. Public package
+indexes never select source directories, credentials, store quotas or callbacks.
+
+Indexed file names determine paths beneath the trusted source root. Each file's
+size and SHA-256 override the template identity; byte/disk ceilings, identity
+capacity and resume policy remain trusted store configuration. Request controls
+are passed to verified cache reads and bridged to local copying alongside the
+store cancellation hook; the original request error is retained. The existing
+local installer's final whole-file verification is bounded by its read deadline
+but does not yet poll this bridge between verification reads. Do not claim prompt
+whole-acquisition deadline enforcement from the adapter alone. Package staging,
+cache descriptor re-opening and publication retain their controlled verification.
+
+The adapter supports local acquired files and offline cache hits. It currently
+rejects a template remote `acquire` hook on a cache miss: one fixed hook/URL cannot
+safely stand in for per-file trusted package download mapping. Remote acquisition,
+global destination reservations and registered crash recovery remain open.

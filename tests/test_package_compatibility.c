@@ -4,6 +4,7 @@
 #include "package_stage.h"
 #include "package_assemble.h"
 #include "artifact.h"
+#include "package_cache.h"
 #include <sys/file.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -14,10 +15,6 @@
 static unsigned checks;
 #define CHECK(x) do{checks++;if(!(x)){fprintf(stderr,"compatibility failure %d: %s\n",__LINE__,#x);exit(1);}}while(0)
 static const char *cancel(void *unused){(void)unused;return "cancelled";}
-static const char *cached(void *context,const PackageFile *file,const char *(*control)(void *),void *request,int *out){
-    ArtifactConfig config=*(ArtifactConfig *)context;config.sha256=file->sha256;config.size=file->bytes;
-    return artifact_open_verified(&config,control,request,out);
-}
 int main(int argc,char **argv){
     PackageIndex *index=calloc(1,sizeof(*index));CHECK(index);
     PackageCompatibilityContext context={.payload_path="/unused/private-payload"};
@@ -61,8 +58,19 @@ int main(int argc,char **argv){
             }
             CHECK(!mkdirat(directory,"cached-package",0700));int cache_directory=openat(directory,"cached-package",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(cache_directory>=0);
             CHECK(snprintf(cache_path,sizeof(cache_path),"%s/cached-package/payload",argv[4])<(int)sizeof(cache_path));
-            PackageAssembly from_cache={.directory=cache_directory,.source=-1,.source_open=cached,.source_context=&cache,.index=index,.payload_path=cache_path,.copy_ceiling=index->payload_bytes};
+            PackageCacheSource cache_source={.store=cache};
+            PackageAssembly from_cache={.directory=cache_directory,.source=-1,.source_open=package_cache_open,.source_context=&cache_source,.index=index,.payload_path=cache_path,.copy_ceiling=index->payload_bytes};
             CHECK(!package_assemble(&from_cache,&observed));CHECK(observed.files==index->count);CHECK(!package_assemble(&from_cache,&observed));CHECK(!close(cache_directory));
+            /* Exercise cache misses through real local acquisition instead of
+             * requiring a caller to populate every identity in advance. */
+            CHECK(!mkdirat(directory,"acquired-package",0700));int acquired=openat(directory,"acquired-package",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(acquired>=0);
+            char acquisition_store[4096],acquisition_path[4096];CHECK(snprintf(acquisition_store,sizeof(acquisition_store),"%s/acquired-artifacts",argv[4])<(int)sizeof(acquisition_store));
+            CHECK(snprintf(acquisition_path,sizeof(acquisition_path),"%s/acquired-package/payload",argv[4])<(int)sizeof(acquisition_path));
+            PackageCacheSource local=cache_source;local.store.state_path=acquisition_store;local.source_directory=argv[1];
+            PackageAssembly acquisition=from_cache;acquisition.directory=acquired;acquisition.payload_path=acquisition_path;acquisition.source_context=&local;
+            int miss=-7;CHECK(!strcmp(package_cache_open(&local,&index->files[0],cancel,NULL,&miss),"cancelled"));CHECK(miss==-7);CHECK(access(acquisition_store,F_OK)<0);
+            CHECK(!package_assemble(&acquisition,&observed));CHECK(observed.files==index->count);
+            local.source_directory="/unavailable-local-source";int offline=-1;CHECK(!package_cache_open(&local,&index->files[0],NULL,NULL,&offline));CHECK(offline>=0);CHECK(!close(offline));CHECK(!package_assemble(&acquisition,&observed));CHECK(!close(acquired));
             char bad_cache[8192];CHECK(snprintf(bad_cache,sizeof(bad_cache),"%s/%s/artifact",store,index->files[0].sha256)<(int)sizeof(bad_cache));
             int broken=open(bad_cache,O_WRONLY|O_NOFOLLOW);CHECK(broken>=0);CHECK(pwrite(broken,"X",1,0)==1);CHECK(!close(broken));
             CHECK(!mkdirat(directory,"rejected-package",0700));int rejected=openat(directory,"rejected-package",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(rejected>=0);

@@ -227,3 +227,11 @@ without an intermediate closed-tree copy. The bridge retains verified cache
 identity, request controls and independent single-link installed payloads; normal
 and sanitizer fixture/Pocket gates pass. Shared destination reservations, catalog
 package acquisition and crash recovery remain required before area 2 closes.
+
+
+The production cache adapter now optionally acquires missing indexed files from
+trusted local source configuration, preserving store resume/capacity/byte policy
+and verifying held descriptors before assembly. Controlled local acquisition and
+offline cache checks pass. Per-file remote mapping, prompt control during the
+legacy local installer's final hash, destination reservations and recovery remain
+open; area 2 stays active.

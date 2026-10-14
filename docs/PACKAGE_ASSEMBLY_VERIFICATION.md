@@ -73,3 +73,19 @@ Kokoro's preceding closed-tree assembly evidence remains as recorded above.
 Independent CI run 38590513601 passed macOS arm64 and Linux x86_64 for `68ca629`
 (leased assembly), now pinned in Chat. The direct-cache revision requires its own
 CI outcome before that pin moves again.
+
+
+## Production local cache acquisition
+
+The controlled 11-file native fixture now uses production `package_cache_open`
+for the direct cache path and assembles a further fresh package through actual
+local cache misses. The adapter invokes the existing artifact installer for every
+missing indexed identity, then passes held verified descriptors to assembly.
+Checks cover early cancellation with no store creation, local acquisition,
+cache hits after the configured local source becomes unavailable, completed
+package verification, corrupted-cache refusal and retained-copy behavior.
+Normal and ASan/UBSan fixture runs passed on macOS arm64; log:
+`/private/tmp/samosa-package-local-acquisition.log`. Static analysis of the new
+cache adapter emitted no diagnostics. These are controlled native-format fixture
+checks, not a new actual-model or Linux qualification claim. Previous actual
+Pocket direct-descriptor results remain tied to their prior revision.
