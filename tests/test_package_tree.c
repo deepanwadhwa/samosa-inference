@@ -33,14 +33,17 @@ static const char *cancel(void *unused){(void)unused;return "model_cancelled";}
 typedef struct {int root,changed;} Mutation;
 static const char *mutate(void *context){Mutation *m=context;if(!m->changed){m->changed=1;write_file(m->root,"models/model.gguf","abd");}return NULL;}
 int main(int argc,char **argv){
-    if(argc==5&&!strcmp(argv[1],"--verify")){
+    if(argc==5&&(!strcmp(argv[1],"--verify")||!strcmp(argv[1],"--snapshot"))){
         int input=open(argv[3],O_RDONLY|O_NOFOLLOW);struct stat s;CHECK(input>=0&&!fstat(input,&s));
         CHECK(S_ISREG(s.st_mode)&&s.st_uid==geteuid()&&!(s.st_mode&077)&&s.st_nlink==1&&s.st_size>0&&s.st_size<=PACKAGE_INDEX_BYTES);
         char *body=malloc((size_t)s.st_size);PackageIndex *index=malloc(sizeof(*index));CHECK(body&&index);
         size_t at=0;while(at<(size_t)s.st_size){ssize_t n=read(input,body+at,(size_t)s.st_size-at);CHECK(n>0);at+=(size_t)n;}
         const char *e=package_index_parse(body,at,argv[4],index);CHECK(!close(input));free(body);
         int root=open(argv[2],O_RDONLY|O_DIRECTORY|O_NOFOLLOW);PackageTreeResult result;
-        if(!e)e=package_tree_verify(root,index,NULL,NULL,&result);
+        if(!e&&!strcmp(argv[1],"--snapshot")){PackageTreeSnapshot *snapshot=malloc(sizeof(*snapshot));CHECK(snapshot);e=package_tree_snapshot(root,index,NULL,NULL,snapshot);
+            if(!e){result=(PackageTreeResult){.files=snapshot->file_count,.directories=snapshot->directory_count,.payload_bytes=index->payload_bytes};strcpy(result.manifest_sha256,snapshot->manifest_sha256);}
+            free(snapshot);
+        }else if(!e)e=package_tree_verify(root,index,NULL,NULL,&result);
         if(root>=0)close(root);free(index);
         if(e){fprintf(stderr,"actual package tree: %s\n",e);return 1;}
         printf("PASS pinned actual package tree: %zu files, %zu directories, %llu payload bytes, index %s; integrity observation only\n",
@@ -55,6 +58,14 @@ int main(int argc,char **argv){
     PackageIndex *index=index_make();PackageTreeResult result;
     CHECK(!package_tree_verify(root,index,NULL,NULL,&result));CHECK(result.files==3&&result.directories==4&&result.payload_bytes==9);
     CHECK(!strcmp(result.manifest_sha256,index->manifest_sha256));CHECK(!package_tree_verify(root,index,NULL,NULL,&result));
+    PackageTreeSnapshot *snapshot=malloc(sizeof(*snapshot)),*before_snapshot=malloc(sizeof(*before_snapshot));CHECK(snapshot&&before_snapshot);
+    memset(snapshot,0xa5,sizeof(*snapshot));memcpy(before_snapshot,snapshot,sizeof(*snapshot));
+    CHECK(!strcmp(package_tree_snapshot(root,index,cancel,NULL,snapshot),"model_cancelled"));CHECK(!memcmp(snapshot,before_snapshot,sizeof(*snapshot)));
+    CHECK(!package_tree_snapshot(root,index,NULL,NULL,snapshot));CHECK(snapshot->file_count==3&&snapshot->directory_count==4&&!strcmp(snapshot->manifest_sha256,index->manifest_sha256));
+    struct stat observed;CHECK(!fstat(root,&observed));CHECK(snapshot->root.st_dev==observed.st_dev&&snapshot->root.st_ino==observed.st_ino);
+    for(size_t i=0;i<index->count;i++){CHECK(!fstatat(root,index->files[i].name,&observed,AT_SYMLINK_NOFOLLOW));CHECK(snapshot->files[i].st_dev==observed.st_dev&&snapshot->files[i].st_ino==observed.st_ino&&snapshot->files[i].st_size==3&&snapshot->files[i].st_nlink==1);}
+    for(size_t i=0;i<snapshot->directory_count;i++){CHECK(!fstatat(root,snapshot->directories[i].name,&observed,AT_SYMLINK_NOFOLLOW));CHECK(snapshot->directories[i].identity.st_dev==observed.st_dev&&snapshot->directories[i].identity.st_ino==observed.st_ino&&S_ISDIR(snapshot->directories[i].identity.st_mode));}
+    memcpy(before_snapshot,snapshot,sizeof(*snapshot));write_file(root,"models/model.gguf","abd");CHECK(!strcmp(package_tree_snapshot(root,index,NULL,NULL,snapshot),"artifact_checksum_mismatch"));CHECK(!memcmp(snapshot,before_snapshot,sizeof(*snapshot)));write_file(root,"models/model.gguf","abc");free(snapshot);free(before_snapshot);
     write_file(root,"extra","unknown");fails(root,index,"unlisted_package_artifact");CHECK(!unlinkat(root,"extra",0));
     CHECK(!mkdirat(root,"empty",0700));fails(root,index,"unlisted_package_artifact");CHECK(!unlinkat(root,"empty",AT_REMOVEDIR));
     CHECK(!symlinkat("models",root,"alias"));fails(root,index,"unsupported_package_artifact");CHECK(!unlinkat(root,"alias",0));

@@ -10,8 +10,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#define TREE_DIRECTORIES (PACKAGE_INDEX_FILES * 7u)
-typedef struct {char name[256];struct stat identity;} Directory;
+#define TREE_DIRECTORIES PACKAGE_TREE_DIRECTORIES
+typedef PackageTreeDirectory Directory;
 typedef struct {
     const PackageIndex *index;const char *(*control)(void *);void *context;
     struct stat root,files[PACKAGE_INDEX_FILES];Directory directories[TREE_DIRECTORIES];
@@ -91,7 +91,7 @@ static const char *walk(int fd,const char *prefix,Tree *tree){
     }
     closedir(directory);return e;
 }
-static const char *verify(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out,int sync){
+static const char *verify(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out,int sync,PackageTreeSnapshot *snapshot){
     if(!index||!out||!index->count||index->count>PACKAGE_INDEX_FILES||
        !memchr(index->manifest_sha256,0,sizeof(index->manifest_sha256))||strlen(index->manifest_sha256)!=64||
        strspn(index->manifest_sha256,"0123456789abcdef")!=64)return "invalid_package_index";
@@ -120,8 +120,14 @@ static const char *verify(int root,const PackageIndex *index,const char *(*contr
     if(!e&&(fstat(root,&after)||!same(&tree->root,&after)))e="package_tree_changed";
     if(!e)e=control?control(context):NULL;
     if(!e){PackageTreeResult result={.files=index->count,.directories=tree->directory_count,.payload_bytes=expected};
-        strcpy(result.manifest_sha256,index->manifest_sha256);*out=result;}
+        strcpy(result.manifest_sha256,index->manifest_sha256);*out=result;
+        if(snapshot){memset(snapshot,0,sizeof(*snapshot));snapshot->root=tree->root;snapshot->file_count=index->count;snapshot->directory_count=tree->directory_count;
+            memcpy(snapshot->files,tree->files,index->count*sizeof(*tree->files));
+            memcpy(snapshot->directories,tree->directories,tree->directory_count*sizeof(*tree->directories));strcpy(snapshot->manifest_sha256,index->manifest_sha256);}}
     free(tree);return e;
 }
-const char *package_tree_verify(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out){return verify(root,index,control,context,out,0);}
-const char *package_tree_sync(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out){return verify(root,index,control,context,out,1);}
+const char *package_tree_verify(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out){return verify(root,index,control,context,out,0,NULL);}
+const char *package_tree_sync(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out){return verify(root,index,control,context,out,1,NULL);}
+const char *package_tree_snapshot(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeSnapshot *out){
+    if(!out)return "invalid_package_index";PackageTreeResult result;return verify(root,index,control,context,&result,0,out);
+}
