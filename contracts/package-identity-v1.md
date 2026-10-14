@@ -27,3 +27,18 @@ Crash-retained pending files and the two-link publication interval still require
 registered recovery. Public owner/request isolation and full installation status
 belong to the upcoming coordinator; the native identity record is its prerequisite,
 not that complete service. Metadata bytes remain outside logical copy reservations.
+
+## Interrupted publication recovery
+
+Binding under the assembly lease can now finish a complete pending identity record
+only when its full expected index/root bytes and private single-link inode match.
+A published/pending pair can be cleaned up only when both names bind the same
+matching private two-link metadata inode. Controls are checked before mutation;
+then recovery syncs the record/directory and revalidates the remaining single-link
+identity. Malformed records, another pending inode, unknown aliases or a different
+root/index refuse and remain untouched. Initial torn/unverifiable metadata still
+requires owned recovery; no unrelated partial file is adopted.
+
+`package_identity_verify` remains read-only. A verifiable interrupted publication
+returns `package_identity_recovery_required` instead of repairing names, changing
+permissions or creating state. Binding performs recovery; status does not.

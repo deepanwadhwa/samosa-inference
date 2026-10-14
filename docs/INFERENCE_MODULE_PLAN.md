@@ -330,3 +330,10 @@ substituted inodes and unregistered copies still refuse without deletion.
 Normal/sanitizer staging (113 checks each) and full local/HTTPS assembly gates pass.
 Continue the remaining installation recovery dependencies before catalog closure;
 no downstream area has been opened.
+
+Area 2 identity binding now recovers fully matching pending publication and its
+verified two-link metadata alias. Read-only status reports recovery-required and
+never repairs state. Normal/sanitizer gates include real killed-child restart
+recovery (61 identity checks each), plus passing local/HTTPS assembly. Continue
+installation's remaining metadata recovery dependencies before catalog completion;
+no downstream area has been opened.

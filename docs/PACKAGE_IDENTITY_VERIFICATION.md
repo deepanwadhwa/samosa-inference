@@ -21,3 +21,23 @@ Independent CI passed controlled-reservation revision `81266fe` in run
 revision requires its own CI result. These gates do not establish recovery of
 unknown partial files, reclamation, a public installation coordinator, actual
 remote-model qualification or loaded model readiness.
+
+## Identity publication recovery
+
+Normal and ASan/UBSan identity gates pass with 61 checks each. New cases cover a
+complete pending record, cancellation preserving it, the known metadata two-link
+publication interval and read-only verification reporting recovery-required without
+changing either name. A real child is killed at the post-write/pre-publication
+control boundary; its observed SIGKILL termination leaves a complete pending
+identity. The parent verifies the condition read-only, then binds/revalidates and
+checks pending-name removal. Changed-pin, copied-root, unknown pending and symlink
+refusal remain covered. Final log:
+`/private/tmp/samosa-identity-publication-recovery-final.log`.
+
+Local/cache and complete HTTPS assembly gates passed both normal and ASan/UBSan
+with identity recovery enabled; log:
+`/private/tmp/samosa-identity-publication-recovery.log`. Clang analysis of the
+modified identity module emitted no diagnostics. This closes these identity
+publication cases within installation, not torn/bootstrap metadata, reservation
+or completion recovery, reclamation or production catalog requirements. Area 2
+remains the only active implementation area.

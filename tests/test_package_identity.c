@@ -7,10 +7,16 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
 static unsigned checks;
 #define CHECK(x) do{checks++;if(!(x)){fprintf(stderr,"identity failure %d: %s\n",__LINE__,#x);exit(1);}}while(0)
 static const char *pending_cancel(void *opaque){int directory=*(int *)opaque;struct stat s;
     return !fstatat(directory,".assembly.identity.pending",&s,AT_SYMLINK_NOFOLLOW)?"cancelled":NULL;
+}
+static const char *pending_death(void *opaque){int directory=*(int *)opaque;struct stat s;
+    if(!fstatat(directory,".assembly.identity.pending",&s,AT_SYMLINK_NOFOLLOW))kill(getpid(),SIGKILL);
+    return NULL;
 }
 int main(void){
     char path[]="/tmp/samosa-package-identity-XXXXXX";CHECK(mkdtemp(path));int root=open(path,O_RDONLY|O_DIRECTORY);CHECK(root>=0);
@@ -19,6 +25,15 @@ int main(void){
     CHECK(!strcmp(package_identity_bind(root,index,pending_cancel,&root),"cancelled"));CHECK(faccessat(root,"assembly.identity",F_OK,0)<0);CHECK(faccessat(root,".assembly.identity.pending",F_OK,0)<0);
     CHECK(!package_identity_bind(root,index,NULL,NULL));CHECK(!package_identity_verify(root,index,NULL,NULL));CHECK(!package_identity_bind(root,index,NULL,NULL));
     int record=openat(root,"assembly.identity",O_RDONLY|O_NOFOLLOW);CHECK(record>=0);struct stat identity;CHECK(!fstat(record,&identity));CHECK((identity.st_mode&0777)==0400&&identity.st_nlink==1);
+    /* Completed pending identity publication is recoverable, but read-only
+     * verification reports the condition without modifying either name. */
+    CHECK(!renameat(root,"assembly.identity",root,".assembly.identity.pending"));
+    CHECK(!strcmp(package_identity_verify(root,index,NULL,NULL),"package_identity_recovery_required"));CHECK(faccessat(root,"assembly.identity",F_OK,0)<0);
+    CHECK(!strcmp(package_identity_bind(root,index,pending_cancel,&root),"cancelled"));CHECK(faccessat(root,".assembly.identity.pending",F_OK,0)==0);
+    CHECK(!package_identity_bind(root,index,NULL,NULL));CHECK(!package_identity_verify(root,index,NULL,NULL));
+    CHECK(!linkat(root,"assembly.identity",root,".assembly.identity.pending",0));
+    CHECK(!strcmp(package_identity_verify(root,index,NULL,NULL),"package_identity_recovery_required"));CHECK(faccessat(root,".assembly.identity.pending",F_OK,0)==0);
+    CHECK(!package_identity_bind(root,index,NULL,NULL));CHECK(!package_identity_verify(root,index,NULL,NULL));CHECK(faccessat(root,".assembly.identity.pending",F_OK,0)<0);
     index->manifest_sha256[0]='b';CHECK(!strcmp(package_identity_bind(root,index,NULL,NULL),"package_assembly_identity_conflict"));index->manifest_sha256[0]='a';CHECK(!package_identity_bind(root,index,NULL,NULL));
     /* Copying an identity record into another directory cannot claim ownership
      * there: the persisted device/inode belongs to the original package root. */
@@ -30,6 +45,11 @@ int main(void){
     CHECK(!package_identity_bind(root,index,NULL,NULL));
     CHECK(!mkdirat(root,"symlink",0700));int linked=openat(root,"symlink",O_RDONLY|O_DIRECTORY);CHECK(linked>=0);CHECK(!symlinkat("../assembly.identity",linked,"assembly.identity"));
     CHECK(!strcmp(package_identity_bind(linked,index,NULL,NULL),"unsafe_package_identity"));
+    CHECK(!mkdirat(root,"crash",0700));int crash=openat(root,"crash",O_RDONLY|O_DIRECTORY);CHECK(crash>=0);
+    pid_t child=fork();CHECK(child>=0);if(!child)_exit(package_identity_bind(crash,index,pending_death,&crash)?2:3);
+    int status;CHECK(waitpid(child,&status,0)==child&&WIFSIGNALED(status)&&WTERMSIG(status)==SIGKILL);
+    CHECK(!strcmp(package_identity_verify(crash,index,NULL,NULL),"package_identity_recovery_required"));CHECK(faccessat(crash,"assembly.identity",F_OK,0)<0);
+    CHECK(!package_identity_bind(crash,index,NULL,NULL));CHECK(!package_identity_verify(crash,index,NULL,NULL));CHECK(faccessat(crash,".assembly.identity.pending",F_OK,0)<0);CHECK(!close(crash));
     CHECK(!close(linked));CHECK(!close(other));CHECK(!close(root));free(index);
     printf("PASS persistent package identity: %u checks; cancellation, pin change, cloned root, unknown pending and symlink refusal\n",checks);return 0;
 }
