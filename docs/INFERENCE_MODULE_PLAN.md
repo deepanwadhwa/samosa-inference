@@ -212,3 +212,11 @@ Pocket/Kokoro normal/sanitizer inspections pass. See
 [compatibility evidence](PACKAGE_COMPATIBILITY_VERIFICATION.md). Other backend
 recipes, complete acquisition/coordinator recovery and actual installation remain
 required; no full numbered area is closed by this recipe checkpoint.
+
+
+Package acquisition now has a connected private native assembly API: whole-source
+verification, assembly lease, logical copy bound, verified-file resumption and
+concrete speech completion publication. See
+[contract](../contracts/package-assembly-v1.md) and
+[evidence](PACKAGE_ASSEMBLY_VERIFICATION.md). Public catalog acquisition, shared
+reservation and crash recovery remain open; this does not close area 2.

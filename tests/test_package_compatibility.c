@@ -2,6 +2,8 @@
 #define _DARWIN_C_SOURCE
 #include "package_compatibility.h"
 #include "package_stage.h"
+#include "package_assemble.h"
+#include <sys/file.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,22 +28,38 @@ int main(int argc,char **argv){
             /* Exercise the same verified copies and concrete compatibility gate
              * a coordinator must use; this harness owns the private destination. */
             int directory=open(argv[4],O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(directory>=0);
-            CHECK(!mkdirat(directory,"payload",0700));
-            int payload=openat(directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(payload>=0);
-            for(size_t i=0;i<index->count;i++){
-                int input=openat(root,index->files[i].name,O_RDONLY|O_NOFOLLOW);CHECK(input>=0);
-                CHECK(!package_stage_file(payload,index,i,input,NULL,NULL));CHECK(!close(input));
-            }
             char destination[4096];CHECK(snprintf(destination,sizeof(destination),"%s/payload",argv[4])<(int)sizeof(destination));
+            PackageAssembly assembly={.directory=directory,.source=root,.index=index,.payload_path=destination,.copy_ceiling=index->payload_bytes};
+            PackageTreeResult observed;
+            assembly.copy_ceiling=index->payload_bytes-1;
+            CHECK(!strcmp(package_assemble(&assembly,&observed),"package_copy_quota_exceeded"));
+            CHECK(faccessat(directory,"payload",F_OK,0)<0);
+            assembly.copy_ceiling=index->payload_bytes;
+            int lease=openat(directory,"assemble.lock",O_RDWR|O_CREAT|O_NOFOLLOW,0600);CHECK(lease>=0);CHECK(!flock(lease,LOCK_EX|LOCK_NB));
+            CHECK(!strcmp(package_assemble(&assembly,&observed),"package_assembly_busy"));CHECK(!close(lease));
+            /* A retained verified file survives resumption without replacement. */
+            CHECK(!mkdirat(directory,"payload",0700));
+            int retained=openat(directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(retained>=0);
+            int first=openat(root,index->files[0].name,O_RDONLY|O_NOFOLLOW);CHECK(first>=0);
+            CHECK(!package_stage_file(retained,index,0,first,NULL,NULL));CHECK(!close(first));
+            struct stat before,after;CHECK(!fstatat(retained,index->files[0].name,&before,AT_SYMLINK_NOFOLLOW));
+            CHECK(!package_assemble(&assembly,&observed));CHECK(observed.files==index->count);
+            CHECK(!fstatat(retained,index->files[0].name,&after,AT_SYMLINK_NOFOLLOW));CHECK(before.st_ino==after.st_ino&&before.st_dev==after.st_dev);CHECK(!close(retained));
+            CHECK(!package_assemble(&assembly,&observed));
+            int payload=openat(directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW);CHECK(payload>=0);
             PackageCompatibilityContext staged={.payload_path=destination};
             PackagePublication publication={.directory=directory,.index=index,.compatible=package_backend_compatible,.compatibility=&staged};
-            PackageTreeResult observed;
-            CHECK(!package_publish(&publication,&observed));CHECK(observed.files==index->count);
             CHECK(!package_publication_verify(&publication,&observed));
             CHECK(!package_publish(&publication,&observed));
             /* Revocation remains effective even after a completion record exists. */
+            assembly.control=cancel;CHECK(!strcmp(package_assemble(&assembly,&observed),"cancelled"));
             staged.control=cancel;const char *failure=package_publication_verify(&publication,&observed);
             CHECK(failure&&!strcmp(failure,"cancelled"));
+            assembly.control=NULL;
+            int changed=openat(payload,index->files[0].name,O_RDONLY|O_NOFOLLOW);CHECK(changed>=0);CHECK(!fchmod(changed,0600));CHECK(!close(changed));
+            changed=openat(payload,index->files[0].name,O_WRONLY|O_NOFOLLOW);CHECK(changed>=0);CHECK(pwrite(changed,"X",1,0)==1);CHECK(!close(changed));
+            CHECK(package_assemble(&assembly,&observed));
+            changed=openat(payload,index->files[0].name,O_RDONLY|O_NOFOLLOW);CHECK(changed>=0);char byte;CHECK(pread(changed,&byte,1,0)==1&&byte=='X');CHECK(!close(changed));
             CHECK(!close(payload));CHECK(!close(directory));
             printf("PASS staged native speech publication: %zu files; compatibility, completion, revalidation and cancellation\n",index->count);
         }
