@@ -530,3 +530,15 @@ sanitize-gguf-metadata: | build
 	./build/test-gguf-metadata-sanitize
 test: test-gguf-metadata
 sanitize: sanitize-gguf-metadata
+
+.PHONY: test-llama-package-descriptor sanitize-llama-package-descriptor
+LLAMA_DESCRIPTOR_SOURCES = src/llama_package_descriptor.c src/gguf_metadata.c $(PACKAGE_INDEX_SOURCES)
+build/test-llama-package-descriptor: tests/test_llama_package_descriptor.c $(LLAMA_DESCRIPTOR_SOURCES) src/llama_package_descriptor.h src/gguf_metadata.h src/package_index.h src/json.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc $< $(LLAMA_DESCRIPTOR_SOURCES) -o $@
+test-llama-package-descriptor: build/test-llama-package-descriptor
+	./build/test-llama-package-descriptor
+sanitize-llama-package-descriptor: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_llama_package_descriptor.c $(LLAMA_DESCRIPTOR_SOURCES) -o build/test-llama-package-descriptor-sanitize
+	./build/test-llama-package-descriptor-sanitize
+test: test-llama-package-descriptor
+sanitize: sanitize-llama-package-descriptor
