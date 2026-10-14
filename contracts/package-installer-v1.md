@@ -125,4 +125,30 @@ Logs: `/private/tmp/samosa-llama-installed-normal.log` and
 setup regression gates pass in both builds, including absent/invalid policy
 before index acquisition; logs `/private/tmp/samosa-llama-install-native.log`
 and `/private/tmp/samosa-llama-setup-final.log`. Actual catalog/HTTPS llama setup
-qualification remains the next installation gate; this does not close component 2.
+qualification passed subsequently; see the catalog/HTTPS gate below. This does
+not close component 2.
+
+## Llama catalog/HTTPS setup gate
+
+`tests/llama_setup_https.py` runs public setup against a caller-pinned complete
+index and independent host runtime policy. A bounded loopback HTTPS server serves
+only that index and its pinned files. The gate checks missing-policy refusal
+before cache/assembly creation, public policy-override refusal, untrusted TLS
+refusal before payload creation, full publication, private executable mode,
+wrong-policy refusal retaining the last-good completion/inode, and offline
+status/resume with exactly zero additional downloads. Original source files are
+unchanged; all acquired/copy/CA state is disposable owned test state.
+
+The actual EmbeddingGemma package passes normally and with ASan/UBSan through
+this public path: three files, 325,805,737 bytes, index
+`6e61ef6a8aba534521b6dd3a4bf1f0e0c0df04c785b5666d3b01ac458f875865`.
+Logs: `/private/tmp/samosa-llama-setup-https-actual.log` and
+`/private/tmp/samosa-llama-setup-https-actual-sanitize.log`.
+
+The same CLI gate is wired into `test-setup` and `sanitize-setup` using an owned
+portable native-format fixture exported by the existing runtime-package harness.
+Its synthetic image/model metadata qualifies this static boundary only, not model
+readiness. Both controlled paths pass alongside the existing speech/setup gates;
+log `/private/tmp/samosa-llama-setup-portable.log`. Production distribution
+catalogs, other backend packages, remaining recovery and full removal still
+remain component-2 requirements.

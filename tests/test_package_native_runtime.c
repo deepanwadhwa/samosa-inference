@@ -44,7 +44,7 @@ int main(int argc,char **argv){
         printf("PASS actual native runtime package: %zu files; %llu pinned bytes; index %s; loader compatibility only\n",index->count,(unsigned long long)index->payload_bytes,index->manifest_sha256);
         free(index);free(body);CHECK(!close(fd));CHECK(!close(root));return 0;
     }
-    CHECK(argc==1);
+    int export_only=argc==2&&!strcmp(argv[1],"--export-llama");CHECK(argc==1||export_only);
     char path[]="/tmp/samosa-native-package-XXXXXX";CHECK(mkdtemp(path));int root=open(path,O_RDONLY|O_DIRECTORY);CHECK(root>=0);
     PackageIndex *index=calloc(1,sizeof(*index));CHECK(index);memset(index->manifest_sha256,'a',64);index->count=3;strcpy(index->minimum_os,"1.0");strcpy(index->recipe,"native-runtime-test");char os[65];CHECK(!provider_catalog_host(index->platform,os));
     strcpy(index->files[0].name,"engine");index->files[0].role=PACKAGE_ENGINE;strcpy(index->files[1].name,"library");index->files[1].role=PACKAGE_LIBRARY;strcpy(index->files[2].name,"model");index->files[2].role=PACKAGE_MODEL;
@@ -76,6 +76,12 @@ int main(int argc,char **argv){
     unchanged_descriptor=descriptor;qualified.runtime_revision="0000000000000000000000000000000000000000";CHECK(!strcmp(llama_package_verify(root,index,&qualified,NULL,NULL,&descriptor),"unqualified_llama_package_runtime"));CHECK(!memcmp(&descriptor,&unchanged_descriptor,sizeof(descriptor)));qualified.runtime_revision="4fbc76dec51d0add466f0210855c0596589b60d4";
     bytes[at-strlen(architecture)]='q';put(root,&index->files[2],bytes,at);CHECK(!strcmp(llama_package_verify(root,index,&qualified,NULL,NULL,&descriptor),"incompatible_llama_package_model"));CHECK(!memcmp(&descriptor,&unchanged_descriptor,sizeof(descriptor)));bytes[at-strlen(architecture)]='g';put(root,&index->files[2],bytes,at);
     CHECK(!symlinkat("model",root,"foreign"));CHECK(package_native_runtime_verify(root,index,NULL,NULL));CHECK(!unlinkat(root,"foreign",0));
+    if(export_only){char *body=NULL;size_t size=0;FILE *stream=open_memstream(&body,&size);CHECK(stream);
+        fprintf(stream,"{\"format\":\"samosa.inference.package.v1\",\"platform\":\"%s\",\"minimum_os\":\"1.0\",\"recipe\":\"llama-gguf-package-v1\",\"files\":[",index->platform);
+        const char *roles[]={"engine","library","model","metadata"};for(size_t i=0;i<index->count;i++){if(i)fputc(',',stream);fprintf(stream,"{\"name\":\"%s\",\"role\":\"%s\",\"bytes\":%llu,\"sha256\":\"%s\"}",index->files[i].name,roles[i],(unsigned long long)index->files[i].bytes,index->files[i].sha256);}
+        fputs("]}",stream);CHECK(!fclose(stream));char pin[65],index_path[256];hash_bytes(body,size,pin);CHECK(snprintf(index_path,sizeof(index_path),"%s.index.json",path)<(int)sizeof(index_path));
+        int fd=open(index_path,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW,0600);CHECK(fd>=0);CHECK(write(fd,body,size)==(ssize_t)size);CHECK(!close(fd));CHECK(!close(root));
+        printf("{\"root\":\"%s\",\"index\":\"%s\",\"pin\":\"%s\",\"engine_pin\":\"%s\"}\n",path,index_path,pin,index->files[0].sha256);free(body);free(index);return 0;}
     for(size_t i=0;i<index->count;i++)CHECK(!unlinkat(root,index->files[i].name,0));CHECK(!close(root));CHECK(!rmdir(path));free(index);
     printf("PASS native runtime package: %u checks; complete pins, actual host, executable/library graph and opaque models\n",checks);return 0;
 }
