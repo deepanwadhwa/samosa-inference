@@ -27,7 +27,7 @@ const char *package_assemble(const PackageAssembly *c,PackageTreeResult *out){
     char platform[65],os[65];e=provider_catalog_host(platform,os);if(!e)e=package_index_qualify(c->index,platform,os);if(e)return e;
     int lock=openat(c->directory,"assemble.lock",O_RDWR|O_CREAT|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC,0600);
     if(lock<0)return "unsafe_package_assembly";
-    struct stat identity;int payload=-1;
+    struct stat identity;int payload=-1,journal=-1;
     if(fstat(lock,&identity)||!S_ISREG(identity.st_mode)||identity.st_uid!=geteuid()||(identity.st_mode&077)||identity.st_nlink!=1||!bound(c->directory,"assemble.lock",lock))e="unsafe_package_assembly";
     if(!e&&flock(lock,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"package_assembly_busy":"package_assembly_unavailable";
     if(!e)e=package_identity_bind(c->directory,c->index,c->control,c->context);
@@ -49,24 +49,27 @@ const char *package_assemble(const PackageAssembly *c,PackageTreeResult *out){
     if(!e&&!complete){if(mkdirat(c->directory,"payload",0700)&&errno!=EEXIST)e="package_assembly_failed";
         if(!e){payload=openat(c->directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
             if(payload<0||!private_directory(payload)||!bound(c->directory,"payload",payload)||!path_bound(c->payload_path,payload))e="unsafe_package_assembly";}
+        if(!e&&mkdirat(c->directory,"copy-journal",0700)&&errno!=EEXIST)e="package_assembly_failed";
+        if(!e){journal=openat(c->directory,"copy-journal",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+            if(journal<0||!private_directory(journal)||!bound(c->directory,"copy-journal",journal))e="unsafe_package_assembly";}
         if(!e&&fsync(c->directory))e="package_assembly_failed";
         for(size_t i=0;!e&&i<c->index->count;i++){
             int input=-1;e=c->control?c->control(c->context):NULL;
             if(!e&&c->source_open)e=c->source_open(c->source_context,&c->index->files[i],c->control,c->context,&input);
             else if(!e)input=openat(c->source,c->index->files[i].name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
             if(!e&&input<0)e="package_source_unavailable";
-            if(!e)e=package_stage_file(payload,c->index,i,input,c->control,c->context);
+            if(!e)e=package_stage_file_registered(payload,journal,c->index,i,input,c->control,c->context);
             if(input>=0)close(input);
         }
         /* Detect observed source changes as well as destination changes before
          * publishing; acquired source ownership remains the caller's contract. */
         if(!e&&!c->source_open)e=package_tree_verify(c->source,c->index,c->control,c->context,&observed);
-        if(!e&&(!bound(c->directory,"payload",payload)||!path_bound(c->payload_path,payload)||!bound(c->directory,"assemble.lock",lock)))e="package_tree_changed";
+        if(!e&&(!bound(c->directory,"payload",payload)||!path_bound(c->payload_path,payload)||!bound(c->directory,"assemble.lock",lock)||!bound(c->directory,"copy-journal",journal)))e="package_tree_changed";
         if(!e)e=package_publish(&publication,&observed);
     }
     if(!e&&(!bound(c->directory,"assemble.lock",lock)||!bound(c->directory,"payload",payload)||!path_bound(c->payload_path,payload)))e="package_tree_changed";
     if(!e)*out=observed;
-    if(payload>=0)close(payload);close(lock);return e;
+    if(journal>=0)close(journal);if(payload>=0)close(payload);close(lock);return e;
 }
 
 const char *package_assembly_status(const PackageAssembly *c,PackageAssemblyStatus *out){

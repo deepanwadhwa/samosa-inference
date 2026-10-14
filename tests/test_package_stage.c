@@ -9,11 +9,21 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
 static unsigned checks;
 #define CHECK(x) do{checks++;if(!(x)){fprintf(stderr,"stage failure %d: %s\n",__LINE__,#x);exit(1);}}while(0)
 static const char *cancel(void *p){(void)p;return "cancelled";}
 typedef struct {int root;const char *path;} CopyCancel;
 static const char *cancel_copy(void *p){CopyCancel *c=p;return !faccessat(c->root,c->path,F_OK,0)?"cancelled":NULL;}
+typedef struct {CopyCancel copy;uint64_t bytes;} FullCopy;
+static const char *cancel_full(void *p){FullCopy *c=p;struct stat s;
+    return !fstatat(c->copy.root,c->copy.path,&s,AT_SYMLINK_NOFOLLOW)&&(uint64_t)s.st_size==c->bytes?"cancelled":NULL;
+}
+static const char *kill_copy(void *p){CopyCancel *c=p;struct stat s;
+    if(!fstatat(c->root,c->path,&s,AT_SYMLINK_NOFOLLOW)&&s.st_size>0)kill(getpid(),SIGKILL);
+    return NULL;
+}
 int main(void){
     char base[]="/tmp/samosa-package-stage.XXXXXX";CHECK(mkdtemp(base));char root_path[256],source_path[256];
     snprintf(root_path,sizeof(root_path),"%s/payload",base);snprintf(source_path,sizeof(source_path),"%s/source",base);
@@ -49,6 +59,29 @@ int main(void){
     CHECK(!strcmp(package_stage_file(root,index,0,input,NULL,NULL),"artifact_size_mismatch"));
     CHECK(!unlinkat(parent,"model.gguf",0));CHECK(!package_stage_file(root,index,0,input,NULL,NULL));
     CHECK(lseek(input,0,SEEK_CUR)==1);CHECK(!package_tree_verify(root,index,NULL,NULL,&result));CHECK(result.payload_bytes==large_size);
+    CHECK(!unlinkat(parent,"model.gguf",0));
+    char journal_path[256];snprintf(journal_path,sizeof(journal_path),"%s/journal",base);CHECK(!mkdir(journal_path,0700));int journal=open(journal_path,O_RDONLY|O_DIRECTORY);CHECK(journal>=0);
+    snprintf(temporary,sizeof(temporary),".copy-0-%s",index->files[0].sha256);snprintf(partial,sizeof(partial),"models/%s",temporary);interrupted=(CopyCancel){root,partial};
+    pid_t child=fork();CHECK(child>=0);if(!child)_exit(package_stage_file_registered(root,journal,index,0,input,kill_copy,&interrupted)?2:3);
+    int status;CHECK(waitpid(child,&status,0)==child&&WIFSIGNALED(status)&&WTERMSIG(status)==SIGKILL);
+    CHECK(!fstatat(parent,temporary,&s,AT_SYMLINK_NOFOLLOW)&&s.st_size==65536);
+    /* A recorded name alone cannot authorize a substituted inode or prefix. */
+    CHECK(!renameat(parent,temporary,parent,"saved-copy"));writer=openat(parent,temporary,O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(writer>=0);CHECK(write(writer,"foreign",7)==7);CHECK(!close(writer));
+    CHECK(!strcmp(package_stage_file_registered(root,journal,index,0,input,NULL,NULL),"unsafe_package_copy_record"));CHECK(!fstatat(parent,temporary,&s,0)&&s.st_size==7);
+    CHECK(!unlinkat(parent,temporary,0));CHECK(!renameat(parent,"saved-copy",parent,temporary));
+    writer=openat(parent,temporary,O_WRONLY|O_NOFOLLOW);CHECK(writer>=0);CHECK(pwrite(writer,"x",1,0)==1);CHECK(!close(writer));
+    CHECK(!strcmp(package_stage_file_registered(root,journal,index,0,input,NULL,NULL),"package_copy_prefix_mismatch"));CHECK(!fstatat(parent,temporary,&s,0)&&s.st_size==65536);
+    unsigned char original;CHECK(pread(input,&original,1,0)==1);writer=openat(parent,temporary,O_WRONLY|O_NOFOLLOW);CHECK(writer>=0);CHECK(pwrite(writer,&original,1,0)==1);CHECK(!close(writer));
+    CHECK(!package_stage_file_registered(root,journal,index,0,input,NULL,NULL));CHECK(!package_tree_verify(root,index,NULL,NULL,&result));CHECK(result.payload_bytes==large_size);
+    CHECK(faccessat(parent,temporary,F_OK,0)<0);CHECK(lseek(input,0,SEEK_CUR)==1);
+    /* Recover the registered two-link publication interval as well as partial
+     * copying; only the recorded temporary inode is removed. */
+    CHECK(!unlinkat(parent,"model.gguf",0));FullCopy full={{root,partial},large_size};
+    CHECK(!strcmp(package_stage_file_registered(root,journal,index,0,input,cancel_full,&full),"cancelled"));
+    writer=openat(parent,temporary,O_RDONLY|O_NOFOLLOW);CHECK(writer>=0);CHECK(!fchmod(writer,0400));CHECK(!close(writer));
+    CHECK(!linkat(parent,temporary,parent,"model.gguf",0));CHECK(!fstatat(parent,"model.gguf",&s,0)&&s.st_nlink==2);
+    CHECK(!package_stage_file_registered(root,journal,index,0,input,NULL,NULL));CHECK(!package_tree_verify(root,index,NULL,NULL,&result));CHECK(faccessat(parent,temporary,F_OK,0)<0);
+    CHECK(!close(journal));CHECK(!rmdir(journal_path));
     CHECK(!unlinkat(parent,"model.gguf",0));CHECK(!close(parent));CHECK(!unlinkat(root,"models",AT_REMOVEDIR));CHECK(!close(root));CHECK(!close(input));
     CHECK(!unlink(source_path));CHECK(!unlink(source_alias));CHECK(!rmdir(root_path));CHECK(!rmdir(base));free(index);
     printf("PASS package staging: %u checks; pinned copies, source seek preservation, closed tree, no replacement/adoption and cancellation\n",checks);return 0;

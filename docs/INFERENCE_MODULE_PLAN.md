@@ -314,3 +314,12 @@ offline inspection, cancellation and corrupt-payload refusal. See
 [contract](../contracts/package-status-v1.md) and
 [evidence](PACKAGE_STATUS_VERIFICATION.md). This remains separate from loaded
 readiness; public installer controls and registered recovery stay open.
+
+Area 2 next dependency: native assembly now records owned copy inode identities
+before writing and resumes verified retained prefixes after observed process death.
+Normal/sanitizer gates cover real killed-child recovery, substituted/corrupted
+partial refusal and the registered two-link publication interval. See
+[contract](../contracts/package-copy-recovery-v1.md) and
+[evidence](PACKAGE_COPY_RECOVERY_VERIFICATION.md). Registration/bootstrap and
+other installation metadata crash windows remain open; installation is still the
+only active area until its full criteria are met.
