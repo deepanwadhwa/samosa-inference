@@ -4,6 +4,7 @@
 #include "llama_package.h"
 #ifdef SAMOSA_LLAMA_INSTALL_TEST
 #include "package_assemble.h"
+#include "package_lease.h"
 #endif
 #include "library_runtime.h"
 #include "catalog.h"
@@ -34,6 +35,8 @@ int main(int argc,char **argv){
                 CHECK(!strcmp(package_assemble(&assembly,&installed),"unqualified_llama_package_runtime"));CHECK(faccessat(destination,"assemble.lock",F_OK,0)<0);
                 assembly.llama_policy=&policy;CHECK(!package_assemble(&assembly,&installed));CHECK(installed.files==index->count);
                 PackageAssemblyStatus status;assembly.source=-1;CHECK(!package_assembly_status(&assembly,&status));CHECK(!strcmp(status.state,"installed_verified"));
+                int consumer=-1;CHECK(!package_lease_acquire(destination,index,NULL,NULL,&consumer));CHECK(!strcmp(package_assemble(&assembly,&installed),"package_assembly_busy"));
+                CHECK(!package_assembly_status(&assembly,&status));CHECK(!strcmp(status.state,"installed_verified"));CHECK(!close(consumer));
                 CHECK(!fstatat(destination,"payload/llama-server",&s,AT_SYMLINK_NOFOLLOW));CHECK((s.st_mode&0777)==0500);CHECK(!close(destination));
                 puts("PASS actual llama installation: missing-policy refusal, complete publication, offline status and executable engine mode");}
 #else

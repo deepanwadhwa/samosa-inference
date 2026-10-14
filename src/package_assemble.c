@@ -87,7 +87,7 @@ const char *package_assembly_status(const PackageAssembly *c,PackageAssemblyStat
     if(lock<0){if(errno!=ENOENT)return "unsafe_package_assembly";}
     else{struct stat s;
         if(fstat(lock,&s)||!S_ISREG(s.st_mode)||s.st_uid!=geteuid()||(s.st_mode&077)||s.st_nlink!=1||!bound(c->directory,"assemble.lock",lock))e="unsafe_package_assembly";
-        if(!e&&flock(lock,LOCK_EX|LOCK_NB)){
+        if(!e&&flock(lock,LOCK_SH|LOCK_NB)){
             if(errno==EWOULDBLOCK)result.state="busy";else e="package_assembly_unavailable";
         }else if(!e){
             e=package_identity_verify(c->directory,c->index,c->control,c->context);
