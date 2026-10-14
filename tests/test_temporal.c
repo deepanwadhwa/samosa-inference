@@ -68,12 +68,17 @@ static int engine_fixture(const char *model) {
     }
     const char *marker = getenv("SAMOSA_TEMPORAL_MARKER");
     CHECK(marker);
-    FILE *mark = fopen(marker, "w");
+    /* Publish the full JSON before the parent can observe readiness. */
+    char temporary[4096];
+    int marker_length = snprintf(temporary, sizeof(temporary), "%s.pending", marker);
+    CHECK(marker_length > 0 && (size_t)marker_length < sizeof(temporary));
+    FILE *mark = fopen(temporary, "w");
     CHECK(mark);
     fprintf(mark, "{\"pid\":%ld,\"workspace\":", (long)getpid());
     json_quote(mark, workspace, strlen(workspace));
     fputc('}', mark);
     CHECK(!fclose(mark));
+    CHECK(!rename(temporary, marker));
     free(workspace);
     if (!strcmp(prompt, "stall")) {
         signal(SIGTERM, SIG_IGN);

@@ -22,7 +22,10 @@ static int engine(int argc, char **argv) {
 #else
         ssize_t path_bytes=readlink("/proc/self/fd/1",result_path,sizeof(result_path)-1);CHECK(path_bytes>0);result_path[path_bytes]=0;
 #endif
-        file_write(marker, result_path);
+        /* Parent observation requires the full result path, not merely the
+         * existence of a marker that is still being written. */
+        char temporary[1100];int named=snprintf(temporary,sizeof(temporary),"%s.pending",marker);CHECK(named>0&&(size_t)named<sizeof(temporary));
+        file_write(temporary, result_path);CHECK(!rename(temporary,marker));
 
         for (;;) pause();
     }
