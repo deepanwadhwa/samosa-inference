@@ -6,7 +6,11 @@ static const char *argument(int argc,char **argv,const char *key){for(int i=1;i+
 static int fixture(int argc,char **argv){
     const char *model=argument(argc,argv,"-m"),*input=argument(argc,argv,"-f"),*output=argument(argc,argv,"-of"),*language=argument(argc,argv,"-l");CHECK(model&&!strcmp(model,"/dev/fd/5")&&input&&output&&language&&!strcmp(language,"en"));
     char *body=file_read(model,4096);Json j;parse(body,&j);char *mode=json_string(&j,json_get(&j,0,"mode")),*marker=json_string(&j,json_get(&j,0,"marker"));CHECK(mode&&marker);
-    char *workspace=strdup(input),*slash=strrchr(workspace,'/');CHECK(slash);*slash=0;FILE *ready=fopen(marker,"w");CHECK(ready);fprintf(ready,"{\"pid\":%ld,\"workspace\":",(long)getpid());json_quote(ready,workspace,strlen(workspace));fputc('}',ready);CHECK(!fclose(ready));free(workspace);free(marker);free(body);
+    char *workspace=strdup(input),*slash=strrchr(workspace,'/');CHECK(slash);*slash=0;
+    /* The parent polls this marker during cancellation/mutation tests. Publish
+     * the complete closed JSON so it cannot observe a partially written file. */
+    char temporary[4096];int named=snprintf(temporary,sizeof(temporary),"%s.pending",marker);CHECK(named>0&&(size_t)named<sizeof(temporary));
+    FILE *ready=fopen(temporary,"w");CHECK(ready);fprintf(ready,"{\"pid\":%ld,\"workspace\":",(long)getpid());json_quote(ready,workspace,strlen(workspace));fputc('}',ready);CHECK(!fclose(ready));CHECK(!rename(temporary,marker));free(workspace);free(marker);free(body);
     if(!strcmp(mode,"slow")){signal(SIGTERM,SIG_IGN);for(;;)pause();}
     if(!strcmp(mode,"fail")){free(mode);return 9;}
     if(!strcmp(mode,"flood")){char bytes[4096];memset(bytes,'x',sizeof(bytes));for(;;)write_all(STDOUT_FILENO,bytes,sizeof(bytes));}
