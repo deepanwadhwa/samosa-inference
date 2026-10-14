@@ -2,6 +2,7 @@
 #define _DARWIN_C_SOURCE
 #include "speech.h"
 #include "speech_worker.h"
+#include "speech_package.h"
 #include "audio_store.h"
 #include "admission.h"
 #include "budget.h"
@@ -66,6 +67,10 @@ static const char *run(const InferenceConfig *c,const char *text,const char *voi
     if(dir>=0)close(dir);if(package>=0)close(package);if(lease>=0)close(lease);return e;
 }
 static void metadata(FILE *f,const AudioReceipt *r){fprintf(f,"\"audio_id\":\"%s\",\"format\":\"pcm_s16le\",\"channels\":1,\"sample_rate\":%d,\"samples\":%llu,\"bytes\":%llu,\"pcm_sha256\":\"%s\"",r->id,r->sample_rate,(unsigned long long)r->samples,(unsigned long long)r->bytes,r->pcm_sha256);}
+static void package_metadata(FILE *out,const SpeechConfig *c) {
+    char identity[65];speech_package_identity(c->manifest_sha256,identity);
+    fprintf(out,"\"manifest_sha256\":\"%s\",\"package_identity\":\"%s\"",c->manifest_sha256,identity);
+}
 static void base64(FILE *f,const unsigned char *b,size_t n){static const char *abc="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";fputc('"',f);
     for(size_t i=0;i<n;i+=3){uint32_t v=(uint32_t)b[i]<<16;if(i+1<n)v|=(uint32_t)b[i+1]<<8;if(i+2<n)v|=b[i+2];
         fputc(abc[v>>18],f);fputc(abc[(v>>12)&63],f);fputc(i+1<n?abc[(v>>6)&63]:'=',f);fputc(i+2<n?abc[v&63]:'=',f);}fputc('"',f);}
@@ -74,14 +79,21 @@ int speech_dispatch(const InferenceConfig *c,const Json *j,FILE *out) {
         !c->speech->manifest_sha256||strlen(c->speech->manifest_sha256)!=64||strspn(c->speech->manifest_sha256,"0123456789abcdef")!=64||!c->admission_state)return fail(out,"invalid_configuration");
     char *op=json_string(j,json_get(j,0,"op"));if(!op)return fail(out,"invalid_request");
     if(!strcmp(op,"describe")){free(op);if(!fields(j,"|contract_version|op|"))return fail(out,"unknown_field");
-        fprintf(out,"{\"contract_version\":1,\"provider_id\":\"%s\",\"capabilities\":[\"speech_output\",\"speech_pcm_stream\",\"audio_ranges\",\"operations\",\"cancellation\",\"request_budgets\"],\"max_input_bytes\":2400,\"max_audio_range_bytes\":32768,\"availability\":\"configured_unqualified\"}\n",c->provider_id);return 0;}
+        fprintf(out,"{\"contract_version\":1,\"provider_id\":\"%s\",\"capabilities\":[\"speech_output\",\"speech_pcm_stream\",\"audio_ranges\",\"operations\",\"cancellation\",\"request_budgets\"],\"max_input_bytes\":2400,\"max_audio_range_bytes\":32768,\"availability\":\"configured_unqualified\",\"declared_package\":{",c->provider_id);
+        package_metadata(out,c->speech);fputs("}}\n",out);return 0;}
     char *provider=json_string(j,json_get(j,0,"provider_id"));const char *e=!provider?"invalid_request":strcmp(provider,c->provider_id)?"provider_unavailable":NULL;
     AudioStoreConfig store={c->admission_state,c->owner,c->provider_id};AudioReceipt r;
     if(!e&&!strcmp(op,"speech_generate")) {
         char *normalized=speech_normalized(c,j),*text=json_string(j,json_get(j,0,"text")),*voice=json_string(j,json_get(j,0,"voice")),*id=json_string(j,json_get(j,0,"operation_id"));
         if(!normalized)e="invalid_request";
         else{char pin[65];hash_bytes(normalized,strlen(normalized),pin);e=run(c,text,voice,id,pin,&r);}
-        if(!e){fprintf(out,"{\"contract_version\":1,\"provider_id\":\"%s\",",c->provider_id);metadata(out,&r);fputs("}\n",out);}
+        if(!e){char input_sha[65];hash_bytes(text,strlen(text),input_sha);
+            fprintf(out,"{\"contract_version\":1,\"provider_id\":\"%s\",",c->provider_id);metadata(out,&r);
+            /* Persist observed package provenance only on successful generation.
+             * Range reads never attribute old audio to the current configuration. */
+            fputs(",\"provenance\":{\"validation\":\"verified_before_and_after_generation\",",out);package_metadata(out,c->speech);
+            fprintf(out,",\"input_sha256\":\"%s\",\"requested_voice\":",input_sha);
+            if(voice)json_quote(out,voice,strlen(voice));else fputs("null",out);fputs("}}\n",out);}
         free(normalized);free(text);free(voice);free(id);
     }else if(!e&&(!strcmp(op,"audio_read")||!strcmp(op,"audio_delete"))) {
         int reading=!strcmp(op,"audio_read");char *id=json_string(j,json_get(j,0,"audio_id"));size_t offset=0,length=0;

@@ -78,12 +78,47 @@ try:
     check("speech_output" in request("provider_describe")["capabilities"])
     check("speech_pcm_stream" in request("provider_describe")["capabilities"])
     result = request("speech_generate", operation_id="one", text="hello", voice="caro")
+    package_identity = hashlib.sha256(("sherpa-speech-package-v1:" + package["manifest_sha256"]).encode()).hexdigest()
+    check(result["provenance"] == dict(validation="verified_before_and_after_generation",
+          manifest_sha256=package["manifest_sha256"], package_identity=package_identity,
+          input_sha256=hashlib.sha256(b"hello").hexdigest(), requested_voice="caro"))
+    declared = request("provider_describe")
+    check(declared["declared_package"] == dict(manifest_sha256=package["manifest_sha256"], package_identity=package_identity))
+    check(declared["availability"] == "configured_unqualified")
     check(result["operation_id"] == "one" and result["sample_rate"] == 24000)
     check(result["samples"] == 4 and result["bytes"] == 8)
     audio = request("audio_read", audio_id=result["audio_id"], offset=0, length=8)
     pcm = base64.b64decode(audio["pcm_base64"], validate=True)
     check(pcm == bytes((0, 0, 102, 38, 154, 217, 0, 0)))
     check(hashlib.sha256(pcm).hexdigest() == result["pcm_sha256"])
+    check("provenance" not in audio)
+    changed = json.loads(cfg.read_text())
+    changed["providers"][0]["package"] = "/missing/provenance-package"
+    changed["providers"][0]["manifest_sha256"] = "f" * 64
+    cfg.write_text(json.dumps(changed))
+    retained = request("audio_read", audio_id=result["audio_id"], offset=0, length=8)
+    check("provenance" not in retained and base64.b64decode(retained["pcm_base64"]) == pcm)
+    config()
+    legacy_cli = os.environ.get("SAMOSA_TEST_LEGACY_SPEECH_CLI")
+    if legacy_cli:
+        # An actual previous executable creates its original receipt in this
+        # same store. New code must replay it rather than invent provenance.
+        legacy_body = dict(contract_version=1, op="speech_generate", provider_id="voice",
+                           operation_id="legacy-one", text="hello", voice="caro")
+        old = subprocess.run([legacy_cli, "--config", str(cfg)], input=json.dumps(legacy_body),
+                             text=True, capture_output=True, timeout=15)
+        check(old.returncode == 0 and not old.stderr)
+        legacy_receipt = json.loads(old.stdout)
+        check("provenance" not in legacy_receipt)
+        exact = subprocess.run([cli, "--config", str(cfg)], input=json.dumps(legacy_body),
+                               text=True, capture_output=True, timeout=15)
+        check(exact.returncode == 0 and exact.stdout == old.stdout)
+        check(request("speech_generate", operation_id="legacy-one", text="hello", voice="caro") == legacy_receipt)
+        legacy_stream = stream_start("legacy-one", voice="caro")
+        legacy_output, diagnostics = legacy_stream.communicate(timeout=15)
+        legacy_events = [json.loads(line) for line in legacy_output.splitlines()]
+        check(legacy_stream.returncode == 0 and not diagnostics and len(legacy_events) == 1)
+        check(legacy_events[0]["replayed"] and legacy_events[0]["response"] == legacy_receipt)
     host_platform = discovery["providers"][0]["host_platform"]
     check(discovery["providers"][0]["platform_policy"] == "unspecified")
     foreign_platform = "macos-arm64" if host_platform.startswith("linux") else "linux-arm64"
@@ -160,7 +195,8 @@ try:
     check(request("operation_get", operation_id="stream-blocked")["status"] == "failed")
     error("deadline_exceeded", request("speech_generate", operation_id="stream-blocked",
                                        text="stream-long", timeout_ms=500))
-    check(request("speech_generate", operation_id="stream-survivor", text="hello")["samples"] == 4)
+    survivor = request("speech_generate", operation_id="stream-survivor", text="hello")
+    check(survivor["samples"] == 4 and survivor["provenance"]["requested_voice"] is None)
     blocked.stdout.close()
     check(not blocked.stderr.read())
     part = request("audio_read", audio_id=result["audio_id"], offset=2, length=4)

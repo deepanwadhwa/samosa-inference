@@ -77,6 +77,9 @@ try:
     for voice, samples, digest in cases:
         fields = dict(operation_id=voice, text="The meeting starts at nine. Please bring your notes.", voice=voice)
         receipt = request("speech_generate", **fields)
+        check(receipt["provenance"] == dict(validation="verified_before_and_after_generation",
+              manifest_sha256=pin, package_identity=hashlib.sha256(("sherpa-speech-package-v1:" + pin).encode()).hexdigest(),
+              input_sha256=hashlib.sha256(fields["text"].encode()).hexdigest(), requested_voice=voice))
         check(receipt["sample_rate"] == 24000)
         if profile and profile.get("fresh_generation") == "variable_pcm":
             # A pinned model still varies across fresh generations. Keep a

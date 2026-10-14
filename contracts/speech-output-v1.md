@@ -27,6 +27,22 @@ The result contains `operation_id`, `provider_id`, opaque `audio_id`,
 process group and retains residency until cleanup. Each request starts and stops
 its worker; this adapter does not implement persistent readiness or model reuse.
 
+Fresh successful receipts also contain `provenance`: `manifest_sha256`,
+`package_identity`, exact text `input_sha256`, `requested_voice` (null when the
+package default was requested), and
+`validation: "verified_before_and_after_generation"`. Package identity uses the
+existing domain-separated hash of the pinned manifest; the closed manifest pins
+model, voice/reference and native runtime files. Validation describes observed
+package checks around generation, not an immutable snapshot or future readiness.
+The requested voice is not a claim about a separately resolved default name.
+
+`provider_describe` exposes a `declared_package` with that manifest pin and
+derived identity. It reads no package and keeps
+`availability: "configured_unqualified"`. Retained `audio_read` responses carry
+their original PCM identity without relabeling them with the current package.
+Generation receipts preserve historical provenance through normal/stream replay;
+older saved receipts remain exact and are not backfilled with new provenance.
+
 ```
 {"contract_version":1,"op":"audio_read","provider_id":"voice",
  "audio_id":"<64 lowercase hex characters>","offset":0,"length":32768}
