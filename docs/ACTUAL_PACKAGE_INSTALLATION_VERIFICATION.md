@@ -54,6 +54,11 @@ espeak resources and duplicated content identities in the verified cache.
 - Log: `/private/tmp/samosa-kokoro-complete-install.log`.
 
 Use the command above with `--actual-package /private/tmp/samosa-kokoro-pinned.s5_d_czq`
-and the Kokoro native manifest pin. Actual Kokoro sanitizer qualification remains
-pending; no other platform, runtime readiness or production distribution catalog
-is claimed from this gate.
+and the Kokoro native manifest pin. The complete actual Kokoro native/HTTPS/setup
+gate also passed under ASan/UBSan with the executable-mapping changes at
+`92e8a74`; log `/private/tmp/samosa-kokoro-complete-install-sanitize.log`.
+After extraction of the shared dependency resolver, direct actual Pocket normal
+and actual Kokoro sanitizer compatibility gates passed again; see
+[shared graph evidence](../contracts/native-loader-graph-v1.md).
+No other platform, runtime readiness or production distribution catalog is
+claimed from these gates.
