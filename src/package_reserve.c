@@ -99,3 +99,36 @@ const char *package_reserve_controlled(int pool,int package,const PackageIndex *
 const char *package_reserve(int pool,int package,const PackageIndex *index,uint64_t ceiling,size_t capacity,PackageReservationResult *out){
     return package_reserve_controlled(pool,package,index,ceiling,capacity,NULL,NULL,out);
 }
+
+const char *package_reservation_release_empty(int pool,int package,const PackageIndex *index,const char *(*control)(void *),void *context,int *out){
+    if(!index||!out||!index->payload_bytes||index->payload_bytes>PACKAGE_PAYLOAD_BYTES||
+        !memchr(index->manifest_sha256,0,sizeof(index->manifest_sha256))||strlen(index->manifest_sha256)!=64||strspn(index->manifest_sha256,"0123456789abcdef")!=64)return "invalid_package_reservation";
+    const char *e=control?control(context):NULL;if(e)return e;
+    if(!private(pool,1)||!private(package,1)||(fcntl(pool,F_GETFL)&O_ACCMODE)!=O_RDONLY||(fcntl(package,F_GETFL)&O_ACCMODE)!=O_RDONLY)return "unsafe_package_reservation";
+    int assembly=openat(package,"assemble.lock",O_RDWR|O_CREAT|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC,0600),lock=-1,record=-1;
+    if(assembly<0)return "unsafe_package_reservation";
+    if(!private(assembly,0)||!bound(package,"assemble.lock",assembly))e="unsafe_package_reservation";
+    if(!e&&flock(assembly,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"package_assembly_busy":"package_assembly_unavailable";
+    /* Refuse all payload, journal, completion and unknown names. Releasing a
+     * completed package requires a separate owned removal protocol. */
+    DIR *scan=NULL;if(!e){int fd=openat(package,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);scan=fd>=0?fdopendir(fd):NULL;if(!scan){if(fd>=0)close(fd);e="package_reservation_unavailable";}}
+    struct dirent *entry;while(!e&&(errno=0,(entry=readdir(scan)))){
+        e=control?control(context):NULL;if(e)break;
+        if(strcmp(entry->d_name,".")&&strcmp(entry->d_name,"..")&&strcmp(entry->d_name,"assemble.lock")&&strcmp(entry->d_name,"assembly.identity"))e="package_reservation_not_empty";
+    }
+    if(!e&&errno)e="package_reservation_unavailable";if(scan)closedir(scan);
+    if(!e){lock=openat(pool,"reserve.lock",O_RDWR|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);if(lock<0||!private(lock,0)||!bound(pool,"reserve.lock",lock))e="unsafe_package_reservation";}
+    if(!e&&flock(lock,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"package_reservation_busy":"package_reservation_unavailable";
+    struct stat identity;char target[128],expected[256];int length=0,released=0;
+    if(!e){if(fstat(package,&identity)||!name(target,index->manifest_sha256,(unsigned long long)identity.st_dev,(unsigned long long)identity.st_ino))e="unsafe_package_reservation";
+        else length=snprintf(expected,sizeof(expected),"samosa.package.reserve.v1\n%s\n%llu %llu %llu\n",index->manifest_sha256,(unsigned long long)index->payload_bytes,(unsigned long long)identity.st_dev,(unsigned long long)identity.st_ino);}
+    if(!e){struct stat pending;if(!fstatat(pool,".reservation.pending",&pending,AT_SYMLINK_NOFOLLOW)||errno!=ENOENT)e="unsafe_package_reservation";}
+    if(!e){record=openat(pool,target,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);if(record<0&&errno!=ENOENT)e="unsafe_package_reservation";
+        else if(record>=0&&!matching_record(pool,target,record,expected,length,1))e="package_reservation_identity_conflict";}
+    if(!e)e=control?control(context):NULL;
+    if(!e&&(!bound(package,"assemble.lock",assembly)||!bound(pool,"reserve.lock",lock)))e="unsafe_package_reservation";
+    if(!e&&record>=0){if(!matching_record(pool,target,record,expected,length,1))e="package_reservation_identity_conflict";
+        else if(unlinkat(pool,target,0)||fsync(pool))e="package_reservation_unavailable";else released=1;}
+    if(!e)*out=released;
+    if(record>=0)close(record);if(lock>=0)close(lock);close(assembly);return e;
+}

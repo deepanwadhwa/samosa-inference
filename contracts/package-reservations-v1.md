@@ -58,3 +58,23 @@ finish before returning the observed charge. No reservation is expired or releas
 Other-package pending state is not adopted by a new requester. The coordinator
 must resume the owning package. Torn/unverifiable proposals and bootstrap state
 still refuse; reclamation and the remaining installation requirements are unchanged.
+
+## Explicit empty-package reclamation
+
+`package_reservation_release_empty` takes the package assembly lease followed by
+the pool lease. It permits only assembly-lock and identity metadata in the package
+directory; payloads, journals, completions and unknown names refuse. It compares
+the reservation's complete canonical index/root/byte tuple and single-link inode
+before removing that charge and fsyncing the pool. Pending pool metadata refuses.
+Request controls and named-root bindings remain the trusted caller's contract.
+Output is 1 for a released charge, 0 if that exact charge is already absent, and
+unchanged on failure. It never deletes package contents, expires reservations,
+or guesses whether installed data is still in use. A later installation must
+reserve again before creating payload state. Reclamation of partial/installed
+trees still requires the full owned removal protocol.
+
+Normal and ASan/UBSan reservation gates pass 93 checks each, including cancelled
+release, payload refusal, held assembly-lease contention, mismatched byte counts,
+foreign pending metadata, idempotent release and reuse of reclaimed capacity.
+Complete HTTPS package gates also pass normally and under ASan/UBSan. Local log:
+`/private/tmp/samosa-release-empty-final.log`.
