@@ -509,8 +509,8 @@ test-native: test-setup
 sanitize-native: sanitize-setup
 
 .PHONY: test-package-native-runtime sanitize-package-native-runtime
-PACKAGE_NATIVE_RUNTIME_SOURCES = src/package_native_runtime.c $(PACKAGE_TREE_SOURCES) $(LIBRARY_RUNTIME_SOURCES)
-build/test-package-native-runtime: tests/test_package_native_runtime.c tests/library_fixture.h $(PACKAGE_NATIVE_RUNTIME_SOURCES) src/package_native_runtime.h $(LIBRARY_RUNTIME_HEADERS) src/package_tree.h src/package_index.h src/artifact.h | build
+PACKAGE_NATIVE_RUNTIME_SOURCES = src/llama_package.c src/llama_package_descriptor.c src/gguf_metadata.c src/package_native_runtime.c $(PACKAGE_TREE_SOURCES) $(LIBRARY_RUNTIME_SOURCES)
+build/test-package-native-runtime: tests/test_package_native_runtime.c tests/library_fixture.h $(PACKAGE_NATIVE_RUNTIME_SOURCES) src/llama_package.h src/llama_package_descriptor.h src/gguf_metadata.h src/package_native_runtime.h $(LIBRARY_RUNTIME_HEADERS) src/package_tree.h src/package_index.h src/artifact.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc $< $(PACKAGE_NATIVE_RUNTIME_SOURCES) -o $@
 test-package-native-runtime: build/test-package-native-runtime
 	./build/test-package-native-runtime

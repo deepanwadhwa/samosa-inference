@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
 #include "package_native_runtime.h"
+#include "llama_package.h"
 #include "library_runtime.h"
 #include "catalog.h"
 #include "library_fixture.h"
@@ -18,11 +19,13 @@ static void put(int root,PackageFile *file,const void *data,size_t bytes){
     file->bytes=bytes;hash_bytes(data,bytes,file->sha256);
 }
 int main(int argc,char **argv){
-    if(argc==4){int root=open(argv[1],O_RDONLY|O_DIRECTORY|O_NOFOLLOW),fd=open(argv[2],O_RDONLY|O_NOFOLLOW);struct stat s;
+    if(argc==4||argc==5){int root=open(argv[1],O_RDONLY|O_DIRECTORY|O_NOFOLLOW),fd=open(argv[2],O_RDONLY|O_NOFOLLOW);struct stat s;
         CHECK(root>=0&&fd>=0&&!fstat(fd,&s)&&S_ISREG(s.st_mode)&&s.st_uid==geteuid()&&!(s.st_mode&077)&&s.st_nlink==1&&s.st_size>0&&s.st_size<=PACKAGE_INDEX_BYTES);
         char *body=malloc((size_t)s.st_size);PackageIndex *index=calloc(1,sizeof(*index));CHECK(body&&index);size_t at=0;
         while(at<(size_t)s.st_size){ssize_t n=read(fd,body+at,(size_t)s.st_size-at);CHECK(n>0);at+=(size_t)n;}
-        CHECK(!package_index_parse(body,at,argv[3],index));const char *e=package_native_runtime_verify(root,index,NULL,NULL);if(e)fprintf(stderr,"actual native runtime: %s\n",e);CHECK(!e);
+        CHECK(!package_index_parse(body,at,argv[3],index));const char *e;
+        if(argc==5){CHECK(!strcmp(argv[4],"llama"));LlamaPackagePolicy policy={.runtime_revision="4fbc76dec51d0add466f0210855c0596589b60d4",.kind="embedding",.architecture="gemma-embedding2",.engine_sha256="958601dbd22ab2f5857e09860247f30c74153cb0f3914b8d62f2bacbba9aab97"};LlamaPackageDescriptor descriptor;e=llama_package_verify(root,index,&policy,NULL,NULL,&descriptor);}
+        else e=package_native_runtime_verify(root,index,NULL,NULL);if(e)fprintf(stderr,"actual native runtime: %s\n",e);CHECK(!e);
         printf("PASS actual native runtime package: %zu files; %llu pinned bytes; index %s; loader compatibility only\n",index->count,(unsigned long long)index->payload_bytes,index->manifest_sha256);
         free(index);free(body);CHECK(!close(fd));CHECK(!close(root));return 0;
     }
@@ -42,6 +45,21 @@ int main(int argc,char **argv){
     if(policy.mach_o)lib_mach(bytes,policy.cpu,NULL,0);else lib_elf(bytes,policy.cpu,"libc.so.6",1);put(root,&index->files[1],bytes,sizeof(bytes));
     int model=openat(root,"model",O_WRONLY);CHECK(model>=0);CHECK(pwrite(model,"x",1,0)==1);CHECK(!close(model));CHECK(!strcmp(package_native_runtime_verify(root,index,NULL,NULL),"artifact_checksum_mismatch"));
     put(root,&index->files[2],"abc",3);CHECK(!package_native_runtime_verify(root,index,NULL,NULL));
+    /* Combine trusted engine policy, pinned descriptor and model metadata.
+     * Synthetic metadata tests this static gate, not tensor/model readiness. */
+    memset(bytes,0,sizeof(bytes));memcpy(bytes,"GGUF",4);lib_w32(bytes+4,3);lib_w64(bytes+8,1);lib_w64(bytes+16,1);
+    const char *architecture="gemma-embedding2",*key="general.architecture";size_t at=24;lib_w64(bytes+at,strlen(key));at+=8;memcpy(bytes+at,key,strlen(key));at+=strlen(key);lib_w32(bytes+at,8);at+=4;lib_w64(bytes+at,strlen(architecture));at+=8;memcpy(bytes+at,architecture,strlen(architecture));at+=strlen(architecture);
+    put(root,&index->files[2],bytes,at);index->count=4;strcpy(index->files[3].name,"llama-package.json");index->files[3].role=PACKAGE_METADATA;
+    const char *manifest="{\"format\":\"samosa.inference.llama-package.v1\",\"kind\":\"embedding\",\"runtime_revision\":\"4fbc76dec51d0add466f0210855c0596589b60d4\",\"engine\":\"engine\",\"model\":\"model\",\"architecture\":\"gemma-embedding2\"}";
+    put(root,&index->files[3],manifest,strlen(manifest));index->payload_bytes=8192+at+strlen(manifest);
+    LlamaPackagePolicy qualified={.runtime_revision="4fbc76dec51d0add466f0210855c0596589b60d4",.kind="embedding",.architecture=architecture,.engine_sha256=index->files[0].sha256};
+    LlamaPackageDescriptor descriptor;memset(&descriptor,0xa5,sizeof(descriptor));LlamaPackageDescriptor unchanged_descriptor=descriptor;
+    CHECK(!strcmp(llama_package_verify(root,index,&qualified,cancel,NULL,&descriptor),"cancelled"));CHECK(!memcmp(&descriptor,&unchanged_descriptor,sizeof(descriptor)));
+    qualified.kind="text";CHECK(!strcmp(llama_package_verify(root,index,&qualified,NULL,NULL,&descriptor),"unqualified_llama_package_runtime"));CHECK(!memcmp(&descriptor,&unchanged_descriptor,sizeof(descriptor)));qualified.kind="embedding";
+    const char *engine_pin=qualified.engine_sha256;qualified.engine_sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";CHECK(!strcmp(llama_package_verify(root,index,&qualified,NULL,NULL,&descriptor),"unqualified_llama_package_runtime"));CHECK(!memcmp(&descriptor,&unchanged_descriptor,sizeof(descriptor)));qualified.engine_sha256=engine_pin;
+    CHECK(!llama_package_verify(root,index,&qualified,NULL,NULL,&descriptor));CHECK(descriptor.engine==0&&descriptor.model==2);
+    unchanged_descriptor=descriptor;qualified.runtime_revision="0000000000000000000000000000000000000000";CHECK(!strcmp(llama_package_verify(root,index,&qualified,NULL,NULL,&descriptor),"unqualified_llama_package_runtime"));CHECK(!memcmp(&descriptor,&unchanged_descriptor,sizeof(descriptor)));qualified.runtime_revision="4fbc76dec51d0add466f0210855c0596589b60d4";
+    bytes[at-strlen(architecture)]='q';put(root,&index->files[2],bytes,at);CHECK(!strcmp(llama_package_verify(root,index,&qualified,NULL,NULL,&descriptor),"incompatible_llama_package_model"));CHECK(!memcmp(&descriptor,&unchanged_descriptor,sizeof(descriptor)));bytes[at-strlen(architecture)]='g';put(root,&index->files[2],bytes,at);
     CHECK(!symlinkat("model",root,"foreign"));CHECK(package_native_runtime_verify(root,index,NULL,NULL));CHECK(!unlinkat(root,"foreign",0));
     for(size_t i=0;i<index->count;i++)CHECK(!unlinkat(root,index->files[i].name,0));CHECK(!close(root));CHECK(!rmdir(path));free(index);
     printf("PASS native runtime package: %u checks; complete pins, actual host, executable/library graph and opaque models\n",checks);return 0;
