@@ -71,9 +71,10 @@ int main(void){
     pid_t bootstrap=fork();CHECK(bootstrap>=0);if(!bootstrap)_exit(package_stage_file_registered(root,journal,index,0,input,kill_bootstrap,&interrupted)?2:3);
     int bootstrap_status;CHECK(waitpid(bootstrap,&bootstrap_status,0)==bootstrap&&WIFSIGNALED(bootstrap_status)&&WTERMSIG(bootstrap_status)==SIGKILL);
     CHECK(!fstatat(parent,temporary,&s,AT_SYMLINK_NOFOLLOW)&&s.st_size==0);
-    char intent_name[96];snprintf(intent_name,sizeof(intent_name),"intent-0-%s",index->files[0].sha256);
-    writer=openat(journal,intent_name,O_RDONLY|O_NOFOLLOW);CHECK(writer>=0);CHECK(!fchmod(writer,0600));CHECK(!close(writer));
-    writer=openat(journal,intent_name,O_RDWR|O_NOFOLLOW);CHECK(writer>=0);char intent_first;CHECK(pread(writer,&intent_first,1,0)==1);CHECK(pwrite(writer,"X",1,0)==1);
+    char intent_name[96],pending_intent[112];snprintf(intent_name,sizeof(intent_name),"intent-0-%s",index->files[0].sha256);snprintf(pending_intent,sizeof(pending_intent),".pending-%s",intent_name);
+    CHECK(!renameat(journal,intent_name,journal,pending_intent));
+    writer=openat(journal,pending_intent,O_RDONLY|O_NOFOLLOW);CHECK(writer>=0);CHECK(!fchmod(writer,0600));CHECK(!close(writer));
+    writer=openat(journal,pending_intent,O_RDWR|O_NOFOLLOW);CHECK(writer>=0);char intent_first;CHECK(pread(writer,&intent_first,1,0)==1);CHECK(pwrite(writer,"X",1,0)==1);
     CHECK(!strcmp(package_stage_file_registered(root,journal,index,0,input,NULL,NULL),"unsafe_package_copy_record"));CHECK(!fstatat(parent,temporary,&s,0)&&s.st_size==0);
     CHECK(pwrite(writer,&intent_first,1,0)==1);CHECK(!fchmod(writer,0400));CHECK(!close(writer));
     CHECK(!package_stage_file_registered(root,journal,index,0,input,NULL,NULL));CHECK(!package_tree_verify(root,index,NULL,NULL,&result));CHECK(!unlinkat(parent,"model.gguf",0));
@@ -103,6 +104,11 @@ int main(void){
      * copying; only the recorded temporary inode is removed. */
     CHECK(!unlinkat(parent,"model.gguf",0));FullCopy full={{root,partial},large_size};
     CHECK(!strcmp(package_stage_file_registered(root,journal,index,0,input,cancel_full,&full),"cancelled"));
+    /* Only the known matching pending alias may be removed. A different
+     * inode is preserved even if it occupies the expected metadata name. */
+    writer=openat(journal,pending_intent,O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(writer>=0);CHECK(write(writer,"foreign",7)==7);CHECK(!close(writer));
+    CHECK(!strcmp(package_stage_file_registered(root,journal,index,0,input,NULL,NULL),"unsafe_package_copy_record"));CHECK(!fstatat(journal,pending_intent,&s,0)&&s.st_size==7);CHECK(faccessat(parent,"model.gguf",F_OK,0)<0);CHECK(!fstatat(parent,temporary,&s,0)&&(uint64_t)s.st_size==large_size);CHECK(!unlinkat(journal,pending_intent,0));
+    CHECK(!linkat(journal,intent_name,journal,pending_intent,0));
     writer=openat(parent,temporary,O_RDONLY|O_NOFOLLOW);CHECK(writer>=0);CHECK(!fchmod(writer,0400));CHECK(!close(writer));
     CHECK(!linkat(parent,temporary,parent,"model.gguf",0));CHECK(!fstatat(parent,"model.gguf",&s,0)&&s.st_nlink==2);
     CHECK(!package_stage_file_registered(root,journal,index,0,input,NULL,NULL));CHECK(!package_tree_verify(root,index,NULL,NULL,&result));CHECK(faccessat(parent,temporary,F_OK,0)<0);

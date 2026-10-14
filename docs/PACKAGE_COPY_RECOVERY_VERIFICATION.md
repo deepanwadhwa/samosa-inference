@@ -53,3 +53,18 @@ continue to pass normally and under ASan/UBSan. Logs:
 This closes the copy-creation/inode-registration interruption after durable intent
 publication. Torn initial intent metadata, other installation metadata windows,
 reclamation and supported production packages remain open within area 2.
+
+## Intent publication recovery and admission ordering
+
+The killed-bootstrap case now retains its exact intent under the pending name.
+Corrupt pending bytes refuse; restored bytes complete metadata publication before
+the copy resumes. A cancelled complete copy also tests an unrelated pending
+intent: it refuses before publishing or removing the retained temporary. Replacing
+that foreign metadata with the exact known intent/pending hardlink pair permits
+recovery and final closed-tree verification. This caught and fixed a check-order
+bug: intent conflicts were previously detected only during cleanup after payload
+publication. Both existing-final and retained-copy paths now check intent metadata
+before publication or alias removal. Legacy inode records without intents remain
+supported. Normal and ASan/UBSan staging and complete HTTPS gates pass; logs:
+`/private/tmp/samosa-copy-intent-publication-stage.log` and
+`/private/tmp/samosa-copy-intent-publication.log`. Torn metadata remains preserved.

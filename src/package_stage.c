@@ -40,6 +40,7 @@ static const char *stage(int root,int journal,const PackageIndex *index,size_t s
             if(!private(existing,0)||fstat(existing,&s)||!bound(parent,leaf,existing))e="unsafe_package_stage";
             if(!e&&journal>=0){const char *record=package_copy_record(journal,root,parent,existing,index,selected,0);
                 if(!record)tracked=1;else if(strcmp(record,"package_copy_unregistered"))e=record;}
+            if(!e&&journal>=0){e=package_copy_intent(journal,root,parent,index,selected,0);if(e&&!strcmp(e,"package_copy_unregistered"))e=NULL;}
             if(!e&&s.st_nlink!=1&&!(tracked&&s.st_nlink==2))e="unsafe_package_stage";
             if(!e)e=artifact_verify_controlled(existing,file->bytes,PACKAGE_PAYLOAD_BYTES,file->sha256,control,context);
             if(!e&&tracked&&s.st_nlink==2){int temporary_fd=openat(parent,temporary,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);struct stat t;
@@ -69,6 +70,10 @@ static const char *stage(int root,int journal,const PackageIndex *index,size_t s
         }else if(output<0)e=errno==EEXIST?"package_stage_busy":"package_stage_unavailable";else created=1;
         if(!e&&journal>=0&&!registered){e=control?control(context):NULL;if(!e)e=package_copy_record(journal,root,parent,output,index,selected,1);if(!e)registered=1;}}
     uint64_t retained=0;
+    /* Validate intent metadata before touching a retained payload. Legacy
+     * inode records may lack an intent, but conflicting metadata never waits
+     * until cleanup to be reported. */
+    if(!e&&registered){e=package_copy_intent(journal,root,parent,index,selected,0);if(e&&!strcmp(e,"package_copy_unregistered"))e=NULL;}
     if(!e&&registered){struct stat s;
         if(fstat(output,&s)||s.st_size<0||(uint64_t)s.st_size>file->bytes||s.st_nlink!=1||!bound(parent,temporary,output))e="unsafe_package_stage";
         else retained=(uint64_t)s.st_size;
