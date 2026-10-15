@@ -2,9 +2,9 @@
 
 The `visionpsy-package-v1` catalog recipe applies host-qualified engine, config,
 tokenizer, weights and Metal-kernel pins before publication. The existing public
-VisionPsy bridge is reused. Component 2 remains open: installed-model
-qualification of the independent build, Molmo2 packages and production catalogs
-still require completion.
+VisionPsy bridge is reused. Component 2 remains open: sanitizer-equipped actual
+model qualification of the independent build, Molmo2 packages, OpenDecision
+integration and production catalogs still require completion.
 
 ## Controlled gates
 
@@ -83,6 +83,12 @@ host; it does not establish support for an older macOS release.
 
 The compiled kernel fallback is `/samosa-inference-no-fallback/mlx.metallib`.
 Only the package's colocated kernel should supply runtime kernels in qualification.
-Actual installed-model tests of this new engine remain pending; the successful
-existing-engine run above must not be substituted for them. See
+The independent engine passed the normal full HTTPS installation gate and 15882
+actual heading-recognition checks from fresh installed inodes. The seven-file
+payload totals 1199704796 bytes; index SHA-256 is
+`b8fe138bf4d3dc8594c45d38466cf0745f124523da89b3ac7ee00b8d9105a890`.
+The observed result contained `hello`, with derived-input provenance, uncertainty
+and durable replay checks. The sanitizer-equipped installation/provider/harness
+run is still pending; MLX and the engine itself are release builds. The passing
+normal run establishes only macOS 26.5.1 arm64 execution. See
 [engine build inputs](../engines/README.md#visionpsy).
