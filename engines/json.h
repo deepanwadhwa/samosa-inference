@@ -65,10 +65,14 @@ static char *j_parse_str_raw(jparser *p) {
                 case 'f': c = '\f'; break; case '/': c = '/'; break;
                 case '\\': c = '\\'; break; case '"': c = '"'; break;
                 case 'u': {  /* \uXXXX -> codepoint UTF-8 (con coppie surrogate) */
-                    unsigned cp = (unsigned)strtoul((char[]){p->s[0],p->s[1],p->s[2],p->s[3],0}, NULL, 16);
+                    /* Named buffers keep this shared C/C++ header valid in
+                       standard C++ as well as Clang's extension mode. */
+                    char digits[] = {p->s[0],p->s[1],p->s[2],p->s[3],0};
+                    unsigned cp = (unsigned)strtoul(digits, NULL, 16);
                     p->s += 4;
                     if (cp >= 0xD800 && cp <= 0xDBFF && p->s[0]=='\\' && p->s[1]=='u') {
-                        unsigned lo = (unsigned)strtoul((char[]){p->s[2],p->s[3],p->s[4],p->s[5],0}, NULL, 16);
+                        char low_digits[] = {p->s[2],p->s[3],p->s[4],p->s[5],0};
+                        unsigned lo = (unsigned)strtoul(low_digits, NULL, 16);
                         if (lo >= 0xDC00 && lo <= 0xDFFF) { cp = 0x10000 + ((cp-0xD800)<<10) + (lo-0xDC00); p->s += 6; }
                     }
                     if (cp < 0x80) { J_PUT(cp); }

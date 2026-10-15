@@ -49,8 +49,10 @@ results are in [Whisper package evidence](../docs/WHISPER_PACKAGE_INSTALLATION_V
 ## VisionPsy
 
 `visionpsy/` and the supporting `json.h`, `tok.h`, `tok_unicode.h`, and
-`stb_image.h` are copied from the existing Chat engine without implementation
-changes. The image decoder retains its embedded license. These headers belong
+`stb_image.h` were copied from the existing Chat engine. The shared JSON header
+uses named Unicode decoding buffers so it compiles as standard C++ under GCC;
+the engine implementation is unchanged. The image decoder retains its embedded
+license. These headers belong
 to the C++ engine and are separate from the inference service's JSON transport.
 
 Build without a Chat checkout:
@@ -88,8 +90,8 @@ building VisionPsy does not build Molmo2.
 helpers and framed engine protocol without implementation changes. The copied
 engine includes the existing prepared `video_frames` protocol required by the
 public temporal adapter. Chat's working tree is left untouched, including its
-uncommitted prepared-frame changes. The shared engine support headers are the
-same bytes used by Chat and VisionPsy.
+uncommitted prepared-frame changes. The shared engine support headers are reused
+from Chat, with the JSON Unicode-buffer portability change described above.
 
 ```sh
 sh tools/build_molmo_runtime.sh /absolute/mlx-checkout /absolute/fmt-checkout \

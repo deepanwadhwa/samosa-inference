@@ -54,7 +54,8 @@ retains the existing prepared-frame protocol needed by the temporal adapter.
 The source entry point has SHA-256
 `f1081b4e8aac0e780b985e5c7351a8ea17f2f833e14660dee8552998500fd4a7`.
 Chat's working tree, including its uncommitted prepared-frame changes, was not
-modified. Shared engine support headers also match their original bytes.
+modified. Shared engine support headers matched their original bytes at
+extraction; the JSON header subsequently received the GCC portability fix below.
 
 `tools/build_mlx_runtime.sh` now holds the common pinned source/dependency build
 previously embedded in the VisionPsy script. Each engine wrapper invokes it
@@ -83,3 +84,24 @@ dependency archive before creating an output directory.
 The refactored VisionPsy link step also passed using this freshly built shared
 MLX output; that link check does not replace its separately pinned actual-model
 qualification evidence.
+
+## C++ compiler portability
+
+Ubuntu CI for `e5e6a37` rejected two C-style temporary-array expressions in the
+reused JSON header when compiling the newly carried native tests with GCC.
+The Unicode decoder now uses named local character arrays for the same four
+hex digits and terminator. The engine/model sources remain unchanged.
+Strict C++20 compilation with pedantic errors and Unicode key, BMP character,
+surrogate-pair and escaped-newline checks passed locally; the checks also passed
+with ASan/UBSan. Existing native contract/processor tests passed in both modes.
+The exact corrected commit still requires hosted GCC qualification.
+
+Before the portability change, the independent-engine candidate also passed
+normal and sanitizer-equipped static admission (11 checks each): 29 files,
+3553773740 bytes, index
+`86ba886ffd61815eecb1a6e848475cba46ce2054916891c88bd4fb2d54f06b72`.
+This records compatibility for the `4fe26c8d...` engine, not installed inference.
+Relinking the corrected source into a separate output produced engine SHA-256
+`9a6a718e31d73c006be15f9266996286214f7f492c380d1b09097006d61b87af`.
+The prior pinned executable was preserved. The corrected binary requires its
+own package qualification; previous pins must not be silently reused.
