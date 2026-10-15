@@ -1,4 +1,6 @@
-# T5 summary engine
+# Native package engines
+
+## T5 summary engine
 
 `t5_summary.cpp` is the existing Samosa Chat native encoder/decoder summarizer,
 copied without implementation changes. Its framed scalar/batch protocol and
@@ -29,3 +31,17 @@ It checks the build profile, model pin and observed deployment target, and recor
 engine/model/source provenance. Emitting a candidate does not qualify it or
 publish a production distribution catalog. See
 [T5 package evidence](../docs/T5_PACKAGE_INSTALLATION_VERIFICATION.md).
+
+## Whisper CLI
+
+Build the existing pinned whisper.cpp source archive independently of Chat:
+
+```sh
+sh tools/build_whisper_runtime.sh /absolute/pinned-source.tar.gz /absolute/new-private-output
+```
+
+The script verifies the archive checksum before extraction, creates an exclusive
+private output, builds a static CPU runtime and includes the upstream license.
+The supported package profile is `base.en-f16`, qualified against independent
+engine and model pins. Source pins, build constraints and actual installed-model
+results are in [Whisper package evidence](../docs/WHISPER_PACKAGE_INSTALLATION_VERIFICATION.md).

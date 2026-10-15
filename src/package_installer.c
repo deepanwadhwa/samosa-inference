@@ -25,6 +25,8 @@ const char *package_install_catalog(const PackageInstaller *c,PackageTreeResult 
     if(!package_recipe_supported(c->entry->recipe))return "unsupported_package_recipe";
     if(!strcmp(c->entry->recipe,"llama-gguf-package-v1")&&!c->assembly.llama_policy)return "unqualified_llama_package_runtime";
     if(!strcmp(c->entry->recipe,"llama-gguf-package-v1")&&!llama_package_policy_valid(c->assembly.llama_policy))return "invalid_llama_package_policy";
+    if(!strcmp(c->entry->recipe,"whisper-ggml-package-v1")&&!c->assembly.whisper_policy)return "unqualified_whisper_package_runtime";
+    if(!strcmp(c->entry->recipe,"whisper-ggml-package-v1")&&!whisper_package_policy_valid(c->assembly.whisper_policy))return "invalid_whisper_package_policy";
     ArtifactConfig artifact=c->store;artifact.sha256=c->entry->sha256;artifact.size=c->entry->size;
     int index_fd=-1;e=artifact_open_verified(&artifact,c->assembly.control,c->assembly.context,&index_fd);
     if(e&&!strcmp(e,"artifact_absent")&&c->index_source){

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Qualify catalog-selected llama installation through the native setup CLI."""
+"""Qualify catalog-selected native package installation through the setup CLI."""
 import argparse
 import hashlib
 import http.server
@@ -18,9 +18,15 @@ parser.add_argument("root")
 parser.add_argument("index")
 parser.add_argument("pin")
 parser.add_argument("--revision", required=True)
-parser.add_argument("--kind", required=True)
-parser.add_argument("--architecture", required=True)
+parser.add_argument("--kind")
+parser.add_argument("--architecture")
 parser.add_argument("--engine-pin", required=True)
+parser.add_argument("--profile", help="Whisper model profile")
+parser.add_argument("--model-pin", help="Separate host-qualified Whisper model pin")
+parser.add_argument("--whisper-cli")
+parser.add_argument("--whisper-test")
+parser.add_argument("--sources-cli")
+parser.add_argument("--audio")
 parser.add_argument("--summary-cli", help="Optional actual T5 provider CLI qualification")
 parser.add_argument("--summary-test", help="Actual-model summary harness; used with --summary-cli")
 args = parser.parse_args()
@@ -29,7 +35,11 @@ assert not args.summary_cli or args.kind == "summary"
 body = Path(args.index).read_bytes()
 assert hashlib.sha256(body).hexdigest() == args.pin
 index = json.loads(body)
-assert index["recipe"] == "llama-gguf-package-v1"
+assert index["recipe"] in ("llama-gguf-package-v1", "whisper-ggml-package-v1")
+is_whisper = index["recipe"] == "whisper-ggml-package-v1"
+assert (args.profile and args.model_pin) if is_whisper else (args.kind and args.architecture)
+whisper_test_args = (args.whisper_cli, args.whisper_test, args.sources_cli, args.audio)
+assert not any(whisper_test_args) or (is_whisper and all(whisper_test_args))
 root = Path(args.root)
 payloads = {f["sha256"]: root / f["name"] for f in index["files"]}
 payloads[args.pin] = Path(args.index)
@@ -90,8 +100,14 @@ try:
               "--byte-ceiling", str(total + len(body)), "--disk-ceiling", str(2 * (total + len(body))),
               "--artifact-capacity", "513", "--package-directory", str(package)]
     reservations = ["--reservation-directory", str(pool), "--copy-ceiling", str(total), "--reservation-ceiling", str(total), "--reservation-capacity", "1"]
-    policy = ["--llama-runtime-revision", args.revision, "--llama-kind", args.kind,
-              "--llama-architecture", args.architecture, "--llama-engine-sha256", args.engine_pin]
+    if is_whisper:
+        policy = ["--whisper-runtime-revision", args.revision, "--whisper-profile", args.profile,
+                  "--whisper-engine-sha256", args.engine_pin, "--whisper-model-sha256", args.model_pin]
+        runtime_error = "unqualified_whisper_package_runtime"
+    else:
+        policy = ["--llama-runtime-revision", args.revision, "--llama-kind", args.kind,
+                  "--llama-architecture", args.architecture, "--llama-engine-sha256", args.engine_pin]
+        runtime_error = "unqualified_llama_package_runtime"
 
     def call(op, flags, extra=None, error=None, expected_status="installed_verified"):
         request = dict(contract_version=1, op=op, provider_id="llama-setup-qa")
@@ -106,9 +122,21 @@ try:
             assert result.returncode == 0 and receipt["status"] == expected_status and receipt["readiness"] == "unqualified", receipt
         return receipt
 
-    call("provider_install", reservations, error="unqualified_llama_package_runtime")
+    for flags, supported in (([], False), (policy, True)):
+        discovery = subprocess.run(config + flags,
+                                   input=json.dumps(dict(contract_version=1, op="provider_catalog")),
+                                   text=True, capture_output=True, timeout=15)
+        assert discovery.returncode == 0
+        provider = json.loads(discovery.stdout)["providers"][0]
+        assert provider["supported"] == supported, provider
+        if not supported:
+            assert provider["unavailable_reason"] == runtime_error, provider
+    if is_whisper:
+        incomplete = subprocess.run(config + policy[:-2], input="{}", text=True, capture_output=True, timeout=15)
+        assert incomplete.returncode == 2 and not incomplete.stdout
+    call("provider_install", reservations, error=runtime_error)
     assert not requests and not (package / "assemble.lock").exists() and not (base / "cache").exists()
-    call("provider_install", reservations + policy, extra={"llama_engine_sha256": args.engine_pin}, error="invalid_request")
+    call("provider_install", reservations + policy, extra={"whisper_model_sha256": args.model_pin} if is_whisper else {"llama_engine_sha256": args.engine_pin}, error="invalid_request")
     call("provider_install", reservations + policy + ["--digest-endpoint", endpoint], error="artifact_tls_verification_failed")
     assert not requests and not (package / "payload").exists()
     call("provider_install", reservations + policy + ["--digest-endpoint", endpoint, "--ca-file", str(cert)])
@@ -117,9 +145,17 @@ try:
     identity = installed_engine.stat()
     assert identity.st_mode & 0o777 == 0o500
     wrong = policy.copy()
-    wrong[wrong.index("--llama-kind") + 1] = "text" if args.kind == "embedding" else "embedding"
-    call("provider_resume", reservations + wrong, error="unqualified_llama_package_runtime")
+    if is_whisper:
+        wrong[wrong.index("--whisper-runtime-revision") + 1] = "0" * 40
+    else:
+        wrong[wrong.index("--llama-kind") + 1] = "text" if args.kind == "embedding" else "embedding"
+    call("provider_resume", reservations + wrong, error=runtime_error)
     assert (package / "complete").is_file() and installed_engine.stat().st_ino == identity.st_ino
+    if is_whisper:
+        wrong_model = policy.copy()
+        wrong_model[wrong_model.index("--whisper-model-sha256") + 1] = "0" * 64
+        call("provider_resume", reservations + wrong_model, error="unqualified_whisper_package_model")
+        assert (package / "complete").is_file() and installed_engine.stat().st_ino == identity.st_ino
     call("provider_status", policy)
     call("provider_resume", reservations + policy)
     assert sorted(requests) == sorted(payloads), requests
@@ -145,7 +181,12 @@ try:
         subprocess.run([os.path.abspath(args.summary_test), os.path.abspath(args.summary_cli),
                         str(installed_engine), str(package / "payload" / model["name"])],
                        check=True, timeout=600)
-    print(f"PASS llama setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
+    if args.whisper_cli:
+        model = next(file for file in index["files"] if file["role"] == "model")
+        subprocess.run([os.path.abspath(args.whisper_test), os.path.abspath(args.whisper_cli),
+                        os.path.abspath(args.sources_cli), str(installed_engine), str(package / "payload" / model["name"]),
+                        os.path.abspath(args.audio)], check=True, timeout=600)
+    print(f"PASS {'Whisper' if is_whisper else 'llama'} setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
 finally:
     if server is not None:
         if thread is not None and thread.is_alive():

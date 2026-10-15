@@ -375,7 +375,7 @@ test: test-speech-package
 sanitize: sanitize-speech-package
 
 .PHONY: test-package-compatibility sanitize-package-compatibility
-PACKAGE_COMPATIBILITY_SOURCES = src/package_remove.c src/package_removal_record.c src/package_lease.c src/llama_package.c src/llama_package_descriptor.c src/gguf_metadata.c src/package_native_runtime.c src/package_catalog.c src/package_identity.c src/package_reserve.c src/package_cache.c src/install.c src/package_assemble.c src/package_compatibility.c src/package_copy_record.c src/package_stage.c src/package_tree.c src/package_publish.c $(PACKAGE_INDEX_SOURCES) $(SPEECH_PACKAGE_SOURCES) $(SPEECH_LOADER_SOURCES) src/engine_runtime.c
+PACKAGE_COMPATIBILITY_SOURCES = src/whisper_package.c src/package_remove.c src/package_removal_record.c src/package_lease.c src/llama_package.c src/llama_package_descriptor.c src/gguf_metadata.c src/package_native_runtime.c src/package_catalog.c src/package_identity.c src/package_reserve.c src/package_cache.c src/install.c src/package_assemble.c src/package_compatibility.c src/package_copy_record.c src/package_stage.c src/package_tree.c src/package_publish.c $(PACKAGE_INDEX_SOURCES) $(SPEECH_PACKAGE_SOURCES) $(SPEECH_LOADER_SOURCES) src/engine_runtime.c
 build/test-package-compatibility: tests/test_package_compatibility.c $(PACKAGE_COMPATIBILITY_SOURCES) src/package_catalog.h src/package_identity.h src/package_reserve.h src/package_cache.h src/package_assemble.h src/package_compatibility.h src/package_copy_record.h src/package_stage.h src/package_tree.h src/package_publish.h src/package_index.h src/catalog.h src/platform.h $(SPEECH_PACKAGE_HEADERS) $(SPEECH_LOADER_HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc tests/test_package_compatibility.c $(PACKAGE_COMPATIBILITY_SOURCES) -o $@
 test-package-compatibility: build/test-package-compatibility build/test-speech-worker build/speech-worker-fixture.so
@@ -493,18 +493,20 @@ sanitize: sanitize-package-identity
 
 # Define setup after complete package source groups so make tracks every input.
 SETUP_SOURCES = src/setup_main.c $(PACKAGE_REMOTE_SOURCES)
-SETUP_HEADERS = src/catalog.h src/artifact.h src/remote_artifact.h src/json.h src/private_key.h src/sha256.h $(wildcard src/package*.h) $(SPEECH_PACKAGE_HEADERS) $(SPEECH_LOADER_HEADERS) src/library_runtime.h src/engine_runtime.h src/platform.h
+SETUP_HEADERS = src/whisper_package.h src/llama_package.h src/llama_package_descriptor.h src/gguf_metadata.h src/catalog.h src/artifact.h src/remote_artifact.h src/json.h src/private_key.h src/sha256.h $(wildcard src/package*.h) $(SPEECH_PACKAGE_HEADERS) $(SPEECH_LOADER_HEADERS) src/library_runtime.h src/engine_runtime.h src/platform.h
 build/samosa-inference-setup: $(SETUP_SOURCES) $(SETUP_HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(CURL_CFLAGS) $(SETUP_SOURCES) $(CURL_LIBS) -o $@
 
 .PHONY: test-setup sanitize-setup
-test-setup: build/test-package-native-runtime build/samosa-inference-setup build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so
+test-setup: build/test-whisper-package build/test-package-native-runtime build/samosa-inference-setup build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so
 	sh tests/setup_cli.sh
+	python3 tests/whisper_setup_fixture.py build/samosa-inference-setup build/test-whisper-package
 	python3 tests/llama_setup_fixture.py build/samosa-inference-setup build/test-package-native-runtime
 	python3 tests/package_compatibility_fixture.py build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so --https --setup build/samosa-inference-setup
-sanitize-setup: build/test-package-native-runtime build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so | build
+sanitize-setup: build/test-whisper-package build/test-package-native-runtime build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(CURL_CFLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer $(SETUP_SOURCES) $(CURL_LIBS) -o build/samosa-inference-setup-sanitize
 	sh tests/setup_cli.sh ./build/samosa-inference-setup-sanitize
+	python3 tests/whisper_setup_fixture.py build/samosa-inference-setup-sanitize build/test-whisper-package
 	python3 tests/llama_setup_fixture.py build/samosa-inference-setup-sanitize build/test-package-native-runtime
 	python3 tests/package_compatibility_fixture.py build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so --https --setup build/samosa-inference-setup-sanitize
 test-native: test-setup
@@ -611,3 +613,15 @@ sanitize-operations-cancel: | build
 	./build/test-operations-cancel-sanitize
 test: test-operations-cancel
 sanitize: sanitize-operations-cancel
+
+.PHONY: test-whisper-package sanitize-whisper-package
+WHISPER_PACKAGE_SOURCES = src/whisper_package.c src/package_native_runtime.c $(PACKAGE_TREE_SOURCES) $(LIBRARY_RUNTIME_SOURCES)
+build/test-whisper-package: tests/test_whisper_package.c tests/library_fixture.h $(WHISPER_PACKAGE_SOURCES) src/whisper_package.h src/package_native_runtime.h $(LIBRARY_RUNTIME_HEADERS) src/package_tree.h src/package_index.h src/artifact.h src/json.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc $< $(WHISPER_PACKAGE_SOURCES) -o $@
+test-whisper-package: build/test-whisper-package
+	./build/test-whisper-package
+sanitize-whisper-package: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_package.c $(WHISPER_PACKAGE_SOURCES) -o build/test-whisper-package-sanitize
+	./build/test-whisper-package-sanitize
+test: test-whisper-package
+sanitize: sanitize-whisper-package

@@ -48,7 +48,7 @@ int main(int argc,char **argv) {
     ArtifactConfig c={.cancelled=cancelled};RemoteArtifactSource remote={0};
     const char *catalog_path=NULL,*key_path=NULL,*package_path=NULL,*pool_path=NULL,*digest_url=NULL;unsigned seen=0;
     uint64_t copy_ceiling=0,pool_ceiling=0,pool_capacity=0;
-    LlamaPackagePolicy llama_policy={0};
+    LlamaPackagePolicy llama_policy={0};WhisperPackagePolicy whisper_policy={0};
     for(int i=1;i<argc;i++) {
         if(i+1>=argc)return 2;
         const char *key=argv[i],*value=argv[++i];unsigned bit=0;
@@ -70,6 +70,10 @@ int main(int argc,char **argv) {
         else if(!strcmp(key,"--llama-kind")){bit=16384;llama_policy.kind=value;}
         else if(!strcmp(key,"--llama-architecture")){bit=32768;llama_policy.architecture=value;}
         else if(!strcmp(key,"--llama-engine-sha256")){bit=65536;llama_policy.engine_sha256=value;}
+        else if(!strcmp(key,"--whisper-runtime-revision")){bit=131072;whisper_policy.runtime_revision=value;}
+        else if(!strcmp(key,"--whisper-profile")){bit=262144;whisper_policy.profile=value;}
+        else if(!strcmp(key,"--whisper-engine-sha256")){bit=524288;whisper_policy.engine_sha256=value;}
+        else if(!strcmp(key,"--whisper-model-sha256")){bit=1048576;whisper_policy.model_sha256=value;}
         else if(!strcmp(key,"--redirect-host")){if(remote.redirect_count==8)return 2;remote.redirect_hosts[remote.redirect_count++]=value;}
         else return 2;
         if(bit&&(seen&bit))return 2;
@@ -78,6 +82,9 @@ int main(int argc,char **argv) {
     unsigned llama_flags=8192|16384|32768|65536;
     if((seen&llama_flags)&&((seen&llama_flags)!=llama_flags||!llama_package_policy_valid(&llama_policy)))return 2;
     const LlamaPackagePolicy *qualified=(seen&llama_flags)?&llama_policy:NULL;
+    unsigned whisper_flags=131072|262144|524288|1048576;
+    if((seen&whisper_flags)&&((seen&whisper_flags)!=whisper_flags||!whisper_package_policy_valid(&whisper_policy)))return 2;
+    const WhisperPackagePolicy *qualified_whisper=(seen&whisper_flags)?&whisper_policy:NULL;
     char key[130]={0},platform[65]={0},os[65]={0};
     ProviderCatalog *catalog=malloc(sizeof(*catalog));
     const ProviderEntry *entry=NULL;const char *status=NULL,*error=NULL,*host_error=NULL;
@@ -123,7 +130,7 @@ int main(int argc,char **argv) {
          * only once when opening the descriptors. */
         SetupControl controls={.package_path=package_path,.pool_path=pool_path,.package=package,.pool=pool};
         PackageInstaller installer={.entry=entry,.store=c,.index_source=&remote,.digest_source=digest_url?&digest:NULL,
-            .assembly={.directory=package,.source=-1,.payload_path=payload,.copy_ceiling=copy_ceiling,.reservation_directory=pool,.reservation_ceiling=pool_ceiling,.reservation_capacity=(size_t)pool_capacity,.control=control,.context=&controls,.llama_policy=qualified}};
+            .assembly={.directory=package,.source=-1,.payload_path=payload,.copy_ceiling=copy_ceiling,.reservation_directory=pool,.reservation_ceiling=pool_ceiling,.reservation_capacity=(size_t)pool_capacity,.control=control,.context=&controls,.llama_policy=qualified,.whisper_policy=qualified_whisper}};
         if(!error&&observing){PackageAssemblyStatus observed;error=package_status_from_file(catalog_path,id,&installer,&observed);if(!error)status=observed.state;}
         else if(!error&&!strcmp(op,"provider_release_empty")){int released;error=package_release_empty_from_file(catalog_path,id,&installer,&released);if(!error)status=released?"reservation_released":"reservation_absent";}
         else if(!error&&!strcmp(op,"provider_remove")){int released;error=package_remove_from_file(catalog_path,id,&installer,&released);if(!error)status="removed";}
@@ -147,6 +154,7 @@ int main(int argc,char **argv) {
                 if(!reason)reason=provider_catalog_qualify(e,os);
                 if(!reason&&package_path&&!package_recipe_supported(e->recipe))reason="unsupported_package_recipe";
                 if(!reason&&package_path&&!strcmp(e->recipe,"llama-gguf-package-v1")&&!qualified)reason="unqualified_llama_package_runtime";
+                if(!reason&&package_path&&!strcmp(e->recipe,"whisper-ggml-package-v1")&&!qualified_whisper)reason="unqualified_whisper_package_runtime";
                 if(i)fputc(',',stdout);
                 descriptor(e);fprintf(stdout,",\"supported\":%s",reason?"false":"true");
                 if(reason)property("unavailable_reason",reason);
