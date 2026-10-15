@@ -112,6 +112,13 @@ contracts in `dist/samosa-inference-0.1.0.tar.gz`. Fake contract checks include
 owner-gated operations/cancellation. Describe reports configuration; it does not
 prove engine readiness or artifact integrity.
 
+Before pushing inference changes, run `sh tools/check_native.sh` in clean macOS
+and Ubuntu source exports. An optional source-directory argument selects the
+export to test. GitHub Actions invokes this same script, including the GCC C++
+engine tests on Ubuntu. Record the actual host architecture and compiler with
+the results; hosted runners additionally qualify their configured matrix hosts.
+Actual-model checks use their separately pinned assets and remain explicit gates.
+
 Artifact acquisition: `build/samosa-inference-artifacts --state PRIVATE_DIR
 --source ABSOLUTE_REGULAR_FILE --sha256 EXPECTED_SHA --size BYTES --byte-ceiling
 BYTES --disk-ceiling BYTES`. Submit artifact_status/artifact_install/artifact_resume

@@ -33,24 +33,8 @@ jobs:
           mkdir "$RUNNER_TEMP/inference"
           git archive HEAD | tar -x -C "$RUNNER_TEMP/inference"
           echo "INFERENCE_SOURCE=$RUNNER_TEMP/inference" >> "$GITHUB_ENV"
-      - name: Core and native speech contracts
+      - name: Shared local and hosted native checks
         shell: bash
-        run: make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test sanitize
-      - name: Combined provider registry and process controls
-        shell: bash
-        run: |
-          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-registry-modalities sanitize-registry-modalities
-          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-registry-cli sanitize-registry-cli
-          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-speech-public sanitize-speech-public
-          # Compile optional actual-model harnesses on both native hosts; their
-          # execution requires explicit pinned model and Sources/SDK artifacts.
-          make -C "$INFERENCE_SOURCE" CC=clang build/test-whisper-real build/test-whisper-real-sanitize build/test-vision-real build/test-vision-real-sanitize build/test-temporal-public-real build/test-temporal-public-real-sanitize
-      - name: Controlled text, acquisition and modality adapters
-        shell: bash
-        run: |
-          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-native sanitize-native
-          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-summary sanitize-summary
-          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-whisper sanitize-whisper
-          make -C "$INFERENCE_SOURCE" CC=clang CURL_LIBS=-lcurl test-vision sanitize-vision
+        run: sh "$INFERENCE_SOURCE/tools/check_native.sh"
       # Actual models, temporal package gates and release/product retirement
       # require explicit pinned artifacts and remain separate acceptance rows.
