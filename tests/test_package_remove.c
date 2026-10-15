@@ -17,6 +17,9 @@ static const char *cancel(void *unused){(void)unused;return "cancelled";}
 static const char *kill_after_first(void *opaque){int package=*(int *)opaque;
     if(faccessat(package,"payload/models/a",F_OK,0)<0)kill(getpid(),SIGKILL);return NULL;
 }
+static const char *kill_after_marker(void *opaque){int package=*(int *)opaque;
+    if(faccessat(package,"complete",F_OK,0)<0)kill(getpid(),SIGKILL);return NULL;
+}
 int main(void){
     char path[]="/tmp/samosa-remove-payload-XXXXXX";CHECK(mkdtemp(path));int package=open(path,O_RDONLY|O_DIRECTORY);CHECK(package>=0);
     int lock=openat(package,"assemble.lock",O_RDWR|O_CREAT|O_EXCL,0600);CHECK(lock>=0);CHECK(!mkdirat(package,"payload",0700));int payload=openat(package,"payload",O_RDONLY|O_DIRECTORY);CHECK(payload>=0);
@@ -29,6 +32,7 @@ int main(void){
     int fd=openat(package,"complete",O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(fd>=0);CHECK(write(fd,complete,(size_t)n)==n);CHECK(!close(fd));CHECK(!fstat(package,&r));CHECK(!fstatat(package,"complete",&c,AT_SYMLINK_NOFOLLOW));
     PackageTreeSnapshot *snapshot=malloc(sizeof(*snapshot));PackageRemovalRecord *record=malloc(sizeof(*record));CHECK(snapshot&&record);CHECK(!package_tree_snapshot(payload,index,NULL,NULL,snapshot));CHECK(!package_removal_record_capture(index,snapshot,&r,&c,record));CHECK(!package_removal_record_store(package,index,record,NULL,NULL));
     CHECK(!strcmp(package_remove_payload(package,index,cancel,NULL),"cancelled"));CHECK(faccessat(payload,names[0],F_OK,0)==0);
+    CHECK(!strcmp(package_remove_retire(package,index,NULL,NULL),"package_removal_not_empty"));CHECK(faccessat(package,"complete",F_OK,0)==0);
     CHECK(!flock(lock,LOCK_SH|LOCK_NB));CHECK(!strcmp(package_remove_payload(package,index,NULL,NULL),"package_assembly_busy"));CHECK(!flock(lock,LOCK_UN));
     fd=openat(payload,"foreign",O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(fd>=0);CHECK(write(fd,"unknown",7)==7);CHECK(!close(fd));
     CHECK(!strcmp(package_remove_payload(package,index,NULL,NULL),"unsafe_package_removal_payload"));CHECK(faccessat(payload,names[0],F_OK,0)==0);CHECK(faccessat(payload,"foreign",F_OK,0)==0);CHECK(!unlinkat(payload,"foreign",0));
@@ -44,6 +48,15 @@ int main(void){
     CHECK(faccessat(payload,names[0],F_OK,0)<0);CHECK(faccessat(payload,names[1],F_OK,0)==0);CHECK(faccessat(package,"complete",F_OK,0)==0);CHECK(faccessat(package,"removal.record",F_OK,0)==0);
     CHECK(!package_remove_payload(package,index,NULL,NULL));CHECK(faccessat(payload,names[1],F_OK,0)<0);CHECK(faccessat(payload,"models",F_OK,0)<0);CHECK(!package_remove_payload(package,index,NULL,NULL));
     CHECK(faccessat(package,"payload",F_OK,0)==0&&faccessat(package,"complete",F_OK,0)==0&&faccessat(package,"removal.record",F_OK,0)==0);
-    CHECK(!close(payload));CHECK(!unlinkat(package,"payload",AT_REMOVEDIR));CHECK(!unlinkat(package,"complete",0));CHECK(!unlinkat(package,"removal.record",0));CHECK(!unlinkat(package,"assembly.identity",0));CHECK(!close(lock));CHECK(!unlinkat(package,"assemble.lock",0));CHECK(!close(package));CHECK(!rmdir(path));free(index);free(snapshot);free(record);
+    CHECK(!strcmp(package_remove_retire(package,index,cancel,NULL),"cancelled"));CHECK(faccessat(package,"complete",F_OK,0)==0);
+    CHECK(!flock(lock,LOCK_SH|LOCK_NB));CHECK(!strcmp(package_remove_retire(package,index,NULL,NULL),"package_assembly_busy"));CHECK(!flock(lock,LOCK_UN));
+    CHECK(!renameat(package,"payload",package,"saved-payload"));CHECK(!mkdirat(package,"payload",0700));CHECK(!strcmp(package_remove_retire(package,index,NULL,NULL),"unsafe_package_removal_payload"));CHECK(faccessat(package,"complete",F_OK,0)==0);
+    CHECK(!unlinkat(package,"payload",AT_REMOVEDIR));CHECK(!renameat(package,"saved-payload",package,"payload"));
+    child=fork();CHECK(child>=0);if(!child)_exit(package_remove_retire(package,index,kill_after_marker,&package)?2:3);
+    CHECK(waitpid(child,&status,0)==child&&WIFSIGNALED(status)&&WTERMSIG(status)==SIGKILL);CHECK(faccessat(package,"complete",F_OK,0)<0);CHECK(faccessat(package,"payload",F_OK,0)==0);CHECK(faccessat(package,"removal.record",F_OK,0)==0);
+    CHECK(!package_remove_retire(package,index,NULL,NULL));CHECK(faccessat(package,"payload",F_OK,0)<0);CHECK(!package_remove_retire(package,index,NULL,NULL));CHECK(faccessat(package,"removal.record",F_OK,0)==0);
+    CHECK(!mkdirat(package,"payload",0700));CHECK(!strcmp(package_remove_retire(package,index,NULL,NULL),"unsafe_package_removal_payload"));CHECK(faccessat(package,"payload",F_OK,0)==0);CHECK(!unlinkat(package,"payload",AT_REMOVEDIR));
+    fd=openat(package,"complete",O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(fd>=0);CHECK(write(fd,"foreign",7)==7);CHECK(!close(fd));CHECK(!strcmp(package_remove_retire(package,index,NULL,NULL),"unsafe_package_removal_payload"));CHECK(faccessat(package,"complete",F_OK,0)==0);CHECK(!unlinkat(package,"complete",0));
+    CHECK(!close(payload));CHECK(!unlinkat(package,"removal.record",0));CHECK(!unlinkat(package,"assembly.identity",0));CHECK(!close(lock));CHECK(!unlinkat(package,"assemble.lock",0));CHECK(!close(package));CHECK(!rmdir(path));free(index);free(snapshot);free(record);
     printf("PASS payload removal: %u checks; recorded inodes, writer exclusion, foreign refusal, SIGKILL resume and idempotent payload emptying\n",checks);return 0;
 }

@@ -6,4 +6,8 @@
  * substituted inodes. Leaves payload root, completion, journal and quota charge
  * for subsequent verified retirement. No paths come from public requests. */
 const char *package_remove_payload(int,const PackageIndex *,const char *(*)(void *),void *);
+/* Retire only the empty recorded payload root and exact completion marker.
+ * Resumes their already-absent states under the exclusive lease. Journal and
+ * reservation remain until the following quota/metadata retirement phase. */
+const char *package_remove_retire(int,const PackageIndex *,const char *(*)(void *),void *);
 #endif

@@ -63,12 +63,16 @@ static int parent_open(int root,const PackageRemovalRecord *r,const char *name,c
     memmove(leaf,part,strlen(part)+1);return parent;
 }
 static int deepest(const void *a,const void *b){const PackageRemovalDirectory *x=a,*y=b;size_t nx=strlen(x->name),ny=strlen(y->name);return nx>ny?-1:nx<ny?1:strcmp(x->name,y->name);}
+static const char *lease(int directory,int *out){
+    int fd=openat(directory,"assemble.lock",O_RDWR|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);struct stat s;
+    if(fd<0)return "unsafe_package_removal_payload";const char *e=NULL;
+    if(fstat(fd,&s)||!S_ISREG(s.st_mode)||s.st_uid!=geteuid()||(s.st_mode&077)||s.st_nlink!=1||!bound(directory,"assemble.lock",fd))e="unsafe_package_removal_payload";
+    if(!e&&flock(fd,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"package_assembly_busy":"package_assembly_unavailable";
+    if(e)close(fd);else *out=fd;return e;
+}
 const char *package_remove_payload(int directory,const PackageIndex *index,const char *(*control)(void *),void *context){
     if(!index)return "invalid_package_removal_record";const char *e=control?control(context):NULL;if(e)return e;
-    int lock=openat(directory,"assemble.lock",O_RDWR|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);struct stat s;int payload=-1,completion=-1;
-    if(lock<0)return "unsafe_package_removal_payload";
-    if(fstat(lock,&s)||!S_ISREG(s.st_mode)||s.st_uid!=geteuid()||(s.st_mode&077)||s.st_nlink!=1||!bound(directory,"assemble.lock",lock))e="unsafe_package_removal_payload";
-    if(!e&&flock(lock,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"package_assembly_busy":"package_assembly_unavailable";
+    int lock=-1;struct stat s;int payload=-1,completion=-1;e=lease(directory,&lock);if(e)return e;
     if(!e)e=package_identity_verify(directory,index,control,context);
     PackageRemovalRecord *r=NULL;if(!e){r=malloc(sizeof(*r));if(!r)e="allocation_failed";}
     if(!e)e=package_removal_record_load(directory,index,control,context,r);
@@ -95,5 +99,39 @@ const char *package_remove_payload(int directory,const PackageIndex *index,const
     }
     if(!e){visited=0;e=walk(payload,"",index,r,&visited,control,context);if(!e&&visited)e="package_removal_failed";}
     if(!e&&(fsync(payload)||!bound(directory,"payload",payload)||!bound(directory,"assemble.lock",lock)))e="package_removal_failed";
+    free(r);if(completion>=0)close(completion);if(payload>=0)close(payload);close(lock);return e;
+}
+static const char *empty(int directory){
+    int fd=openat(directory,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);DIR *scan=fd>=0?fdopendir(fd):NULL;
+    if(!scan){if(fd>=0)close(fd);return "unsafe_package_removal_payload";}const char *e=NULL;
+    for(;;){errno=0;struct dirent *entry=readdir(scan);if(!entry){if(errno)e="unsafe_package_removal_payload";break;}
+        if(strcmp(entry->d_name,".")&&strcmp(entry->d_name,"..")){e="package_removal_not_empty";break;}}
+    closedir(scan);return e;
+}
+const char *package_remove_retire(int directory,const PackageIndex *index,const char *(*control)(void *),void *context){
+    if(!index)return "invalid_package_removal_record";const char *e=control?control(context):NULL;if(e)return e;
+    int lock=-1,payload=-1,completion=-1;e=lease(directory,&lock);if(e)return e;
+    e=package_identity_verify(directory,index,control,context);PackageRemovalRecord *r=NULL;
+    if(!e){r=malloc(sizeof(*r));if(!r)e="allocation_failed";}
+    if(!e)e=package_removal_record_load(directory,index,control,context,r);
+    struct stat s;
+    if(!e){payload=openat(directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+        if(payload<0){if(errno!=ENOENT)e="unsafe_package_removal_payload";}
+        else if(fstat(payload,&s)||!matches(&r->payload,&s,0)||!bound(directory,"payload",payload))e="unsafe_package_removal_payload";
+        else e=empty(payload);}
+    if(!e){completion=openat(directory,"complete",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+        if(completion<0){if(errno!=ENOENT)e="unsafe_package_removal_payload";}
+        else{char expected[256],actual[256];int length=snprintf(expected,sizeof(expected),"samosa.package.complete.v1\n%s\n%llu %llu\n",index->manifest_sha256,(unsigned long long)r->payload.value[0],(unsigned long long)r->payload.value[1]);
+            if(fstat(completion,&s)||!matches(&r->completion,&s,1)||!bound(directory,"complete",completion)||s.st_size!=length||pread(completion,actual,(size_t)length,0)!=length||memcmp(actual,expected,(size_t)length))e="unsafe_package_removal_payload";}}
+    if(!e)e=control?control(context):NULL;
+    if(!e&&completion>=0){
+        if(fstat(completion,&s)||!matches(&r->completion,&s,1)||!bound(directory,"assemble.lock",lock)||!bound(directory,"complete",completion))e="unsafe_package_removal_payload";
+        else if(unlinkat(directory,"complete",0)||fsync(directory))e="package_removal_failed";
+    }
+    /* This checkpoint makes marker retirement recoverable before root removal. */
+    if(!e)e=control?control(context):NULL;
+    if(!e&&payload>=0){e=empty(payload);
+        if(!e&&(!bound(directory,"assemble.lock",lock)||!bound(directory,"payload",payload)||unlinkat(directory,"payload",AT_REMOVEDIR)||fsync(directory)))e="package_removal_failed";}
+    if(!e&&(fsync(directory)||!bound(directory,"assemble.lock",lock)))e="package_removal_failed";
     free(r);if(completion>=0)close(completion);if(payload>=0)close(payload);close(lock);return e;
 }

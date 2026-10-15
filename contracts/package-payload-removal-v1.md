@@ -34,3 +34,26 @@ All 93 record tests also pass. Log:
 No user/actual-model assets were deleted by these controlled fixtures. Complete
 retirement, quota release, partial-copy cleanup and public removal coordination
 remain component-2 work; lifecycle/readiness components are not opened here.
+
+## Completion and empty-root retirement
+
+`package_remove_retire` takes the same exclusive assembly lease and verifies
+registered package identity plus the durable inventory. If the recorded payload
+root still exists, it must match its recorded device/inode/UID/mode and be empty.
+The completion file must match its recorded full stat identity and exact
+index/payload-root declaration. After controls and binding rechecks, the function
+unlinks that completion and fsyncs the package directory, then removes only the
+recorded empty payload root and fsyncs again.
+
+A checkpoint between those mutations allows restart after marker retirement.
+Recorded names already absent are accepted; unrelated recreated roots or
+completion files refuse and remain untouched. Directory scanning never removes
+an entry. The immutable removal journal and quota charge remain for subsequent
+verified quota/metadata retirement, keeping the removal admission barrier active.
+
+Normal and ASan/UBSan payload/removal gates now pass 105 checks, including refusal
+before emptying, cancellation, reader exclusion, substituted empty-root refusal,
+a real child killed after completion unlink, resumed root removal, idempotent
+retirement and foreign names recreated after retirement. The 93 record regression
+checks also pass. Log: `/private/tmp/samosa-payload-retirement.log`. Only owned
+controlled fixture data was removed; no actual-model/user assets were deleted.
