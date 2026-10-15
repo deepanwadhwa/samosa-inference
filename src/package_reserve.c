@@ -100,17 +100,8 @@ const char *package_reserve(int pool,int package,const PackageIndex *index,uint6
     return package_reserve_controlled(pool,package,index,ceiling,capacity,NULL,NULL,out);
 }
 
-const char *package_reservation_release_empty(int pool,int package,const PackageIndex *index,const char *(*control)(void *),void *context,int *out){
-    if(!index||!out||!index->payload_bytes||index->payload_bytes>PACKAGE_PAYLOAD_BYTES||
-        !memchr(index->manifest_sha256,0,sizeof(index->manifest_sha256))||strlen(index->manifest_sha256)!=64||strspn(index->manifest_sha256,"0123456789abcdef")!=64)return "invalid_package_reservation";
-    const char *e=control?control(context):NULL;if(e)return e;
-    if(!private(pool,1)||!private(package,1)||(fcntl(pool,F_GETFL)&O_ACCMODE)!=O_RDONLY||(fcntl(package,F_GETFL)&O_ACCMODE)!=O_RDONLY)return "unsafe_package_reservation";
-    int assembly=openat(package,"assemble.lock",O_RDWR|O_CREAT|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC,0600),lock=-1,record=-1;
-    if(assembly<0)return "unsafe_package_reservation";
-    if(!private(assembly,0)||!bound(package,"assemble.lock",assembly))e="unsafe_package_reservation";
-    if(!e&&flock(assembly,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"package_assembly_busy":"package_assembly_unavailable";
-    /* Refuse all payload, journal, completion and unknown names. Releasing a
-     * completed package requires a separate owned removal protocol. */
+static const char *empty_check(int package,const PackageIndex *index,const char *(*control)(void *),void *context){
+    (void)index;const char *e=NULL;
     DIR *scan=NULL;if(!e){int fd=openat(package,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);scan=fd>=0?fdopendir(fd):NULL;if(!scan){if(fd>=0)close(fd);e="package_reservation_unavailable";}}
     struct dirent *entry;while(!e&&(errno=0,(entry=readdir(scan)))){
         e=control?control(context):NULL;if(e)break;
@@ -119,6 +110,18 @@ const char *package_reservation_release_empty(int pool,int package,const Package
             if(metadata<0||!private(metadata,0)||!bound(package,entry->d_name,metadata))e="unsafe_package_reservation";if(metadata>=0)close(metadata);}
     }
     if(!e&&errno)e="package_reservation_unavailable";if(scan)closedir(scan);
+    return e;
+}
+const char *package_reservation_release_checked(int pool,int package,const PackageIndex *index,PackageReservationReleaseCheck check,const char *(*control)(void *),void *context,int *out){
+    if(!index||!out||!check||!index->payload_bytes||index->payload_bytes>PACKAGE_PAYLOAD_BYTES||
+        !memchr(index->manifest_sha256,0,sizeof(index->manifest_sha256))||strlen(index->manifest_sha256)!=64||strspn(index->manifest_sha256,"0123456789abcdef")!=64)return "invalid_package_reservation";
+    const char *e=control?control(context):NULL;if(e)return e;
+    if(!private(pool,1)||!private(package,1)||(fcntl(pool,F_GETFL)&O_ACCMODE)!=O_RDONLY||(fcntl(package,F_GETFL)&O_ACCMODE)!=O_RDONLY)return "unsafe_package_reservation";
+    int assembly=openat(package,"assemble.lock",O_RDWR|O_CREAT|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC,0600),lock=-1,record=-1;
+    if(assembly<0)return "unsafe_package_reservation";
+    if(!private(assembly,0)||!bound(package,"assemble.lock",assembly))e="unsafe_package_reservation";
+    if(!e&&flock(assembly,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"package_assembly_busy":"package_assembly_unavailable";
+    if(!e)e=check(package,index,control,context);
     if(!e){lock=openat(pool,"reserve.lock",O_RDWR|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);if(lock<0||!private(lock,0)||!bound(pool,"reserve.lock",lock))e="unsafe_package_reservation";}
     if(!e&&flock(lock,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"package_reservation_busy":"package_reservation_unavailable";
     struct stat identity;char target[128],expected[256];int length=0,released=0;
@@ -129,8 +132,17 @@ const char *package_reservation_release_empty(int pool,int package,const Package
         else if(record>=0&&!matching_record(pool,target,record,expected,length,1))e="package_reservation_identity_conflict";}
     if(!e)e=control?control(context):NULL;
     if(!e&&(!bound(package,"assemble.lock",assembly)||!bound(pool,"reserve.lock",lock)))e="unsafe_package_reservation";
+    if(!e)e=check(package,index,control,context);
+    if(!e&&(!bound(package,"assemble.lock",assembly)||!bound(pool,"reserve.lock",lock)))e="unsafe_package_reservation";
     if(!e&&record>=0){if(!matching_record(pool,target,record,expected,length,1))e="package_reservation_identity_conflict";
         else if(unlinkat(pool,target,0)||fsync(pool))e="package_reservation_unavailable";else released=1;}
+    /* A retry after death between unlink and fsync must durably settle the
+     * already-absent state before the removal journal may be retired. */
+    if(!e&&(fsync(pool)||!bound(package,"assemble.lock",assembly)||!bound(pool,"reserve.lock",lock)))e="package_reservation_unavailable";
     if(!e)*out=released;
     if(record>=0)close(record);if(lock>=0)close(lock);close(assembly);return e;
+}
+
+const char *package_reservation_release_empty(int pool,int package,const PackageIndex *index,const char *(*control)(void *),void *context,int *out){
+    return package_reservation_release_checked(pool,package,index,empty_check,control,context,out);
 }

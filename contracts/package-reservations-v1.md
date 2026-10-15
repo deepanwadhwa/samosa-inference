@@ -78,3 +78,27 @@ release, payload refusal, held assembly-lease contention, mismatched byte counts
 foreign pending metadata, idempotent release and reuse of reclaimed capacity.
 Complete HTTPS package gates also pass normally and under ASan/UBSan. Local log:
 `/private/tmp/samosa-release-empty-final.log`.
+
+## Retired-package release
+
+`package_remove_release` selects a trusted native retirement validator and calls
+the shared checked-release primitive. It takes assembly then pool leases, verifies
+registered identity and the durable removal record, requires payload/completion/
+pending-removal names absent, and rejects unknown package entries or nonempty copy
+journals. Only private recognized metadata can remain. Validation runs before
+opening pool state and again under both leases before unlinking the exact
+index/root/byte charge. Public requests cannot supply this validator.
+
+The existing empty-package release uses the same primitive with its original
+strict empty-package validator. Both recheck lock bindings and fsync the pool
+even on an already-absent retry, settling a death between unlink and directory
+sync before callers may retire the removal journal. Outputs remain untouched on
+failure; success reports 1 released or 0 already absent. The removal record and
+admission barrier remain in place until explicit verified metadata cleanup.
+
+Normal and ASan/UBSan removal gates pass 149 checks, including release before
+retirement refusal, cancellation, unknown entry/nonempty journal refusal, reader
+and pool contention, preserved charge counts, exact release and idempotent retry.
+All 97 existing reservation checks and complete HTTPS package gates pass in both
+builds. Log: `/private/tmp/samosa-retired-reservation-release.log`. Only controlled
+fixture reservations were released; no actual-model/user package was removed.

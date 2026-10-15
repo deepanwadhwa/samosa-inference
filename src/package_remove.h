@@ -10,4 +10,7 @@ const char *package_remove_payload(int,const PackageIndex *,const char *(*)(void
  * Resumes their already-absent states under the exclusive lease. Journal and
  * reservation remain until the following quota/metadata retirement phase. */
 const char *package_remove_retire(int,const PackageIndex *,const char *(*)(void *),void *);
+/* Release the exact charge only after recorded retirement and namespace checks.
+ * Keeps the removal journal/barrier and identity metadata for later cleanup. */
+const char *package_remove_release(int,int,const PackageIndex *,const char *(*)(void *),void *,int *);
 #endif

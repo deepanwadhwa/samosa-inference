@@ -2,6 +2,7 @@
 #define _DARWIN_C_SOURCE
 #include "package_remove.h"
 #include "package_identity.h"
+#include "package_reserve.h"
 #include "artifact.h"
 #include <dirent.h>
 #include <errno.h>
@@ -134,4 +135,32 @@ const char *package_remove_retire(int directory,const PackageIndex *index,const 
         if(!e&&(!bound(directory,"assemble.lock",lock)||!bound(directory,"payload",payload)||unlinkat(directory,"payload",AT_REMOVEDIR)||fsync(directory)))e="package_removal_failed";}
     if(!e&&(fsync(directory)||!bound(directory,"assemble.lock",lock)))e="package_removal_failed";
     free(r);if(completion>=0)close(completion);if(payload>=0)close(payload);close(lock);return e;
+}
+static const char *retired_check(int directory,const PackageIndex *index,const char *(*control)(void *),void *context){
+    const char *e=package_identity_verify(directory,index,control,context);PackageRemovalRecord *r=NULL;
+    if(!e){r=malloc(sizeof(*r));if(!r)e="allocation_failed";}
+    if(!e)e=package_removal_record_load(directory,index,control,context,r);free(r);if(e)return e;
+    const char *absent[]={"payload","complete",".removal.record.pending"};struct stat s;
+    for(size_t i=0;i<sizeof(absent)/sizeof(*absent);i++){
+        if(!fstatat(directory,absent[i],&s,AT_SYMLINK_NOFOLLOW))return "package_reservation_not_empty";
+        if(errno!=ENOENT)return "unsafe_package_removal_payload";
+    }
+    int fd=openat(directory,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);DIR *scan=fd>=0?fdopendir(fd):NULL;
+    if(!scan){if(fd>=0)close(fd);return "unsafe_package_removal_payload";}
+    for(;;){e=control?control(context):NULL;if(e)break;errno=0;struct dirent *entry=readdir(scan);
+        if(!entry){if(errno)e="unsafe_package_removal_payload";break;}
+        const char *name=entry->d_name;if(!strcmp(name,".")||!strcmp(name,".."))continue;
+        int journal=!strcmp(name,"copy-journal");
+        if(!journal&&strcmp(name,"assemble.lock")&&strcmp(name,"publish.lock")&&strcmp(name,"assembly.identity")&&strcmp(name,"removal.record")){e="package_reservation_not_empty";break;}
+        int item=openat(directory,name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC|(journal?O_DIRECTORY:0));
+        if(item<0||fstat(item,&s)||s.st_uid!=geteuid()||(s.st_mode&077)||!bound(directory,name,item)||
+            (journal?!S_ISDIR(s.st_mode):!S_ISREG(s.st_mode)||s.st_nlink!=1))e="unsafe_package_removal_payload";
+        if(!e&&journal)e=empty(item);
+        if(!e&&(!strcmp(name,"assemble.lock")||!strcmp(name,"publish.lock"))&&s.st_size)e="unsafe_package_removal_payload";
+        if(item>=0)close(item);if(e)break;
+    }
+    closedir(scan);return e;
+}
+const char *package_remove_release(int pool,int directory,const PackageIndex *index,const char *(*control)(void *),void *context,int *out){
+    return package_reservation_release_checked(pool,directory,index,retired_check,control,context,out);
 }

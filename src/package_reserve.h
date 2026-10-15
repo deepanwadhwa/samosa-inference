@@ -18,4 +18,9 @@ const char *package_reserve_controlled(int,int,const PackageIndex *,uint64_t,siz
  * output untouched on failure. Caller retains named-root bindings. */
 const char *package_reservation_release_empty(int,int,const PackageIndex *,
     const char *(*)(void *),void *,int *);
+/* Trusted native removal validator, never a public request callback. Runs under
+ * the assembly lease and again under both leases before exact-charge unlink. */
+typedef const char *(*PackageReservationReleaseCheck)(int,const PackageIndex *,const char *(*)(void *),void *);
+const char *package_reservation_release_checked(int,int,const PackageIndex *,PackageReservationReleaseCheck,
+    const char *(*)(void *),void *,int *);
 #endif

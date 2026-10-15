@@ -579,7 +579,7 @@ test: test-package-removal-record
 sanitize: sanitize-package-removal-record
 
 .PHONY: test-package-remove sanitize-package-remove
-PACKAGE_REMOVE_SOURCES = src/package_remove.c src/package_identity.c $(PACKAGE_REMOVAL_RECORD_SOURCES)
+PACKAGE_REMOVE_SOURCES = src/package_remove.c src/package_reserve.c src/package_identity.c $(PACKAGE_REMOVAL_RECORD_SOURCES)
 build/test-package-remove: tests/test_package_remove.c $(PACKAGE_REMOVE_SOURCES) src/package_remove.h src/package_removal_record.h src/package_identity.h src/package_tree.h src/package_index.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc $< $(PACKAGE_REMOVE_SOURCES) -o $@
 test-package-remove: build/test-package-remove
