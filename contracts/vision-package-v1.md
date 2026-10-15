@@ -58,7 +58,7 @@ credentials and runtime policy. A changed policy cannot overwrite a completed
 installation. Engine pin mismatch reports `unqualified_vision_package_runtime`;
 any model constituent mismatch reports `unqualified_vision_package_model`.
 
-`make test-vision-package sanitize-vision-package` passed 657 checks in each mode
+`make test-vision-package sanitize-vision-package` passed 672 checks in each mode
 on the development macOS arm64 host. The fixture exporter also drives the shared
 HTTPS setup harness from `make test-setup sanitize-setup`, covering acquisition,
 publication, status/resume, last-good preservation, complete/incomplete removal

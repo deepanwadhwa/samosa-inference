@@ -9,10 +9,11 @@ still require completion.
 ## Controlled gates
 
 `make test-vision-package sanitize-vision-package test-setup sanitize-setup`
-passed on the development macOS arm64 host. The native verifier passed 657 checks
+passed on the development macOS arm64 host. The native verifier passed 672 checks
 per mode, covering independent policy pins, strict descriptors, fixed model and
 kernel paths, role conflicts, descriptor truncations, closed native dependencies
-and caller controls. Synthetic payloads exercise admission, not model quality.
+and caller controls. Missing, symlinked and corrupted kernel files explicitly
+refuse admission. Synthetic payloads exercise admission, not model quality.
 
 Setup tests cover discovery with missing policy, incomplete host flags, public
 policy injection refusal, untrusted TLS, verified publication, wrong engine and

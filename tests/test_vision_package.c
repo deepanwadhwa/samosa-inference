@@ -41,6 +41,12 @@ int main(int argc,char **argv){
     for(size_t i=1;i<6;i++){enum PackageFileRole old=index->files[i].role;index->files[i].role=PACKAGE_ENGINE;rejects(root,index,&policy,"vision_package_identity_conflict");index->files[i].role=old;}
     strcpy(index->files[0].name,"bin/engine");rejects(root,index,&policy,"vision_package_identity_conflict");strcpy(index->files[0].name,"engine");
     CHECK(!symlinkat("model",root,"unknown"));rejects(root,index,&policy,"unsupported_package_artifact");CHECK(!unlinkat(root,"unknown",0));
+    /* The separate runtime kernel must be present and pinned inside this
+     * package; an external MLX build tree cannot satisfy installation admission. */
+    CHECK(!unlinkat(root,"mlx.metallib",0));rejects(root,index,&policy,"package_file_missing");
+    CHECK(!symlinkat("model/config.json",root,"mlx.metallib"));rejects(root,index,&policy,"unsupported_package_artifact");CHECK(!unlinkat(root,"mlx.metallib",0));
+    int kernel=openat(root,"mlx.metallib",O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(kernel>=0);CHECK(write(kernel,"corrupt fixture",15)==15);CHECK(!close(kernel));
+    rejects(root,index,&policy,"artifact_checksum_mismatch");put(root,index,5,"kernels fixture",15);
     CHECK(!vision_package_verify(root,index,&policy,NULL,NULL,&out));
     if(exporting){char *json=NULL;size_t bytes=0;FILE *stream=open_memstream(&json,&bytes);CHECK(stream);fprintf(stream,"{\"format\":\"samosa.inference.package.v1\",\"platform\":\"%s\",\"minimum_os\":\"1.0\",\"recipe\":\"visionpsy-package-v1\",\"files\":[",index->platform);
         const char *role_names[]={"engine","metadata","data","model","metadata","data"};for(size_t i=0;i<6;i++){if(i)fputc(',',stream);fprintf(stream,"{\"name\":\"%s\",\"role\":\"%s\",\"bytes\":%llu,\"sha256\":\"%s\"}",index->files[i].name,role_names[i],(unsigned long long)index->files[i].bytes,index->files[i].sha256);}fputs("]}",stream);CHECK(!fclose(stream));char pin[65],target[256];hash_bytes(json,bytes,pin);CHECK(snprintf(target,sizeof(target),"%s.index.json",path)<(int)sizeof(target));int fd=open(target,O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(fd>=0);CHECK(write(fd,json,bytes)==(ssize_t)bytes);CHECK(!close(fd));
