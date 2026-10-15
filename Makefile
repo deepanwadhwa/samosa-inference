@@ -639,3 +639,15 @@ sanitize-vision-package: | build
 	./build/test-vision-package-sanitize
 test: test-vision-package
 sanitize: sanitize-vision-package
+
+.PHONY: test-molmo-package-descriptor sanitize-molmo-package-descriptor
+MOLMO_DESCRIPTOR_SOURCES = src/molmo_package_descriptor.c $(PACKAGE_INDEX_SOURCES)
+build/test-molmo-package-descriptor: tests/test_molmo_package_descriptor.c $(MOLMO_DESCRIPTOR_SOURCES) src/molmo_package_descriptor.h src/temporal_package.h src/package_index.h src/json.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc $< $(MOLMO_DESCRIPTOR_SOURCES) -o $@
+test-molmo-package-descriptor: build/test-molmo-package-descriptor
+	./build/test-molmo-package-descriptor
+sanitize-molmo-package-descriptor: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_molmo_package_descriptor.c $(MOLMO_DESCRIPTOR_SOURCES) -o build/test-molmo-package-descriptor-sanitize
+	./build/test-molmo-package-descriptor-sanitize
+test: test-molmo-package-descriptor
+sanitize: sanitize-molmo-package-descriptor
