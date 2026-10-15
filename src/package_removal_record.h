@@ -13,6 +13,9 @@ typedef struct {char index_sha256[65];size_t file_count,directory_count;
 /* Caller supplies verified inventory/registered completion under its exclusive
  * package lease. This encodes evidence, never grants removal authority itself. */
 const char *package_removal_record_capture(const PackageIndex *,const PackageTreeSnapshot *,const struct stat *,const struct stat *,PackageRemovalRecord *);
+/* Explicit incomplete inventory: no completion identity; absent file identities
+ * are zero. Present published files still come from a pinned subset snapshot. */
+const char *package_removal_record_capture_incomplete(const PackageIndex *,const PackageTreeSnapshot *,const struct stat *,PackageRemovalRecord *);
 /* Owned private immutable journal, with checksum and bounded explicit encoding.
  * Store does not replace an existing or foreign record. Load is read-only.
  * Caller owns lease/named-root bindings. Outputs untouched on failure. */

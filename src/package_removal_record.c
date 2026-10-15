@@ -22,13 +22,15 @@ static int node(const PackageRemovalIdentity *id,int directory){const uint64_t *
 static int parent(const PackageIndex *index,const char *name){size_t n=strlen(name);
     for(size_t i=0;i<index->count;i++)if(strlen(index->files[i].name)>n&&!memcmp(index->files[i].name,name,n)&&index->files[i].name[n]=='/')return 1;return 0;
 }
+static int zero(const PackageRemovalIdentity *id){for(size_t i=0;i<10;i++)if(id->value[i])return 0;return 1;}
 static int shape(const PackageIndex *index,const PackageRemovalRecord *r){
     if(!index||!r||!index->count||index->count>PACKAGE_INDEX_FILES||!memchr(index->manifest_sha256,0,65)||strlen(index->manifest_sha256)!=64||strspn(index->manifest_sha256,"0123456789abcdef")!=64||
         !memchr(r->index_sha256,0,65)||strcmp(index->manifest_sha256,r->index_sha256)||r->file_count!=index->count||r->directory_count>PACKAGE_TREE_DIRECTORIES||
-        !node(&r->package,1)||!node(&r->payload,1)||!node(&r->completion,0)||r->package.value[0]!=r->payload.value[0]||r->package.value[1]==r->payload.value[1])return 0;
+        !node(&r->package,1)||!node(&r->payload,1)||(!zero(&r->completion)&&!node(&r->completion,0))||r->package.value[0]!=r->payload.value[0]||r->package.value[1]==r->payload.value[1])return 0;
     for(size_t i=0;i<index->count;i++){
-        if(!memchr(index->files[i].name,0,256)||!package_file_name_valid(index->files[i].name,index->files[i].role)||!memchr(index->files[i].sha256,0,65)||strlen(index->files[i].sha256)!=64||strspn(index->files[i].sha256,"0123456789abcdef")!=64||!index->files[i].bytes||index->files[i].bytes>PACKAGE_PAYLOAD_BYTES||!node(&r->files[i],0)||
-            r->files[i].value[0]!=r->payload.value[0]||r->files[i].value[5]!=index->files[i].bytes)return 0;
+        if(!memchr(index->files[i].name,0,256)||!package_file_name_valid(index->files[i].name,index->files[i].role)||!memchr(index->files[i].sha256,0,65)||strlen(index->files[i].sha256)!=64||strspn(index->files[i].sha256,"0123456789abcdef")!=64||!index->files[i].bytes||index->files[i].bytes>PACKAGE_PAYLOAD_BYTES)return 0;
+        if(zero(&r->completion)&&zero(&r->files[i]))continue;
+        if(!node(&r->files[i],0)||r->files[i].value[0]!=r->payload.value[0]||r->files[i].value[5]!=index->files[i].bytes)return 0;
         for(size_t k=0;k<i;k++)if(r->files[k].value[1]==r->files[i].value[1])return 0;
     }
     for(size_t i=0;i<r->directory_count;i++){
@@ -37,21 +39,31 @@ static int shape(const PackageIndex *index,const PackageRemovalRecord *r){
         for(size_t k=0;k<i;k++)if(!strcmp(r->directories[k].name,r->directories[i].name)||r->directories[k].identity.value[1]==r->directories[i].identity.value[1])return 0;
     }
     /* Every indexed ancestor must be present, not merely every listed path valid. */
-    for(size_t i=0;i<index->count;i++)for(const char *p=index->files[i].name;*p;p++)if(*p=='/'){
+    for(size_t i=0;i<index->count;i++)if(!zero(&r->files[i]))for(const char *p=index->files[i].name;*p;p++)if(*p=='/'){
         size_t n=(size_t)(p-index->files[i].name),k=0;for(;k<r->directory_count;k++)if(strlen(r->directories[k].name)==n&&!memcmp(r->directories[k].name,index->files[i].name,n))break;
+        if(k==r->directory_count)return 0;
+    }
+    for(size_t i=0;i<r->directory_count;i++){
+        const char *slash=strrchr(r->directories[i].name,'/');if(!slash)continue;
+        size_t n=(size_t)(slash-r->directories[i].name),k=0;
+        for(;k<r->directory_count;k++)if(strlen(r->directories[k].name)==n&&!memcmp(r->directories[k].name,r->directories[i].name,n))break;
         if(k==r->directory_count)return 0;
     }
     return 1;
 }
-const char *package_removal_record_capture(const PackageIndex *index,const PackageTreeSnapshot *snapshot,const struct stat *package,const struct stat *completion,PackageRemovalRecord *out){
-    if(!index||!snapshot||!package||!completion||!out||snapshot->file_count>PACKAGE_INDEX_FILES||snapshot->directory_count>PACKAGE_TREE_DIRECTORIES)return "invalid_package_removal_record";
+static const char *capture(const PackageIndex *index,const PackageTreeSnapshot *snapshot,const struct stat *package,const struct stat *completion,PackageRemovalRecord *out){
+    if(!index||!snapshot||!package||!out||snapshot->file_count>PACKAGE_INDEX_FILES||snapshot->directory_count>PACKAGE_TREE_DIRECTORIES)return "invalid_package_removal_record";
     PackageRemovalRecord *r=calloc(1,sizeof(*r));if(!r)return "allocation_failed";
     memcpy(r->index_sha256,snapshot->manifest_sha256,65);r->file_count=snapshot->file_count;r->directory_count=snapshot->directory_count;
-    identity(package,&r->package);identity(&snapshot->root,&r->payload);identity(completion,&r->completion);
-    for(size_t i=0;i<r->file_count;i++)identity(&snapshot->files[i],&r->files[i]);
+    identity(package,&r->package);identity(&snapshot->root,&r->payload);if(completion)identity(completion,&r->completion);
+    for(size_t i=0;i<r->file_count;i++)if(snapshot->files[i].st_ino)identity(&snapshot->files[i],&r->files[i]);
     for(size_t i=0;i<r->directory_count;i++){memcpy(r->directories[i].name,snapshot->directories[i].name,256);identity(&snapshot->directories[i].identity,&r->directories[i].identity);}
     const char *e=shape(index,r)?NULL:"invalid_package_removal_record";if(!e)*out=*r;free(r);return e;
 }
+const char *package_removal_record_capture(const PackageIndex *index,const PackageTreeSnapshot *snapshot,const struct stat *package,const struct stat *completion,PackageRemovalRecord *out){
+    if(!completion||!completion->st_ino)return "invalid_package_removal_record";return capture(index,snapshot,package,completion,out);
+}
+const char *package_removal_record_capture_incomplete(const PackageIndex *index,const PackageTreeSnapshot *snapshot,const struct stat *package,PackageRemovalRecord *out){return capture(index,snapshot,package,NULL,out);}
 static void put64(unsigned char **at,uint64_t v){for(unsigned i=0;i<8;i++)*(*at)++=(unsigned char)(v>>(8*i));}
 static uint64_t get64(const unsigned char **at){uint64_t v=0;for(unsigned i=0;i<8;i++)v|=(uint64_t)*(*at)++<<(8*i);return v;}
 static void put_node(unsigned char **at,const PackageRemovalIdentity *id){for(unsigned i=0;i<10;i++)put64(at,id->value[i]);}
@@ -60,7 +72,7 @@ static void checksum(const void *body,size_t n,unsigned char out[32]){Sha256 has
 static unsigned char *encode(const PackageRemovalRecord *r,size_t *size){
     size_t n=8+64+16+240+r->file_count*80+32;for(size_t i=0;i<r->directory_count;i++)n+=8+strlen(r->directories[i].name)+80;
     if(n>PACKAGE_REMOVAL_BYTES)return NULL;unsigned char *body=malloc(n);if(!body)return NULL;unsigned char *at=body;
-    memcpy(at,"SMRMV001",8);at+=8;memcpy(at,r->index_sha256,64);at+=64;put64(&at,r->file_count);put64(&at,r->directory_count);
+    memcpy(at,zero(&r->completion)?"SMRMP001":"SMRMV001",8);at+=8;memcpy(at,r->index_sha256,64);at+=64;put64(&at,r->file_count);put64(&at,r->directory_count);
     put_node(&at,&r->package);put_node(&at,&r->payload);put_node(&at,&r->completion);
     for(size_t i=0;i<r->file_count;i++)put_node(&at,&r->files[i]);
     for(size_t i=0;i<r->directory_count;i++){size_t length=strlen(r->directories[i].name);put64(&at,length);memcpy(at,r->directories[i].name,length);at+=length;put_node(&at,&r->directories[i].identity);}
@@ -114,7 +126,7 @@ static const char *load(int directory,const PackageIndex *index,const char *(*co
     size_t size=(size_t)s.st_size,used=0;unsigned char *body=malloc(size);PackageRemovalRecord *r=calloc(1,sizeof(*r));if(!body||!r)e="allocation_failed";
     while(!e&&used<size){e=control?control(context):NULL;if(e)break;size_t n=size-used;if(n>65536)n=65536;ssize_t got=pread(fd,body+used,n,(off_t)used);if(got<0&&errno==EINTR)continue;if(got<=0){e="unsafe_package_removal_record";break;}used+=(size_t)got;}
     const unsigned char *at=body,*end=body?body+size-32:NULL;unsigned char digest[32];
-    if(!e){checksum(body,size-32,digest);if(memcmp(digest,end,32)||memcmp(body,"SMRMV001",8))e="unsafe_package_removal_record";}
+    if(!e){checksum(body,size-32,digest);if(memcmp(digest,end,32)||(memcmp(body,"SMRMV001",8)&&memcmp(body,"SMRMP001",8)))e="unsafe_package_removal_record";}
     if(!e){at+=8;memcpy(r->index_sha256,at,64);at+=64;uint64_t files=get64(&at),directories=get64(&at);
         if(files>PACKAGE_INDEX_FILES||directories>PACKAGE_TREE_DIRECTORIES||files>(uint64_t)(end-at-240)/80)e="unsafe_package_removal_record";
         else{r->file_count=(size_t)files;r->directory_count=(size_t)directories;get_node(&at,&r->package);get_node(&at,&r->payload);get_node(&at,&r->completion);for(size_t i=0;i<r->file_count;i++)get_node(&at,&r->files[i]);}
@@ -124,7 +136,7 @@ static const char *load(int directory,const PackageIndex *index,const char *(*co
         if(!n||n>255||end-at<80||(uint64_t)(end-at-80)<n||memchr(at,0,(size_t)n)){e="unsafe_package_removal_record";break;}
         memcpy(r->directories[i].name,at,(size_t)n);at+=(size_t)n;get_node(&at,&r->directories[i].identity);
     }
-    if(!e&&(at!=end||!shape(index,r)||!root_matches(directory,r)||fstat(fd,&after)||!bound(directory,name,fd)))e="unsafe_package_removal_record";
+    if(!e&&(at!=end||!shape(index,r)||(zero(&r->completion)!=!memcmp(body,"SMRMP001",8))||!root_matches(directory,r)||fstat(fd,&after)||!bound(directory,name,fd)))e="unsafe_package_removal_record";
     if(!e){PackageRemovalIdentity original,latest;identity(&s,&original);identity(&after,&latest);if(memcmp(&original,&latest,sizeof(original)))e="unsafe_package_removal_record";}
     if(!e&&s.st_nlink==2){struct stat alias;if(fstatat(directory,"removal.record",&alias,AT_SYMLINK_NOFOLLOW)||alias.st_dev!=s.st_dev||alias.st_ino!=s.st_ino)e="unsafe_package_removal_record";}
     if(!e)e=control?control(context):NULL;if(!e)*out=*r;free(r);free(body);close(fd);return e;

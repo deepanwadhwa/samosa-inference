@@ -1,10 +1,12 @@
 #ifndef SAMOSA_INFERENCE_PACKAGE_REMOVE_H
 #define SAMOSA_INFERENCE_PACKAGE_REMOVE_H
 #include "package_removal_record.h"
-/* Verify registered completion and full payload pins under the exclusive lease,
- * then persist/recover its removal record. Does not delete package data. */
+/* Under the exclusive lease, verify complete or incomplete registered payloads
+ * and persist/recover their removal inventory. For incomplete installations,
+ * preflight the namespace and retire owned unpublished copies first. Published
+ * files remain until the durable inventory is committed. */
 const char *package_remove_begin(int,const PackageIndex *,const char *(*)(void *),void *);
-/* Resume deletion of a registered completed payload using its durable record.
+/* Resume deletion of a registered complete or incomplete payload inventory.
  * Acquires the exclusive assembly lease; refuses readers, foreign nodes and
  * substituted inodes. Leaves payload root, completion, journal and quota charge
  * for subsequent verified retirement. No paths come from public requests. */
@@ -20,7 +22,7 @@ const char *package_remove_release(int,int,const PackageIndex *,const char *(*)(
  * then retire the journal last. Identity and assembly lock remain for safe
  * same-index reuse and idempotent recovery. Outputs untouched on failure. */
 const char *package_remove_finish(int,int,const PackageIndex *,const char *(*)(void *),void *,int *);
-/* Serialize the full completed-package removal/restart sequence. Uses only the
+/* Serialize complete/incomplete package removal and restart. Uses only the
  * selected pinned index and trusted directories, never acquires artifacts. */
 const char *package_remove_run(int,int,const PackageIndex *,const char *(*)(void *),void *,int *);
 #endif

@@ -164,3 +164,56 @@ coordination, published files within an incomplete installation, empty directory
 retirement and quota release still need integration. An intent-only bootstrap
 inode remains unregistered and is preserved; it can already resume installation
 through verified source acquisition. Component 2 remains active.
+
+## Whole incomplete-package coordination
+
+The same catalog-selected `provider_remove` operation now handles incomplete
+packages with a registered assembly identity. Under the exclusive assembly lease,
+the coordinator checks the entire package namespace, payload and copy journal
+before deleting any temporary copy. Unknown paths or metadata, corrupt published
+files, substituted copy inodes, symlinks and unrelated aliases refuse. It settles
+known two-link file/metadata publication intervals through the existing staging
+logic and retires only registered unpublished copies.
+
+It then captures the remaining pinned published files and known directories in a
+distinct durable incomplete inventory (`SMRMP001`). Missing indexed files have
+zero identity slots, never invented ownership. Once the inventory is committed,
+the existing removal barrier blocks assembly and consumer leases. Removal refuses
+new files in previously absent slots and replacement inodes, deletes recorded
+files/directories, retires the empty payload root, and releases the exact quota
+charge before removing metadata and the barrier. A completed removal interrupted
+after completion-marker retirement still resumes through this same coordinator.
+
+The new native incomplete-package gate passes 182 checks normally and under
+ASan/UBSan: mixed published/partial/missing files, empty initial root, unknown
+payload/journal/package entries, cancellation and reader exclusion, actual process
+death at inventory publication and after file deletion, pending-record recovery,
+checksummed cross-format refusal, new-file/inode/directory replacement refusal,
+known two-link publication recovery, quota release and idempotent retry. Existing
+199-check completed removal, 213-check staging, 146-check tree and 93-check record
+gates pass. Public portable HTTPS setup also removes an owned fixture without its
+completion marker, repeats removal and reinstalls solely from cache; all normal
+and sanitizer setup/speech regression gates pass. Logs:
+`/private/tmp/samosa-incomplete-removal-qualified.log` and
+`/private/tmp/samosa-incomplete-removal-native-final.log`.
+
+Intent-only unregistered bootstrap inodes, torn/unverifiable metadata and pending
+completion declarations are preserved. Existing installation resumption can
+recover qualified known pending completion and intent states before removal;
+this coordinator does not infer ownership from an arbitrary name. Remaining
+installation recovery and backend/catalog acceptance work must finish before
+component 3 starts.
+
+Copy retirement syncs the parent even on an already-absent retry, and known
+publication cleanup syncs the retained file and parent even if its temporary
+alias is already absent. Recovery metadata is retired only after those directory
+changes are durable.
+
+Final normal and ASan/UBSan staging/removal/public setup gates pass with these
+sync rules; log `/private/tmp/samosa-incomplete-removal-final.log`. The actual
+three-file EmbeddingGemma package (325,805,737 bytes; index
+`6e61ef6a8aba534521b6dd3a4bf1f0e0c0df04c785b5666d3b01ac458f875865`)
+also passes completed/incomplete public removal, repeated removal and cache-only
+reinstallation in both builds, using only disposable owned installed copies.
+Logs: `/private/tmp/samosa-incomplete-remove-actual-final.log` and
+`/private/tmp/samosa-incomplete-remove-actual-final-sanitize.log`.

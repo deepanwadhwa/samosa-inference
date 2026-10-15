@@ -22,4 +22,8 @@ const char *package_tree_sync(int,const PackageIndex *,const char *(*)(void *),v
 /* Full pin/closed-tree verification plus exact observed inode inventory. Output
  * untouched on failure. Does not authorize deletion or future inode adoption. */
 const char *package_tree_snapshot(int,const PackageIndex *,const char *(*)(void *),void *,PackageTreeSnapshot *);
+/* Removal-only subset inventory: missing indexed files/ancestors are allowed;
+ * present files still require full pins and a stable closed namespace. Missing
+ * file identities are zero. Never use this to qualify installation/readiness. */
+const char *package_tree_snapshot_incomplete(int,const PackageIndex *,const char *(*)(void *),void *,PackageTreeSnapshot *);
 #endif

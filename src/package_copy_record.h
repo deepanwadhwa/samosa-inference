@@ -11,4 +11,7 @@ const char *package_copy_intent(int,int,int,const PackageIndex *,size_t,int);
 /* Retire exact copy metadata after both its temporary and final payload names
  * are absent. Caller holds the same exclusive lease and bound parent/root. */
 const char *package_copy_forget_absent(int,int,int,const PackageIndex *,size_t);
+/* Same absent-name validation without retiring metadata. Known interrupted
+ * metadata publication may be recovered under the caller's exclusive lease. */
+const char *package_copy_check_absent(int,int,int,const PackageIndex *,size_t);
 #endif

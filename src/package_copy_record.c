@@ -96,3 +96,5 @@ const char *package_copy_record(int journal,int root,int parent,int copy,const P
 const char *package_copy_intent(int journal,int root,int parent,const PackageIndex *index,size_t selected,int action){return record(journal,root,parent,-1,index,selected,action,1,0);}
 
 const char *package_copy_forget_absent(int journal,int root,int parent,const PackageIndex *index,size_t selected){return record(journal,root,parent,-1,index,selected,2,0,1);}
+
+const char *package_copy_check_absent(int journal,int root,int parent,const PackageIndex *index,size_t selected){return record(journal,root,parent,-1,index,selected,0,0,1);}

@@ -91,7 +91,7 @@ static const char *walk(int fd,const char *prefix,Tree *tree){
     }
     closedir(directory);return e;
 }
-static const char *verify(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out,int sync,PackageTreeSnapshot *snapshot){
+static const char *verify(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out,int sync,PackageTreeSnapshot *snapshot,int partial){
     if(!index||!out||!index->count||index->count>PACKAGE_INDEX_FILES||
        !memchr(index->manifest_sha256,0,sizeof(index->manifest_sha256))||strlen(index->manifest_sha256)!=64||
        strspn(index->manifest_sha256,"0123456789abcdef")!=64)return "invalid_package_index";
@@ -110,11 +110,13 @@ static const char *verify(int root,const PackageIndex *index,const char *(*contr
     if(fstat(root,&tree->root)||!S_ISDIR(tree->root.st_mode)||!private(tree,&tree->root)||
        (fcntl(root,F_GETFL)&O_ACCMODE)!=O_RDONLY)e="unsupported_package_root";
     if(!e)e=walk(root,"",tree);
-    if(!e)for(size_t i=0;i<index->count;i++)if(!tree->found[i]){e="package_file_missing";break;}
+    if(!e&&!partial)for(size_t i=0;i<index->count;i++)if(!tree->found[i]){e="package_file_missing";break;}
+    unsigned char first_found[PACKAGE_INDEX_FILES];memcpy(first_found,tree->found,sizeof(first_found));size_t first_visited=tree->visited;
     /* Hash every file, then observe the entire namespace/inode set again. This
      * catches late changes to earlier files while later payloads were hashed. */
     if(!e){tree->recheck=1;tree->visited=0;memset(tree->found,0,sizeof(tree->found));e=walk(root,"",tree);}
-    if(!e)for(size_t i=0;i<index->count;i++)if(!tree->found[i]){e="package_file_missing";break;}
+    if(!e&&!partial)for(size_t i=0;i<index->count;i++)if(!tree->found[i]){e="package_file_missing";break;}
+    if(!e&&(tree->visited!=first_visited||memcmp(first_found,tree->found,sizeof(first_found))))e="package_tree_changed";
     struct stat after;
     if(!e&&sync&&fsync(root))e="package_sync_failed";
     if(!e&&(fstat(root,&after)||!same(&tree->root,&after)))e="package_tree_changed";
@@ -126,8 +128,12 @@ static const char *verify(int root,const PackageIndex *index,const char *(*contr
             memcpy(snapshot->directories,tree->directories,tree->directory_count*sizeof(*tree->directories));strcpy(snapshot->manifest_sha256,index->manifest_sha256);}}
     free(tree);return e;
 }
-const char *package_tree_verify(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out){return verify(root,index,control,context,out,0,NULL);}
-const char *package_tree_sync(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out){return verify(root,index,control,context,out,1,NULL);}
+const char *package_tree_verify(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out){return verify(root,index,control,context,out,0,NULL,0);}
+const char *package_tree_sync(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeResult *out){return verify(root,index,control,context,out,1,NULL,0);}
 const char *package_tree_snapshot(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeSnapshot *out){
-    if(!out)return "invalid_package_index";PackageTreeResult result;return verify(root,index,control,context,&result,0,out);
+    if(!out)return "invalid_package_index";PackageTreeResult result;return verify(root,index,control,context,&result,0,out,0);
+}
+
+const char *package_tree_snapshot_incomplete(int root,const PackageIndex *index,const char *(*control)(void *),void *context,PackageTreeSnapshot *out){
+    if(!out)return "invalid_package_index";PackageTreeResult result;return verify(root,index,control,context,&result,0,out,1);
 }

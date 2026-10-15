@@ -60,3 +60,24 @@ no known final name refuses both pending load and recovery. Log:
 `/private/tmp/samosa-removal-record-recovery.log`. Torn/unverifiable proposals
 remain fail-closed. File deletion, completion retirement and quota release are
 the following removal steps; no package data is deleted here.
+
+## Incomplete-package inventory
+
+`SMRMP001` uses the same bounded encoding with an explicitly absent completion
+identity (all ten values zero). File slots remain in the original pinned index
+order; an absent indexed file has an all-zero identity. Every present file must
+still match the full pinned size/hash and private inode checks. Ancestors of
+present files and captured directories must exist in the inventory. Missing
+files and their absent ancestors need no invented inode identity.
+
+`package_tree_snapshot_incomplete` verifies the entire remaining namespace twice,
+including unchanged file-presence sets and entry counts, and captures only pinned
+published files and known ancestor directories. It is a removal-only observation
+and cannot qualify an installation. `package_removal_record_capture_incomplete`
+encodes this inventory after the coordinator verifies registered package ownership
+and settles copy journals under the exclusive assembly lease.
+
+Readers require the magic and completion identity to agree. An incomplete record
+with a completed-format magic refuses even with a recomputed valid checksum.
+Existing `SMRMV001` records keep their complete-file/completion requirements.
+Both formats use the same durable pending-publication recovery and removal barrier.

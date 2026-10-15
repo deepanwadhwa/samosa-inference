@@ -3,6 +3,7 @@
 #include "package_remove.h"
 #include "package_identity.h"
 #include "package_reserve.h"
+#include "package_stage.h"
 #include "artifact.h"
 #include <dirent.h>
 #include <errno.h>
@@ -56,9 +57,9 @@ static int parent_open(int root,const PackageRemovalRecord *r,const char *name,c
     strcpy(leaf,name);int parent=openat(root,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);if(parent<0)return -1;
     char prefix[256]={0};char *part=leaf;
     for(char *slash=strchr(part,'/');slash;slash=strchr(part,'/')){*slash=0;size_t length=strlen(prefix);if(length)strcat(prefix,"/");strcat(prefix,part);
-        int i=directory_index(r,prefix);struct stat s;if(i<0){close(parent);return -1;}
+        int i=directory_index(r,prefix);struct stat s;
         if(fstatat(parent,part,&s,AT_SYMLINK_NOFOLLOW)){int absent=errno==ENOENT;close(parent);return absent?-2:-1;}
-        if(!matches(&r->directories[i].identity,&s,0)){close(parent);return -1;}
+        if(i<0||!matches(&r->directories[i].identity,&s,0)){close(parent);return -1;}
         int next=openat(parent,part,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);if(next<0||!bound(parent,part,next)){if(next>=0)close(next);close(parent);return -1;}close(parent);parent=next;part=slash+1;
     }
     memmove(leaf,part,strlen(part)+1);return parent;
@@ -70,6 +71,20 @@ static const char *lease(int directory,int *out){
     if(fstat(fd,&s)||!S_ISREG(s.st_mode)||s.st_uid!=geteuid()||(s.st_mode&077)||s.st_nlink!=1||!bound(directory,"assemble.lock",fd))e="unsafe_package_removal_payload";
     if(!e&&flock(fd,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"package_assembly_busy":"package_assembly_unavailable";
     if(e)close(fd);else *out=fd;return e;
+}
+static const char *incomplete_namespace(int directory,const char *(*control)(void *),void *context){
+    int fd=openat(directory,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);DIR *scan=fd>=0?fdopendir(fd):NULL;
+    if(!scan){if(fd>=0)close(fd);return "unsafe_package_removal_payload";}const char *e=NULL;
+    for(;;){e=control?control(context):NULL;if(e)break;errno=0;struct dirent *entry=readdir(scan);if(!entry){if(errno)e="unsafe_package_removal_payload";break;}
+        const char *name=entry->d_name;if(!strcmp(name,".")||!strcmp(name,".."))continue;
+        int dir=!strcmp(name,"payload")||!strcmp(name,"copy-journal"),identity=!strcmp(name,"assembly.identity");
+        if(!dir&&!identity&&strcmp(name,"assemble.lock")&&strcmp(name,"remove.lock")&&strcmp(name,"publish.lock")){e="unsafe_package_removal_payload";break;}
+        int item=openat(directory,name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC|(dir?O_DIRECTORY:0));struct stat s;
+        if(item<0||fstat(item,&s)||s.st_uid!=geteuid()||(s.st_mode&077)||!bound(directory,name,item)||
+           (dir?!S_ISDIR(s.st_mode):!S_ISREG(s.st_mode)||s.st_nlink!=1||(!identity&&s.st_size)))e="unsafe_package_removal_payload";
+        if(item>=0)close(item);if(e)break;
+    }
+    closedir(scan);return e;
 }
 const char *package_remove_begin(int directory,const PackageIndex *index,const char *(*control)(void *),void *context){
     if(!index)return "invalid_package_removal_record";const char *e=control?control(context):NULL;if(e)return e;
@@ -84,16 +99,27 @@ const char *package_remove_begin(int directory,const PackageIndex *index,const c
     }
     if(!e){snapshot=malloc(sizeof(*snapshot));if(!snapshot)e="allocation_failed";}
     if(!e){payload=openat(directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);if(payload<0||!bound(directory,"payload",payload))e="unsafe_package_removal_payload";}
-    if(!e)e=package_tree_snapshot(payload,index,control,context,snapshot);
     struct stat package_stat,complete_stat;
     if(!e){completion=openat(directory,"complete",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
-        if(completion<0||fstat(directory,&package_stat)||fstat(completion,&complete_stat)||!bound(directory,"complete",completion))e="unsafe_package_removal_payload";}
-    if(!e)e=package_removal_record_capture(index,snapshot,&package_stat,&complete_stat,r);
-    if(!e){char expected[256],actual[256];int length=snprintf(expected,sizeof(expected),"samosa.package.complete.v1\n%s\n%llu %llu\n",index->manifest_sha256,(unsigned long long)r->payload.value[0],(unsigned long long)r->payload.value[1]);
+        if(completion<0&&errno!=ENOENT)e="unsafe_package_removal_payload";
+        if(!e&&(fstat(directory,&package_stat)||(completion>=0&&(fstat(completion,&complete_stat)||!bound(directory,"complete",completion)))))e="unsafe_package_removal_payload";}
+    if(!e&&completion<0){
+        /* A pending completion must be recovered through publication first;
+         * it cannot silently become authority for a partial-tree deletion. */
+        if(!fstatat(directory,".complete.pending",&complete_stat,AT_SYMLINK_NOFOLLOW)||errno!=ENOENT)e="unsafe_package_removal_payload";
+        if(!e)e=incomplete_namespace(directory,control,context);
+        int journal=-1;if(!e){journal=openat(directory,"copy-journal",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);if((journal<0&&errno!=ENOENT)||(journal>=0&&!bound(directory,"copy-journal",journal)))e="unsafe_package_removal_payload";}
+        if(!e)e=package_stage_prepare_removal(payload,journal,index,control,context);
+        if(!e&&journal>=0&&!bound(directory,"copy-journal",journal))e="unsafe_package_removal_payload";
+        if(journal>=0)close(journal);
+        if(!e)e=package_tree_snapshot_incomplete(payload,index,control,context,snapshot);
+        if(!e)e=package_removal_record_capture_incomplete(index,snapshot,&package_stat,r);
+    }else if(!e){e=package_tree_snapshot(payload,index,control,context,snapshot);if(!e)e=package_removal_record_capture(index,snapshot,&package_stat,&complete_stat,r);}
+    if(!e&&completion>=0){char expected[256],actual[256];int length=snprintf(expected,sizeof(expected),"samosa.package.complete.v1\n%s\n%llu %llu\n",index->manifest_sha256,(unsigned long long)r->payload.value[0],(unsigned long long)r->payload.value[1]);
         if(complete_stat.st_size!=length||pread(completion,actual,(size_t)length,0)!=length||memcmp(expected,actual,(size_t)length))e="unsafe_package_removal_payload";}
     if(!e)e=control?control(context):NULL;
     if(!e){struct stat current;
-        if(fstat(completion,&current)||!matches(&r->completion,&current,1)||!bound(directory,"complete",completion)||!bound(directory,"payload",payload)||!bound(directory,"assemble.lock",lock))e="unsafe_package_removal_payload";}
+        if((completion>=0&&(fstat(completion,&current)||!matches(&r->completion,&current,1)||!bound(directory,"complete",completion)))||(completion<0&&(!fstatat(directory,"complete",&current,AT_SYMLINK_NOFOLLOW)||errno!=ENOENT))||!bound(directory,"payload",payload)||!bound(directory,"assemble.lock",lock))e="unsafe_package_removal_payload";}
     if(!e)e=package_removal_record_store(directory,index,r,control,context);
 done:
     free(snapshot);free(r);if(completion>=0)close(completion);if(payload>=0)close(payload);close(lock);return e;
@@ -107,7 +133,8 @@ const char *package_remove_payload(int directory,const PackageIndex *index,const
     if(!e){payload=openat(directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
         if(payload<0||fstat(payload,&s)||!matches(&r->payload,&s,0)||!bound(directory,"payload",payload))e="unsafe_package_removal_payload";}
     if(!e){completion=openat(directory,"complete",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);char expected[256],actual[256];int length=snprintf(expected,sizeof(expected),"samosa.package.complete.v1\n%s\n%llu %llu\n",index->manifest_sha256,(unsigned long long)r->payload.value[0],(unsigned long long)r->payload.value[1]);
-        if(completion<0||fstat(completion,&s)||!matches(&r->completion,&s,1)||!bound(directory,"complete",completion)||s.st_size!=length||pread(completion,actual,(size_t)length,0)!=length||memcmp(actual,expected,(size_t)length))e="unsafe_package_removal_payload";}
+        if(!r->completion.value[1]){if(completion>=0||errno!=ENOENT)e="unsafe_package_removal_payload";}
+        else if(completion<0||fstat(completion,&s)||!matches(&r->completion,&s,1)||!bound(directory,"complete",completion)||s.st_size!=length||pread(completion,actual,(size_t)length,0)!=length||memcmp(actual,expected,(size_t)length))e="unsafe_package_removal_payload";}
     size_t visited=0;if(!e)e=walk(payload,"",index,r,&visited,control,context);
     for(size_t i=0;!e&&i<index->count;i++){
         e=control?control(context):NULL;if(e)break;char leaf[256];int parent=parent_open(payload,r,index->files[i].name,leaf);if(parent==-2)continue;if(parent<0){e="unsafe_package_removal_payload";break;}
@@ -233,7 +260,14 @@ const char *package_remove_run(int pool,int directory,const PackageIndex *index,
     /* A fully cleaned retry must not recreate an inventory. The finish validator
      * admits only its exact empty registered namespace. */
     if(!e&&(payload||complete||record||pending))e=package_remove_begin(directory,index,control,context);
-    if(!e&&payload&&complete)e=package_remove_payload(directory,index,control,context);
+    int remove_payload=complete;
+    if(!e&&payload&&!complete){
+        PackageRemovalRecord *r=malloc(sizeof(*r));if(!r)e="allocation_failed";
+        else{e=package_removal_record_load(directory,index,control,context,r);if(!e)remove_payload=!r->completion.value[1];free(r);}
+    }
+    /* Completed removal may already have retired its marker. In that state
+     * retirement verifies an empty root; incomplete inventories need no marker. */
+    if(!e&&payload&&remove_payload)e=package_remove_payload(directory,index,control,context);
     if(!e&&(payload||complete))e=package_remove_retire(directory,index,control,context);
     int released=0;if(!e)e=package_remove_finish(pool,directory,index,control,context,&released);
     if(!e&&!bound(directory,"remove.lock",operation))e="unsafe_package_removal_payload";

@@ -15,4 +15,9 @@ const char *package_stage_file_registered(int,int,const PackageIndex *,size_t,in
  * after process death need no source artifact. Never removes published files,
  * parent directories, or an intent-only unregistered inode. */
 const char *package_stage_remove_partial(int,int,const PackageIndex *,size_t,const char *(*)(void *),void *);
+/* Under the same exclusive lease: preflight the entire incomplete namespace,
+ * settle known publication aliases, and retire registered unpublished copies.
+ * Published pinned files remain for the durable subset removal inventory. A
+ * negative journal descriptor admits only a tree without copy metadata. */
+const char *package_stage_prepare_removal(int,int,const PackageIndex *,const char *(*)(void *),void *);
 #endif

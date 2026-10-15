@@ -127,7 +127,14 @@ try:
     assert sorted(requests) == sorted(payloads), requests
     call("provider_install", reservations + policy)
     assert (package / "complete").is_file() and sorted(requests) == sorted(payloads)
-    print(f"PASS llama setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, catalog removal and cache-only reinstall")
+    # This owned fixture models a crash after all file copies, before completion
+    # publication. Removal must not require a completed-package marker.
+    (package / "complete").unlink()
+    call("provider_remove", reservations, expected_status="removed")
+    call("provider_remove", reservations, expected_status="removed")
+    call("provider_install", reservations + policy)
+    assert (package / "complete").is_file() and sorted(requests) == sorted(payloads)
+    print(f"PASS llama setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
 finally:
     if server is not None:
         if thread is not None and thread.is_alive():
