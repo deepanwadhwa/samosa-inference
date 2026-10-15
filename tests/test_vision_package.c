@@ -20,7 +20,8 @@ static void rejects(int root,PackageIndex *index,const VisionPackagePolicy *poli
     VisionPackageDescriptor out;memset(&out,0xa5,sizeof(out));VisionPackageDescriptor before=out;const char *e=vision_package_verify(root,index,policy,NULL,NULL,&out);
     if(!e||strcmp(e,expected))fprintf(stderr,"expected %s got %s\n",expected,e?e:"success");CHECK(e&&!strcmp(e,expected));CHECK(!memcmp(&out,&before,sizeof(out)));
 }
-int main(void){
+int main(int argc,char **argv){
+    int exporting=argc==2&&!strcmp(argv[1],"--export");CHECK(argc==1||exporting);
     char path[]="/tmp/samosa-vision-package-XXXXXX";CHECK(mkdtemp(path));int root=open(path,O_RDONLY|O_DIRECTORY);CHECK(root>=0);CHECK(!mkdirat(root,"model",0700));
     PackageIndex *index=calloc(1,sizeof(*index));CHECK(index);index->count=5;memset(index->manifest_sha256,'a',64);strcpy(index->minimum_os,"1.0");strcpy(index->recipe,"visionpsy-package-v1");char os[65];CHECK(!provider_catalog_host(index->platform,os));
     const char *names[]={"engine","model/config.json","model/tokenizer.json","model/model.safetensors","vision-package.json"};
@@ -40,5 +41,8 @@ int main(void){
     for(size_t i=1;i<5;i++){enum PackageFileRole old=index->files[i].role;index->files[i].role=PACKAGE_ENGINE;rejects(root,index,&policy,"vision_package_identity_conflict");index->files[i].role=old;}
     CHECK(!symlinkat("model",root,"unknown"));rejects(root,index,&policy,"unsupported_package_artifact");CHECK(!unlinkat(root,"unknown",0));
     CHECK(!vision_package_verify(root,index,&policy,NULL,NULL,&out));
+    if(exporting){char *json=NULL;size_t bytes=0;FILE *stream=open_memstream(&json,&bytes);CHECK(stream);fprintf(stream,"{\"format\":\"samosa.inference.package.v1\",\"platform\":\"%s\",\"minimum_os\":\"1.0\",\"recipe\":\"visionpsy-package-v1\",\"files\":[",index->platform);
+        const char *role_names[]={"engine","metadata","data","model","metadata"};for(size_t i=0;i<5;i++){if(i)fputc(',',stream);fprintf(stream,"{\"name\":\"%s\",\"role\":\"%s\",\"bytes\":%llu,\"sha256\":\"%s\"}",index->files[i].name,role_names[i],(unsigned long long)index->files[i].bytes,index->files[i].sha256);}fputs("]}",stream);CHECK(!fclose(stream));char pin[65],target[256];hash_bytes(json,bytes,pin);CHECK(snprintf(target,sizeof(target),"%s.index.json",path)<(int)sizeof(target));int fd=open(target,O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(fd>=0);CHECK(write(fd,json,bytes)==(ssize_t)bytes);CHECK(!close(fd));
+        printf("{\"root\":\"%s\",\"index\":\"%s\",\"pin\":\"%s\",\"engine_pin\":\"%s\",\"config_pin\":\"%s\",\"tokenizer_pin\":\"%s\",\"weights_pin\":\"%s\"}\n",path,target,pin,index->files[0].sha256,index->files[1].sha256,index->files[2].sha256,index->files[3].sha256);free(json);free(index);CHECK(!close(root));return 0;}
     for(size_t i=0;i<5;i++)CHECK(!unlinkat(root,index->files[i].name,0));CHECK(!unlinkat(root,"model",AT_REMOVEDIR));free(index);CHECK(!close(root));CHECK(!rmdir(path));printf("PASS Vision package: %u checks; independent pins, fixed layout, descriptor, native graph and controls\n",checks);return 0;
 }

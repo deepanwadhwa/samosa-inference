@@ -3,6 +3,7 @@
 #include "package_tree.h"
 #include "llama_package.h"
 #include "whisper_package.h"
+#include "vision_package.h"
 /* Trusted native acquisition adapter returns an owned read-only descriptor.
  * It must honor request controls during verification; caller closes the result.
  * Never supplied by public JSON or an untrusted package manifest. */
@@ -20,7 +21,7 @@ typedef struct {
     void *context;
     /* Host-qualified policy required by the llama recipe, never manifest policy. */
     const LlamaPackagePolicy *llama_policy;
-    const WhisperPackagePolicy *whisper_policy;
+    const WhisperPackagePolicy *whisper_policy;const VisionPackagePolicy *vision_policy;
 } PackageAssembly;
 /* Assemble an acquired closed tree or trusted descriptor source into an installer-owned
  * private package directory. Serializes cooperating assemblies, resumes verified

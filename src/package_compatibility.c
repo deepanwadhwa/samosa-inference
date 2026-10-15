@@ -2,7 +2,7 @@
 #include "speech_package_loader.h"
 #include <stdlib.h>
 #include <string.h>
-int package_recipe_supported(const char *recipe){return recipe&&(!strcmp(recipe,"sherpa-speech-package-v1")||!strcmp(recipe,"llama-gguf-package-v1")||!strcmp(recipe,"whisper-ggml-package-v1"));}
+int package_recipe_supported(const char *recipe){return recipe&&(!strcmp(recipe,"sherpa-speech-package-v1")||!strcmp(recipe,"llama-gguf-package-v1")||!strcmp(recipe,"whisper-ggml-package-v1")||!strcmp(recipe,"visionpsy-package-v1"));}
 const char *package_backend_compatible(int root,const PackageIndex *index,void *context){
     PackageCompatibilityContext *c=context;
     if(!index||!c||!c->payload_path||c->payload_path[0]!='/'||!index->count||index->count>PACKAGE_INDEX_FILES||
@@ -15,6 +15,10 @@ const char *package_backend_compatible(int root,const PackageIndex *index,void *
     if(!strcmp(index->recipe,"whisper-ggml-package-v1")){
         if(!c->whisper_policy)return "unqualified_whisper_package_runtime";
         WhisperPackageDescriptor observed;return whisper_package_verify(root,index,c->whisper_policy,c->control,c->context,&observed);
+    }
+    if(!strcmp(index->recipe,"visionpsy-package-v1")){
+        if(!c->vision_policy)return "unqualified_vision_package_runtime";
+        VisionPackageDescriptor observed;return vision_package_verify(root,index,c->vision_policy,c->control,c->context,&observed);
     }
     const PackageFile *manifest=NULL;
     for(size_t i=0;i<index->count;i++){

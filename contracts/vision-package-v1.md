@@ -36,7 +36,24 @@ bytes; this function does not parse safetensors, load MLX, run inference or
 report engine readiness. The synthetic tests exercise admission and hostile
 metadata, not model quality.
 
-`make test-vision-package sanitize-vision-package` passed 643 checks in each mode
-on the development macOS arm64 host. Public setup dispatch, actual installed
-model qualification and production catalog publication remain subsequent work
-within component 2. This primitive alone does not advertise an installable recipe.
+Setup admits the catalog recipe `visionpsy-package-v1` with four host-only flags:
+
+```
+--vision-engine-sha256 ENGINE_PIN --vision-config-sha256 CONFIG_PIN
+--vision-tokenizer-sha256 TOKENIZER_PIN --vision-weights-sha256 WEIGHTS_PIN
+```
+
+All four are required together. Missing policy makes package catalog discovery
+report the recipe unsupported and refuses installation before acquisition or
+assembly state creation. Public JSON cannot inject these pins. Both assembly
+publication and read-only status use the policy; removal remains independent of
+credentials and runtime policy. A changed policy cannot overwrite a completed
+installation. Engine pin mismatch reports `unqualified_vision_package_runtime`;
+any model constituent mismatch reports `unqualified_vision_package_model`.
+
+`make test-vision-package sanitize-vision-package` passed 644 checks in each mode
+on the development macOS arm64 host. The fixture exporter also drives the shared
+HTTPS setup harness from `make test-setup sanitize-setup`, covering acquisition,
+publication, status/resume, last-good preservation, complete/incomplete removal
+and cache-only reinstall. Actual-model and distribution qualification are
+separate requirements; passing the synthetic setup fixture does not prove them.

@@ -17,12 +17,18 @@ parser.add_argument("setup")
 parser.add_argument("root")
 parser.add_argument("index")
 parser.add_argument("pin")
-parser.add_argument("--revision", required=True)
+parser.add_argument("--revision")
 parser.add_argument("--kind")
 parser.add_argument("--architecture")
 parser.add_argument("--engine-pin", required=True)
+parser.add_argument("--config-pin")
+parser.add_argument("--tokenizer-pin")
+parser.add_argument("--weights-pin")
 parser.add_argument("--profile", help="Whisper model profile")
 parser.add_argument("--model-pin", help="Separate host-qualified Whisper model pin")
+parser.add_argument("--vision-cli")
+parser.add_argument("--vision-test")
+parser.add_argument("--image")
 parser.add_argument("--whisper-cli")
 parser.add_argument("--whisper-test")
 parser.add_argument("--sources-cli")
@@ -35,9 +41,12 @@ assert not args.summary_cli or args.kind == "summary"
 body = Path(args.index).read_bytes()
 assert hashlib.sha256(body).hexdigest() == args.pin
 index = json.loads(body)
-assert index["recipe"] in ("llama-gguf-package-v1", "whisper-ggml-package-v1")
+assert index["recipe"] in ("llama-gguf-package-v1", "whisper-ggml-package-v1", "visionpsy-package-v1")
 is_whisper = index["recipe"] == "whisper-ggml-package-v1"
-assert (args.profile and args.model_pin) if is_whisper else (args.kind and args.architecture)
+is_vision = index["recipe"] == "visionpsy-package-v1"
+assert (args.config_pin and args.tokenizer_pin and args.weights_pin) if is_vision else (args.revision and ((args.profile and args.model_pin) if is_whisper else (args.kind and args.architecture)))
+vision_test_args = (args.vision_cli, args.vision_test, args.image)
+assert not any(vision_test_args) or (is_vision and all(vision_test_args))
 whisper_test_args = (args.whisper_cli, args.whisper_test, args.sources_cli, args.audio)
 assert not any(whisper_test_args) or (is_whisper and all(whisper_test_args))
 root = Path(args.root)
@@ -100,7 +109,11 @@ try:
               "--byte-ceiling", str(total + len(body)), "--disk-ceiling", str(2 * (total + len(body))),
               "--artifact-capacity", "513", "--package-directory", str(package)]
     reservations = ["--reservation-directory", str(pool), "--copy-ceiling", str(total), "--reservation-ceiling", str(total), "--reservation-capacity", "1"]
-    if is_whisper:
+    if is_vision:
+        policy = ["--vision-engine-sha256", args.engine_pin, "--vision-config-sha256", args.config_pin,
+                  "--vision-tokenizer-sha256", args.tokenizer_pin, "--vision-weights-sha256", args.weights_pin]
+        runtime_error = "unqualified_vision_package_runtime"
+    elif is_whisper:
         policy = ["--whisper-runtime-revision", args.revision, "--whisper-profile", args.profile,
                   "--whisper-engine-sha256", args.engine_pin, "--whisper-model-sha256", args.model_pin]
         runtime_error = "unqualified_whisper_package_runtime"
@@ -131,12 +144,12 @@ try:
         assert provider["supported"] == supported, provider
         if not supported:
             assert provider["unavailable_reason"] == runtime_error, provider
-    if is_whisper:
+    if is_whisper or is_vision:
         incomplete = subprocess.run(config + policy[:-2], input="{}", text=True, capture_output=True, timeout=15)
         assert incomplete.returncode == 2 and not incomplete.stdout
     call("provider_install", reservations, error=runtime_error)
     assert not requests and not (package / "assemble.lock").exists() and not (base / "cache").exists()
-    call("provider_install", reservations + policy, extra={"whisper_model_sha256": args.model_pin} if is_whisper else {"llama_engine_sha256": args.engine_pin}, error="invalid_request")
+    call("provider_install", reservations + policy, extra={"vision_engine_sha256": args.engine_pin} if is_vision else ({"whisper_model_sha256": args.model_pin} if is_whisper else {"llama_engine_sha256": args.engine_pin}), error="invalid_request")
     call("provider_install", reservations + policy + ["--digest-endpoint", endpoint], error="artifact_tls_verification_failed")
     assert not requests and not (package / "payload").exists()
     call("provider_install", reservations + policy + ["--digest-endpoint", endpoint, "--ca-file", str(cert)])
@@ -145,7 +158,9 @@ try:
     identity = installed_engine.stat()
     assert identity.st_mode & 0o777 == 0o500
     wrong = policy.copy()
-    if is_whisper:
+    if is_vision:
+        wrong[wrong.index("--vision-engine-sha256") + 1] = "0" * 64
+    elif is_whisper:
         wrong[wrong.index("--whisper-runtime-revision") + 1] = "0" * 40
     else:
         wrong[wrong.index("--llama-kind") + 1] = "text" if args.kind == "embedding" else "embedding"
@@ -156,6 +171,12 @@ try:
         wrong_model[wrong_model.index("--whisper-model-sha256") + 1] = "0" * 64
         call("provider_resume", reservations + wrong_model, error="unqualified_whisper_package_model")
         assert (package / "complete").is_file() and installed_engine.stat().st_ino == identity.st_ino
+    if is_vision:
+        for flag in ("--vision-config-sha256", "--vision-tokenizer-sha256", "--vision-weights-sha256"):
+            wrong_model = policy.copy()
+            wrong_model[wrong_model.index(flag) + 1] = "0" * 64
+            call("provider_resume", reservations + wrong_model, error="unqualified_vision_package_model")
+            assert (package / "complete").is_file() and installed_engine.stat().st_ino == identity.st_ino
     call("provider_status", policy)
     call("provider_resume", reservations + policy)
     assert sorted(requests) == sorted(payloads), requests
@@ -181,12 +202,16 @@ try:
         subprocess.run([os.path.abspath(args.summary_test), os.path.abspath(args.summary_cli),
                         str(installed_engine), str(package / "payload" / model["name"])],
                        check=True, timeout=600)
+    if args.vision_cli:
+        subprocess.run([os.path.abspath(args.vision_test), os.path.abspath(args.vision_cli),
+                        str(installed_engine), str(package / "payload" / "model"), os.path.abspath(args.image)],
+                       check=True, timeout=600)
     if args.whisper_cli:
         model = next(file for file in index["files"] if file["role"] == "model")
         subprocess.run([os.path.abspath(args.whisper_test), os.path.abspath(args.whisper_cli),
                         os.path.abspath(args.sources_cli), str(installed_engine), str(package / "payload" / model["name"]),
                         os.path.abspath(args.audio)], check=True, timeout=600)
-    print(f"PASS {'Whisper' if is_whisper else 'llama'} setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
+    print(f"PASS {'VisionPsy' if is_vision else ('Whisper' if is_whisper else 'llama')} setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
 finally:
     if server is not None:
         if thread is not None and thread.is_alive():
