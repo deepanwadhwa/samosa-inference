@@ -77,3 +77,35 @@ The MLX kernel fallback points to `/samosa-inference-no-fallback`, preventing
 implicit loading from the build directory. Package admission separately requires
 host-qualified engine, kernel and model pins. Build completion alone does not
 qualify actual installed inference or a platform deployment target.
+
+The shared source/dependency build now lives in `tools/build_mlx_runtime.sh`.
+The VisionPsy wrapper invokes that helper and links only VisionPsy sources;
+building VisionPsy does not build Molmo2.
+
+## Molmo2
+
+`molmo2/` reuses the existing native model, processor, model contract, media
+helpers and framed engine protocol without implementation changes. The copied
+engine includes the existing prepared `video_frames` protocol required by the
+public temporal adapter. Chat's working tree is left untouched, including its
+uncommitted prepared-frame changes. The shared engine support headers are the
+same bytes used by Chat and VisionPsy.
+
+```sh
+sh tools/build_molmo_runtime.sh /absolute/mlx-checkout /absolute/fmt-checkout \
+  /absolute/json.tar.xz /absolute/metal-cpp_26.zip /absolute/new-output
+```
+
+This wrapper independently invokes the shared pinned MLX build and links Molmo2
+from this repository. It does not require building VisionPsy or a Chat checkout.
+The same source revisions, archive checksums, disconnected dependency loading,
+exclusive private output and disabled build-directory kernel fallback apply.
+The model and processor are separate pinned package assets. macOS media helpers
+link the OS AVFoundation, CoreMedia and CoreGraphics frameworks. Sources still
+owns preparation/decoding for the public inference interface; callers provide
+prepared pixels through that interface.
+
+The current build profile explicitly targets the build host's macOS version.
+It does not establish support for an older deployment target or Linux model
+execution. Build and actual installed-model results are tracked in
+[Molmo2 installation evidence](../docs/MOLMO_PACKAGE_INSTALLATION_VERIFICATION.md).

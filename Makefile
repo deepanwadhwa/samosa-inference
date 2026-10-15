@@ -666,3 +666,21 @@ sanitize-molmo-package: build/test-molmo-package-sanitize
 	./build/test-molmo-package-sanitize
 test: test-molmo-package
 sanitize: sanitize-molmo-package
+
+.PHONY: test-molmo-engine-components sanitize-molmo-engine-components
+MOLMO_CONTRACT_HEADERS = engines/molmo2/molmo2_contract.h engines/json.h
+MOLMO_PROCESSOR_HEADERS = engines/molmo2/molmo2_processor.h engines/molmo2/molmo2_model.h engines/stb_image.h
+build/test-molmo2-contract: tests/test_molmo2_contract.cpp engines/molmo2/molmo2_contract.cpp $(MOLMO_CONTRACT_HEADERS) | build
+	$(CXX) $(CPPFLAGS) -O2 -std=c++20 -Wall -Wextra -Werror -UNDEBUG -Iengines tests/test_molmo2_contract.cpp engines/molmo2/molmo2_contract.cpp -o $@
+build/test-molmo2-processor: tests/test_molmo2_processor.cpp engines/molmo2/molmo2_processor.cpp $(MOLMO_PROCESSOR_HEADERS) | build
+	$(CXX) $(CPPFLAGS) -O2 -std=c++20 -Wall -Wextra -Werror -Wno-unused-function -Iengines tests/test_molmo2_processor.cpp engines/molmo2/molmo2_processor.cpp -o $@
+test-molmo-engine-components: build/test-molmo2-contract build/test-molmo2-processor
+	./build/test-molmo2-contract
+	./build/test-molmo2-processor
+sanitize-molmo-engine-components: | build
+	$(CXX) $(CPPFLAGS) -O1 -g -std=c++20 -Wall -Wextra -Werror -UNDEBUG -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_molmo2_contract.cpp engines/molmo2/molmo2_contract.cpp -o build/test-molmo2-contract-sanitize
+	./build/test-molmo2-contract-sanitize
+	$(CXX) $(CPPFLAGS) -O1 -g -std=c++20 -Wall -Wextra -Werror -Wno-unused-function -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_molmo2_processor.cpp engines/molmo2/molmo2_processor.cpp -o build/test-molmo2-processor-sanitize
+	./build/test-molmo2-processor-sanitize
+test: test-molmo-engine-components
+sanitize: sanitize-molmo-engine-components

@@ -2,8 +2,8 @@
 
 The static native compatibility gate reuses the existing temporal model verifier
 and binds its receipt to the shared installation index. Catalog/setup dispatch
-is connected; actual HTTPS installation, installed video inference and an
-independent engine build remain open.
+is connected and an independent engine build passes. Actual HTTPS installation
+and installed video inference qualification remain open.
 This document records evidence for component 2 without claiming that the full
 installation slice or later engine lifecycle work is complete.
 
@@ -45,3 +45,41 @@ minimum OS 26.0; testing occurred on macOS 26.5.1 arm64. This establishes static
 compatibility on that host, not execution on macOS 26.0 or another platform,
 loaded model readiness or generated-video quality. Python is used only by the QA
 packager; this native gate adds no Python runtime dependency.
+
+## Independent engine build
+
+The ten files in `engines/molmo2/` are byte-for-byte copies of Chat's current
+native model, processor, contract, media helpers and framed engine. The copy
+retains the existing prepared-frame protocol needed by the temporal adapter.
+The source entry point has SHA-256
+`f1081b4e8aac0e780b985e5c7351a8ea17f2f833e14660dee8552998500fd4a7`.
+Chat's working tree, including its uncommitted prepared-frame changes, was not
+modified. Shared engine support headers also match their original bytes.
+
+`tools/build_mlx_runtime.sh` now holds the common pinned source/dependency build
+previously embedded in the VisionPsy script. Each engine wrapper invokes it
+independently; building Molmo2 does not require building VisionPsy. It verifies
+the same clean MLX/fmt revisions and json/metal-cpp archive checksums, disables
+FetchContent network access, builds in exclusive private output and copies
+dependency licenses. The compiled kernel fallback remains disabled. Build
+inputs and commands are in [engine documentation](../engines/README.md#molmo2).
+
+A fresh `build_molmo_runtime.sh` run completed MLX compilation and native Molmo2
+linking on macOS 26.5.1 arm64. The engine SHA-256 is
+`4fe26c8d7626078ece6e599bfe85d9cb3926f1c1693d9f9bf93553ad473fe809`.
+Its colocated kernels match the kernel pin above. Inspection found only system
+libraries/frameworks; minimum OS metadata is 26.5.1, matching the explicit host
+deployment profile. No earlier macOS or Linux model execution is established.
+Actual installed inference of this new engine is still required; the earlier
+static package evidence uses the separately identified existing engine.
+
+The extracted sources passed C++ syntax checking. The existing native contract
+and processor tests were copied unchanged and passed in normal and ASan/UBSan
+modes through `make test-molmo-engine-components sanitize-molmo-engine-components`.
+They exercise tensor mapping/shape rules, prepared image/video patches,
+timestamps, frame limits and context/output bounds without loading a model.
+The shared build helper and both engine wrappers also refused a corrupt
+dependency archive before creating an output directory.
+The refactored VisionPsy link step also passed using this freshly built shared
+MLX output; that link check does not replace its separately pinned actual-model
+qualification evidence.
