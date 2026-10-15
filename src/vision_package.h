@@ -2,7 +2,7 @@
 #define SAMOSA_INFERENCE_VISION_PACKAGE_H
 #include "package_index.h"
 typedef struct {
-    const char *engine_sha256, *config_sha256, *tokenizer_sha256, *weights_sha256;
+    const char *engine_sha256, *config_sha256, *tokenizer_sha256, *weights_sha256, *kernels_sha256;
 } VisionPackagePolicy;
 typedef struct {size_t engine, config, tokenizer, weights;} VisionPackageDescriptor;
 int vision_package_policy_valid(const VisionPackagePolicy *);

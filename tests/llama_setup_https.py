@@ -24,6 +24,7 @@ parser.add_argument("--engine-pin", required=True)
 parser.add_argument("--config-pin")
 parser.add_argument("--tokenizer-pin")
 parser.add_argument("--weights-pin")
+parser.add_argument("--kernels-pin")
 parser.add_argument("--profile", help="Whisper model profile")
 parser.add_argument("--model-pin", help="Separate host-qualified Whisper model pin")
 parser.add_argument("--vision-cli")
@@ -44,7 +45,7 @@ index = json.loads(body)
 assert index["recipe"] in ("llama-gguf-package-v1", "whisper-ggml-package-v1", "visionpsy-package-v1")
 is_whisper = index["recipe"] == "whisper-ggml-package-v1"
 is_vision = index["recipe"] == "visionpsy-package-v1"
-assert (args.config_pin and args.tokenizer_pin and args.weights_pin) if is_vision else (args.revision and ((args.profile and args.model_pin) if is_whisper else (args.kind and args.architecture)))
+assert (args.config_pin and args.tokenizer_pin and args.weights_pin and args.kernels_pin) if is_vision else (args.revision and ((args.profile and args.model_pin) if is_whisper else (args.kind and args.architecture)))
 vision_test_args = (args.vision_cli, args.vision_test, args.image)
 assert not any(vision_test_args) or (is_vision and all(vision_test_args))
 whisper_test_args = (args.whisper_cli, args.whisper_test, args.sources_cli, args.audio)
@@ -56,6 +57,11 @@ base = Path(tempfile.mkdtemp(prefix="samosa-llama-https-", dir="/private/tmp" if
 server = thread = None
 requests = []
 try:
+    # A long actual-model gate must keep testing one executable even when the
+    # development build directory is rebuilt between setup invocations.
+    setup_snapshot = base / "setup"
+    shutil.copyfile(os.path.abspath(args.setup), setup_snapshot)
+    setup_snapshot.chmod(0o500)
     cert, key = base / "cert.pem", base / "key.pem"
     openssl = os.environ.get("OPENSSL_BIN", "openssl")
     if subprocess.check_output([openssl, "version"], text=True).startswith("LibreSSL") and Path("/opt/homebrew/bin/openssl").exists():
@@ -105,13 +111,13 @@ try:
     package.mkdir(mode=0o700)
     pool.mkdir(mode=0o700)
     total = sum(f["bytes"] for f in index["files"])
-    config = [os.path.abspath(args.setup), "--catalog-file", str(catalog), "--state", str(base / "cache"),
+    config = [str(setup_snapshot), "--catalog-file", str(catalog), "--state", str(base / "cache"),
               "--byte-ceiling", str(total + len(body)), "--disk-ceiling", str(2 * (total + len(body))),
               "--artifact-capacity", "513", "--package-directory", str(package)]
     reservations = ["--reservation-directory", str(pool), "--copy-ceiling", str(total), "--reservation-ceiling", str(total), "--reservation-capacity", "1"]
     if is_vision:
         policy = ["--vision-engine-sha256", args.engine_pin, "--vision-config-sha256", args.config_pin,
-                  "--vision-tokenizer-sha256", args.tokenizer_pin, "--vision-weights-sha256", args.weights_pin]
+                  "--vision-tokenizer-sha256", args.tokenizer_pin, "--vision-weights-sha256", args.weights_pin, "--vision-kernels-sha256", args.kernels_pin]
         runtime_error = "unqualified_vision_package_runtime"
     elif is_whisper:
         policy = ["--whisper-runtime-revision", args.revision, "--whisper-profile", args.profile,
@@ -172,7 +178,7 @@ try:
         call("provider_resume", reservations + wrong_model, error="unqualified_whisper_package_model")
         assert (package / "complete").is_file() and installed_engine.stat().st_ino == identity.st_ino
     if is_vision:
-        for flag in ("--vision-config-sha256", "--vision-tokenizer-sha256", "--vision-weights-sha256"):
+        for flag in ("--vision-config-sha256", "--vision-tokenizer-sha256", "--vision-weights-sha256", "--vision-kernels-sha256"):
             wrong_model = policy.copy()
             wrong_model[wrong_model.index(flag) + 1] = "0" * 64
             call("provider_resume", reservations + wrong_model, error="unqualified_vision_package_model")

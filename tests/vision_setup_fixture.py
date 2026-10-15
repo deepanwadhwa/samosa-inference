@@ -12,7 +12,7 @@ try:
     subprocess.run([sys.executable, str(Path(__file__).with_name("llama_setup_https.py")), setup,
                     package["root"], package["index"], package["pin"],
                     "--engine-pin", package["engine_pin"], "--config-pin", package["config_pin"],
-                    "--tokenizer-pin", package["tokenizer_pin"], "--weights-pin", package["weights_pin"]], check=True, timeout=120)
+                    "--tokenizer-pin", package["tokenizer_pin"], "--weights-pin", package["weights_pin"], "--kernels-pin", package["kernels_pin"]], check=True, timeout=120)
 finally:
     shutil.rmtree(package["root"])
     Path(package["index"]).unlink()

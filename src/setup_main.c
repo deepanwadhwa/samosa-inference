@@ -78,6 +78,7 @@ int main(int argc,char **argv) {
         else if(!strcmp(key,"--vision-config-sha256")){bit=4194304;vision_policy.config_sha256=value;}
         else if(!strcmp(key,"--vision-tokenizer-sha256")){bit=8388608;vision_policy.tokenizer_sha256=value;}
         else if(!strcmp(key,"--vision-weights-sha256")){bit=16777216;vision_policy.weights_sha256=value;}
+        else if(!strcmp(key,"--vision-kernels-sha256")){bit=33554432;vision_policy.kernels_sha256=value;}
         else if(!strcmp(key,"--redirect-host")){if(remote.redirect_count==8)return 2;remote.redirect_hosts[remote.redirect_count++]=value;}
         else return 2;
         if(bit&&(seen&bit))return 2;
@@ -89,7 +90,7 @@ int main(int argc,char **argv) {
     unsigned whisper_flags=131072|262144|524288|1048576;
     if((seen&whisper_flags)&&((seen&whisper_flags)!=whisper_flags||!whisper_package_policy_valid(&whisper_policy)))return 2;
     const WhisperPackagePolicy *qualified_whisper=(seen&whisper_flags)?&whisper_policy:NULL;
-    unsigned vision_flags=2097152|4194304|8388608|16777216;
+    unsigned vision_flags=2097152|4194304|8388608|16777216|33554432;
     if((seen&vision_flags)&&((seen&vision_flags)!=vision_flags||!vision_package_policy_valid(&vision_policy)))return 2;
     const VisionPackagePolicy *qualified_vision=(seen&vision_flags)?&vision_policy:NULL;
     char key[130]={0},platform[65]={0},os[65]={0};

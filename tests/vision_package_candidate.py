@@ -34,15 +34,16 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("engine", type=Path)
 parser.add_argument("model", type=Path)
 parser.add_argument("--engine-pin", required=True)
-for name in ("config", "tokenizer", "weights"):
+parser.add_argument("--kernels", type=Path, required=True)
+for name in ("config", "tokenizer", "weights", "kernels"):
     parser.add_argument(f"--{name}-pin", required=True)
 args = parser.parse_args()
 assert platform.system() == "Darwin" and platform.machine() == "arm64"
 pins = {"samosa-visionpsy": args.engine_pin, "model/config.json": args.config_pin,
-        "model/tokenizer.json": args.tokenizer_pin, "model/model.safetensors": args.weights_pin}
+        "model/tokenizer.json": args.tokenizer_pin, "model/model.safetensors": args.weights_pin, "mlx.metallib": args.kernels_pin}
 assert all(re.fullmatch("[0-9a-f]{64}", pin) for pin in pins.values())
 sources = {"samosa-visionpsy": args.engine, "model/config.json": args.model / "config.json",
-           "model/tokenizer.json": args.model / "tokenizer.json", "model/model.safetensors": args.model / "model.safetensors"}
+           "model/tokenizer.json": args.model / "tokenizer.json", "model/model.safetensors": args.model / "model.safetensors", "mlx.metallib": args.kernels}
 assert not args.model.is_symlink()
 assert all(path.is_file() and not path.is_symlink() for path in sources.values())
 assert pins == {name: digest(path) for name, path in sources.items()}
@@ -69,7 +70,7 @@ try:
         if not path.is_file():
             continue
         name = path.relative_to(root).as_posix()
-        role = "engine" if name == "samosa-visionpsy" else "model" if name == "model/model.safetensors" else "data" if name == "model/tokenizer.json" else "metadata"
+        role = "engine" if name == "samosa-visionpsy" else "model" if name == "model/model.safetensors" else "data" if name == "model/tokenizer.json" else "data" if name == "mlx.metallib" else "metadata"
         files.append(dict(name=name, role=role, bytes=path.stat().st_size, sha256=digest(path)))
     assert pins == {name: digest(path) for name, path in sources.items()}
     index = base / "index.json"
@@ -77,7 +78,7 @@ try:
                minimum_os=minimum, recipe="visionpsy-package-v1", files=files))
     print(json.dumps(dict(root=str(root), index=str(index), pin=digest(index), engine_pin=args.engine_pin,
                          config_pin=args.config_pin, tokenizer_pin=args.tokenizer_pin,
-                         weights_pin=args.weights_pin, minimum_os=minimum)))
+                         weights_pin=args.weights_pin, kernels_pin=args.kernels_pin, minimum_os=minimum)))
 except BaseException:
     shutil.rmtree(base)
     raise
