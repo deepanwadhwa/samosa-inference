@@ -13,4 +13,8 @@ const char *package_remove_retire(int,const PackageIndex *,const char *(*)(void 
 /* Release the exact charge only after recorded retirement and namespace checks.
  * Keeps the removal journal/barrier and identity metadata for later cleanup. */
 const char *package_remove_release(int,int,const PackageIndex *,const char *(*)(void *),void *,int *);
+/* Settle exact charge absence, remove only known empty housekeeping metadata,
+ * then retire the journal last. Identity and assembly lock remain for safe
+ * same-index reuse and idempotent recovery. Outputs untouched on failure. */
+const char *package_remove_finish(int,int,const PackageIndex *,const char *(*)(void *),void *,int *);
 #endif

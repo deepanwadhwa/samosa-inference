@@ -21,6 +21,9 @@ static const char *kill_after_first(void *opaque){int package=*(int *)opaque;
 static const char *kill_after_marker(void *opaque){int package=*(int *)opaque;
     if(faccessat(package,"complete",F_OK,0)<0)kill(getpid(),SIGKILL);return NULL;
 }
+static const char *kill_during_cleanup(void *opaque){int package=*(int *)opaque;
+    if(faccessat(package,"copy-journal",F_OK,0)<0&&faccessat(package,"removal.record",F_OK,0)==0)kill(getpid(),SIGKILL);return NULL;
+}
 int main(void){
     char path[]="/tmp/samosa-remove-payload-XXXXXX";CHECK(mkdtemp(path));int package=open(path,O_RDONLY|O_DIRECTORY);CHECK(package>=0);
     int lock=openat(package,"assemble.lock",O_RDWR|O_CREAT|O_EXCL,0600);CHECK(lock>=0);CHECK(!mkdirat(package,"payload",0700));int payload=openat(package,"payload",O_RDONLY|O_DIRECTORY);CHECK(payload>=0);
@@ -68,7 +71,13 @@ int main(void){
     int pool_lock=openat(pool,"reserve.lock",O_RDWR);CHECK(pool_lock>=0);CHECK(!flock(pool_lock,LOCK_EX|LOCK_NB));CHECK(!strcmp(package_remove_release(pool,package,index,NULL,NULL,&released),"package_reservation_busy"));CHECK(released==-7);CHECK(!flock(pool_lock,LOCK_UN));
     CHECK(!package_reserve(pool,package,index,6,1,&charge));CHECK(charge.packages==1&&charge.reserved_bytes==6);
     CHECK(!package_remove_release(pool,package,index,NULL,NULL,&released));CHECK(released==1);CHECK(!package_remove_release(pool,package,index,NULL,NULL,&released));CHECK(released==0);CHECK(faccessat(package,"removal.record",F_OK,0)==0);
-    CHECK(!close(pool_lock));CHECK(!unlinkat(pool,"reserve.lock",0));CHECK(!close(pool));CHECK(!rmdir(pool_path));CHECK(!unlinkat(package,"copy-journal",AT_REMOVEDIR));
-    CHECK(!close(payload));CHECK(!unlinkat(package,"removal.record",0));CHECK(!unlinkat(package,"assembly.identity",0));CHECK(!close(lock));CHECK(!unlinkat(package,"assemble.lock",0));CHECK(!close(package));CHECK(!rmdir(path));free(index);free(snapshot);free(record);
+    CHECK(!strcmp(package_remove_finish(pool,package,index,cancel,NULL,&released),"cancelled"));CHECK(faccessat(package,"removal.record",F_OK,0)==0);
+    fd=openat(package,"publish.lock",O_RDWR|O_CREAT|O_EXCL,0600);CHECK(fd>=0);CHECK(!close(fd));
+    child=fork();CHECK(child>=0);if(!child){int outcome=-7;_exit(package_remove_finish(pool,package,index,kill_during_cleanup,&package,&outcome)?2:3);}
+    CHECK(waitpid(child,&status,0)==child&&WIFSIGNALED(status)&&WTERMSIG(status)==SIGKILL);CHECK(faccessat(package,"removal.record",F_OK,0)==0);CHECK(faccessat(package,"copy-journal",F_OK,0)<0);
+    CHECK(!package_remove_finish(pool,package,index,NULL,NULL,&released));CHECK(released==0);CHECK(faccessat(package,"removal.record",F_OK,0)<0);CHECK(faccessat(package,"copy-journal",F_OK,0)<0);CHECK(faccessat(package,"publish.lock",F_OK,0)<0);CHECK(!package_remove_finish(pool,package,index,NULL,NULL,&released));
+    CHECK(!package_reserve(pool,package,index,6,1,&charge));CHECK(charge.packages==1&&charge.reserved_bytes==6);CHECK(!package_remove_finish(pool,package,index,NULL,NULL,&released));CHECK(released==1);
+    CHECK(!close(pool_lock));CHECK(!unlinkat(pool,"reserve.lock",0));CHECK(!close(pool));CHECK(!rmdir(pool_path));
+    CHECK(!close(payload));CHECK(!unlinkat(package,"assembly.identity",0));CHECK(!close(lock));CHECK(!unlinkat(package,"assemble.lock",0));CHECK(!close(package));CHECK(!rmdir(path));free(index);free(snapshot);free(record);
     printf("PASS payload removal: %u checks; recorded inodes, writer exclusion, foreign refusal, SIGKILL resume and idempotent payload emptying\n",checks);return 0;
 }

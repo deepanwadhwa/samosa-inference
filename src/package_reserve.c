@@ -112,7 +112,7 @@ static const char *empty_check(int package,const PackageIndex *index,const char 
     if(!e&&errno)e="package_reservation_unavailable";if(scan)closedir(scan);
     return e;
 }
-const char *package_reservation_release_checked(int pool,int package,const PackageIndex *index,PackageReservationReleaseCheck check,const char *(*control)(void *),void *context,int *out){
+const char *package_reservation_release_finish(int pool,int package,const PackageIndex *index,PackageReservationReleaseCheck check,PackageReservationReleaseCheck finish,const char *(*control)(void *),void *context,int *out){
     if(!index||!out||!check||!index->payload_bytes||index->payload_bytes>PACKAGE_PAYLOAD_BYTES||
         !memchr(index->manifest_sha256,0,sizeof(index->manifest_sha256))||strlen(index->manifest_sha256)!=64||strspn(index->manifest_sha256,"0123456789abcdef")!=64)return "invalid_package_reservation";
     const char *e=control?control(context):NULL;if(e)return e;
@@ -139,8 +139,13 @@ const char *package_reservation_release_checked(int pool,int package,const Packa
     /* A retry after death between unlink and fsync must durably settle the
      * already-absent state before the removal journal may be retired. */
     if(!e&&(fsync(pool)||!bound(package,"assemble.lock",assembly)||!bound(pool,"reserve.lock",lock)))e="package_reservation_unavailable";
+    if(!e&&finish)e=finish(package,index,control,context);
     if(!e)*out=released;
     if(record>=0)close(record);if(lock>=0)close(lock);close(assembly);return e;
+}
+
+const char *package_reservation_release_checked(int pool,int package,const PackageIndex *index,PackageReservationReleaseCheck check,const char *(*control)(void *),void *context,int *out){
+    return package_reservation_release_finish(pool,package,index,check,NULL,control,context,out);
 }
 
 const char *package_reservation_release_empty(int pool,int package,const PackageIndex *index,const char *(*control)(void *),void *context,int *out){

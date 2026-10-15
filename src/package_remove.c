@@ -164,3 +164,31 @@ static const char *retired_check(int directory,const PackageIndex *index,const c
 const char *package_remove_release(int pool,int directory,const PackageIndex *index,const char *(*control)(void *),void *context,int *out){
     return package_reservation_release_checked(pool,directory,index,retired_check,control,context,out);
 }
+static const char *finished_check(int directory,const PackageIndex *index,const char *(*control)(void *),void *context){
+    struct stat s;if(!fstatat(directory,"removal.record",&s,AT_SYMLINK_NOFOLLOW))return retired_check(directory,index,control,context);
+    if(errno!=ENOENT)return "unsafe_package_removal_payload";
+    const char *e=package_identity_verify(directory,index,control,context);if(e)return e;
+    int fd=openat(directory,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);DIR *scan=fd>=0?fdopendir(fd):NULL;
+    if(!scan){if(fd>=0)close(fd);return "unsafe_package_removal_payload";}
+    for(;;){e=control?control(context):NULL;if(e)break;errno=0;struct dirent *entry=readdir(scan);if(!entry){if(errno)e="unsafe_package_removal_payload";break;}
+        if(strcmp(entry->d_name,".")&&strcmp(entry->d_name,"..")&&strcmp(entry->d_name,"assemble.lock")&&strcmp(entry->d_name,"assembly.identity")){e="package_reservation_not_empty";break;}}
+    closedir(scan);return e;
+}
+static const char *cleanup(int directory,const PackageIndex *index,const char *(*control)(void *),void *context){
+    const char *e=finished_check(directory,index,control,context);if(e)return e;
+    const char *names[]={"copy-journal","publish.lock","removal.record"};
+    for(size_t i=0;!e&&i<sizeof(names)/sizeof(*names);i++){
+        e=control?control(context):NULL;if(e)break;int fd=openat(directory,names[i],O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC|(i==0?O_DIRECTORY:0));
+        if(fd<0){if(errno!=ENOENT)e="unsafe_package_removal_payload";continue;}struct stat s;
+        if(fstat(fd,&s)||s.st_uid!=geteuid()||(s.st_mode&077)||!bound(directory,names[i],fd)||(i==0?!S_ISDIR(s.st_mode):!S_ISREG(s.st_mode)||s.st_nlink!=1))e="unsafe_package_removal_payload";
+        if(!e&&i==0)e=empty(fd);if(!e&&i==1&&s.st_size)e="unsafe_package_removal_payload";
+        if(!e)e=control?control(context):NULL;
+        if(!e&&i==2)e=retired_check(directory,index,control,context);
+        if(!e&&(!bound(directory,names[i],fd)||unlinkat(directory,names[i],i==0?AT_REMOVEDIR:0)||fsync(directory)))e="package_removal_failed";
+        close(fd);
+    }
+    if(!e)e=finished_check(directory,index,control,context);if(!e&&fsync(directory))e="package_removal_failed";return e;
+}
+const char *package_remove_finish(int pool,int directory,const PackageIndex *index,const char *(*control)(void *),void *context,int *out){
+    return package_reservation_release_finish(pool,directory,index,finished_check,cleanup,control,context,out);
+}

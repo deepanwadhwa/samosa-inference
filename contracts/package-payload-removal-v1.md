@@ -57,3 +57,27 @@ a real child killed after completion unlink, resumed root removal, idempotent
 retirement and foreign names recreated after retirement. The 93 record regression
 checks also pass. Log: `/private/tmp/samosa-payload-retirement.log`. Only owned
 controlled fixture data was removed; no actual-model/user assets were deleted.
+
+## Final metadata cleanup
+
+`package_remove_finish` settles exact quota-charge absence and invokes a trusted
+native finalizer while assembly and pool leases remain held. Only after the pool
+directory has been fsynced may it remove an empty private copy journal and a
+private zero-byte publication lock. The validated removal record is removed last,
+followed by package-directory fsync. The registered identity and assembly lock
+remain; removing that coordination lock could split future readers/writers.
+
+Unknown entries, nonempty housekeeping directories and unsafe aliases refuse.
+If death occurs during housekeeping cleanup, the retained record continues to
+block ordinary reuse and validates the retry. If the record is already absent,
+only the strict clean namespace of assembly lock plus verified identity is accepted.
+That state supports idempotent completion and same-index empty reservation reuse.
+Public requests cannot supply the native finalizer callback.
+
+Normal and ASan/UBSan removal gates pass 165 checks, including cancellation,
+a real child killed after copy-journal removal, retained barrier, resumed cleanup,
+already-completed retry and exact recharge/release of the clean namespace. All
+97 reservation regression checks pass in both builds. Log:
+`/private/tmp/samosa-removal-metadata-cleanup.log`. This completes these native
+completed-payload removal phases; public coordination, partial-copy removal,
+other backend packages and the remaining component-2 acceptance work stay open.

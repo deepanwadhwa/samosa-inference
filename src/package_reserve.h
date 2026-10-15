@@ -23,4 +23,8 @@ const char *package_reservation_release_empty(int,int,const PackageIndex *,
 typedef const char *(*PackageReservationReleaseCheck)(int,const PackageIndex *,const char *(*)(void *),void *);
 const char *package_reservation_release_checked(int,int,const PackageIndex *,PackageReservationReleaseCheck,
     const char *(*)(void *),void *,int *);
+/* Native finalizer runs only after durable exact-charge absence, while both
+ * leases remain held. Used to retire the removal barrier last. */
+const char *package_reservation_release_finish(int,int,const PackageIndex *,PackageReservationReleaseCheck,PackageReservationReleaseCheck,
+    const char *(*)(void *),void *,int *);
 #endif
