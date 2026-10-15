@@ -625,3 +625,15 @@ sanitize-whisper-package: | build
 	./build/test-whisper-package-sanitize
 test: test-whisper-package
 sanitize: sanitize-whisper-package
+
+.PHONY: test-vision-package sanitize-vision-package
+VISION_PACKAGE_SOURCES = src/vision_package.c src/package_native_runtime.c $(PACKAGE_TREE_SOURCES) $(LIBRARY_RUNTIME_SOURCES)
+build/test-vision-package: tests/test_vision_package.c tests/library_fixture.h $(VISION_PACKAGE_SOURCES) src/vision_package.h src/package_native_runtime.h $(LIBRARY_RUNTIME_HEADERS) src/package_tree.h src/package_index.h src/artifact.h src/json.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc $< $(VISION_PACKAGE_SOURCES) -o $@
+test-vision-package: build/test-vision-package
+	./build/test-vision-package
+sanitize-vision-package: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_vision_package.c $(VISION_PACKAGE_SOURCES) -o build/test-vision-package-sanitize
+	./build/test-vision-package-sanitize
+test: test-vision-package
+sanitize: sanitize-vision-package
