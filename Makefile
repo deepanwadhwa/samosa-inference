@@ -651,3 +651,16 @@ sanitize-molmo-package-descriptor: | build
 	./build/test-molmo-package-descriptor-sanitize
 test: test-molmo-package-descriptor
 sanitize: sanitize-molmo-package-descriptor
+
+.PHONY: test-molmo-package sanitize-molmo-package
+MOLMO_PACKAGE_SOURCES = src/molmo_package.c src/molmo_package_descriptor.c src/temporal_package.c src/package_native_runtime.c $(PACKAGE_TREE_SOURCES) $(LIBRARY_RUNTIME_SOURCES)
+build/test-molmo-package: tests/test_molmo_package.c tests/library_fixture.h $(MOLMO_PACKAGE_SOURCES) src/molmo_package.h src/molmo_package_descriptor.h src/temporal_package.h src/package_native_runtime.h $(LIBRARY_RUNTIME_HEADERS) src/package_tree.h src/package_index.h src/artifact.h src/json.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc $< $(MOLMO_PACKAGE_SOURCES) -o $@
+build/test-molmo-package-sanitize: tests/test_molmo_package.c tests/library_fixture.h $(MOLMO_PACKAGE_SOURCES) src/molmo_package.h src/molmo_package_descriptor.h src/temporal_package.h src/package_native_runtime.h $(LIBRARY_RUNTIME_HEADERS) src/package_tree.h src/package_index.h src/artifact.h src/json.h | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $< $(MOLMO_PACKAGE_SOURCES) -o $@
+test-molmo-package: build/test-molmo-package
+	./build/test-molmo-package
+sanitize-molmo-package: build/test-molmo-package-sanitize
+	./build/test-molmo-package-sanitize
+test: test-molmo-package
+sanitize: sanitize-molmo-package

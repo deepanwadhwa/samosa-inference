@@ -37,6 +37,34 @@ processor, quantization and fixed config/tokenizer pins.
 checks per mode on the development macOS arm64 host: descriptor truncations,
 unknown fields, role/size/layout conflicts, output preservation and exact
 manifest/index mapping. Synthetic metadata establishes these composition rules,
-not model validity or inference quality. Host runtime/kernel/manifest policy,
-native file verification and setup dispatch remain required before the recipe
-can be advertised as installable.
+not model validity or inference quality.
+
+## Native admission
+
+`MolmoPackagePolicy` requires three independent host-qualified SHA-256 pins:
+engine, kernels and native model manifest. `molmo_package_verify` first binds the
+held package directory to its absolute pathname, hashes the bounded descriptor
+around parsing, resolves its index entries and compares the host pins. A runtime
+pin mismatch reports `unqualified_molmo_package_runtime`; a model manifest pin
+mismatch reports `unqualified_molmo_package_model`.
+
+The gate applies shared native package verification, then opens the fixed model
+directory without following symlinks. It reuses `temporal_package_verify` with
+the independent manifest pin, binds that receipt to the generic index, rechecks
+the held model files and revalidates the closed native package. Root pathname
+binding and caller controls are checked again before success. Its descriptor
+output is unchanged on failure. This establishes static admission; it performs
+no MLX model load or inference and does not report readiness.
+
+The existing temporal manifest parser now owns an 8192-token JSON budget in its
+translation unit, matching its established provider builds. Package setup builds
+must not accidentally inherit a smaller unrelated transport-parser budget.
+
+`make test-molmo-package sanitize-molmo-package` passed 72 controlled refusal
+checks per mode, including invalid policy/root, independent pin mismatches,
+missing kernel, foreign symlink, cancellation, unchanged failure output and
+refusal of a hash-consistent but invalid native model manifest. The temporal
+input regression gates also passed normally and with sanitizers. Actual native
+package success is tested separately with `test-molmo-package --real ROOT INDEX
+INDEX_PIN ENGINE_PIN KERNEL_PIN MANIFEST_PIN`. Setup dispatch and actual installed
+inference remain required before this recipe can be advertised as installable.

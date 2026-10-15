@@ -2,6 +2,10 @@
 #define _DARWIN_C_SOURCE
 #include "temporal_package.h"
 #include "artifact.h"
+#ifdef JSON_TOKENS_MAX
+#undef JSON_TOKENS_MAX
+#endif
+#define JSON_TOKENS_MAX 8192
 #include "json.h"
 #include "sha256.h"
 #include <fcntl.h>
