@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
 #include "package_stage.h"
+#include "package_copy_record.h"
 #include "package_tree.h"
 #include "sha256.h"
 #include <fcntl.h>
@@ -23,6 +24,9 @@ static const char *cancel_full(void *p){FullCopy *c=p;struct stat s;
 static const char *kill_copy(void *p){CopyCancel *c=p;struct stat s;
     if(!fstatat(c->root,c->path,&s,AT_SYMLINK_NOFOLLOW)&&s.st_size>0)kill(getpid(),SIGKILL);
     return NULL;
+}
+static const char *kill_removed_copy(void *p){CopyCancel *c=p;
+    if(faccessat(c->root,c->path,F_OK,0)<0)kill(getpid(),SIGKILL);return NULL;
 }
 static const char *kill_bootstrap(void *p){CopyCancel *c=p;
     if(!faccessat(c->root,c->path,F_OK,0))kill(getpid(),SIGKILL);return NULL;
@@ -112,6 +116,53 @@ int main(void){
     writer=openat(parent,temporary,O_RDONLY|O_NOFOLLOW);CHECK(writer>=0);CHECK(!fchmod(writer,0400));CHECK(!close(writer));
     CHECK(!linkat(parent,temporary,parent,"model.gguf",0));CHECK(!fstatat(parent,"model.gguf",&s,0)&&s.st_nlink==2);
     CHECK(!package_stage_file_registered(root,journal,index,0,input,NULL,NULL));CHECK(!package_tree_verify(root,index,NULL,NULL,&result));CHECK(faccessat(parent,temporary,F_OK,0)<0);
+    /* Partial removal never borrows ownership from a published name. */
+    CHECK(!strcmp(package_stage_remove_partial(root,journal,index,0,NULL,NULL),"package_partial_published"));
+    CHECK(!package_tree_verify(root,index,NULL,NULL,&result));CHECK(!unlinkat(parent,"model.gguf",0));
+    child=fork();CHECK(child>=0);if(!child)_exit(package_stage_file_registered(root,journal,index,0,input,kill_copy,&interrupted)?2:3);
+    CHECK(waitpid(child,&status,0)==child&&WIFSIGNALED(status)&&WTERMSIG(status)==SIGKILL);
+    CHECK(!strcmp(package_stage_remove_partial(root,journal,index,0,cancel,NULL),"cancelled"));
+    CHECK(!fstatat(parent,temporary,&s,0)&&s.st_size==65536);
+    CHECK(!strcmp(package_copy_forget_absent(journal,root,parent,index,0),"unsafe_package_copy_record"));
+    CHECK(!renameat(parent,temporary,parent,"saved-copy"));
+    writer=openat(parent,temporary,O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(writer>=0);CHECK(write(writer,"foreign",7)==7);CHECK(!close(writer));
+    CHECK(!strcmp(package_stage_remove_partial(root,journal,index,0,NULL,NULL),"unsafe_package_copy_record"));
+    CHECK(!fstatat(parent,temporary,&s,0)&&s.st_size==7);CHECK(!unlinkat(parent,temporary,0));
+    CHECK(!symlinkat(source_path,parent,temporary));
+    CHECK(!strcmp(package_stage_remove_partial(root,journal,index,0,NULL,NULL),"unsafe_package_stage"));CHECK(!unlinkat(parent,temporary,0));
+    CHECK(!renameat(parent,"saved-copy",parent,temporary));CHECK(!linkat(parent,temporary,parent,"foreign-alias",0));
+    CHECK(!strcmp(package_stage_remove_partial(root,journal,index,0,NULL,NULL),"unsafe_package_stage"));CHECK(!unlinkat(parent,"foreign-alias",0));
+    /* Kill precisely after durable payload unlink, before retiring its record.
+     * Retry reconstructs only canonical metadata; no source descriptor is used. */
+    child=fork();CHECK(child>=0);if(!child)_exit(package_stage_remove_partial(root,journal,index,0,kill_removed_copy,&interrupted)?2:3);
+    CHECK(waitpid(child,&status,0)==child&&WIFSIGNALED(status)&&WTERMSIG(status)==SIGKILL);
+    CHECK(faccessat(parent,temporary,F_OK,0)<0);CHECK(!faccessat(journal,record_name,F_OK,0));
+    writer=openat(journal,record_name,O_RDONLY|O_NOFOLLOW);CHECK(writer>=0);CHECK(!fchmod(writer,0600));CHECK(!close(writer));
+    writer=openat(journal,record_name,O_RDWR|O_NOFOLLOW);CHECK(writer>=0);CHECK(pread(writer,&first,1,0)==1);CHECK(pwrite(writer,"X",1,0)==1);
+    CHECK(!strcmp(package_stage_remove_partial(root,journal,index,0,NULL,NULL),"unsafe_package_copy_record"));
+    CHECK(!faccessat(journal,record_name,F_OK,0));CHECK(pwrite(writer,&first,1,0)==1);CHECK(!fchmod(writer,0400));CHECK(!close(writer));
+    writer=openat(parent,"model.gguf",O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(writer>=0);CHECK(write(writer,"foreign",7)==7);CHECK(!close(writer));
+    CHECK(!strcmp(package_stage_remove_partial(root,journal,index,0,NULL,NULL),"package_partial_published"));
+    CHECK(!faccessat(journal,record_name,F_OK,0));CHECK(!unlinkat(parent,"model.gguf",0));
+    writer=openat(journal,record_name,O_RDONLY|O_NOFOLLOW);CHECK(writer>=0);CHECK(!fchmod(writer,0600));CHECK(!close(writer));
+    writer=openat(journal,record_name,O_RDWR|O_NOFOLLOW);CHECK(writer>=0);char saved_record[768],overflow_record[768];
+    ssize_t saved_length=pread(writer,saved_record,sizeof(saved_record)-1,0);CHECK(saved_length>0&&saved_length<700);saved_record[saved_length]=0;
+    char *last_number=strrchr(saved_record,' ');CHECK(last_number);size_t prefix=(size_t)(last_number+1-saved_record);
+    memcpy(overflow_record,saved_record,prefix);strcpy(overflow_record+prefix,"18446744073709551616\n");size_t overflow_length=strlen(overflow_record);
+    CHECK(!ftruncate(writer,0));CHECK(pwrite(writer,overflow_record,overflow_length,0)==(ssize_t)overflow_length);
+    CHECK(!strcmp(package_stage_remove_partial(root,journal,index,0,NULL,NULL),"unsafe_package_copy_record"));CHECK(!faccessat(journal,record_name,F_OK,0));
+    CHECK(!ftruncate(writer,0));CHECK(pwrite(writer,saved_record,(size_t)saved_length,0)==saved_length);CHECK(!fchmod(writer,0400));CHECK(!close(writer));
+    CHECK(!renameat(journal,record_name,journal,pending_record));CHECK(!linkat(journal,intent_name,journal,pending_intent,0));
+    CHECK(!package_stage_remove_partial(root,journal,index,0,NULL,NULL));
+    CHECK(faccessat(journal,pending_record,F_OK,0)<0&&faccessat(journal,record_name,F_OK,0)<0);
+    CHECK(faccessat(journal,pending_intent,F_OK,0)<0&&faccessat(journal,intent_name,F_OK,0)<0);
+    CHECK(!package_stage_remove_partial(root,journal,index,0,NULL,NULL));
+    /* A zero-byte bootstrap intent lacks an inode registration: preserve it. */
+    child=fork();CHECK(child>=0);if(!child)_exit(package_stage_file_registered(root,journal,index,0,input,kill_bootstrap,&interrupted)?2:3);
+    CHECK(waitpid(child,&status,0)==child&&WIFSIGNALED(status)&&WTERMSIG(status)==SIGKILL);
+    CHECK(!strcmp(package_stage_remove_partial(root,journal,index,0,NULL,NULL),"package_copy_unregistered"));
+    CHECK(!fstatat(parent,temporary,&s,0)&&s.st_size==0);CHECK(!faccessat(journal,intent_name,F_OK,0));
+    CHECK(!package_stage_file_registered(root,journal,index,0,input,NULL,NULL));
     CHECK(!close(journal));CHECK(!rmdir(journal_path));
     CHECK(!unlinkat(parent,"model.gguf",0));CHECK(!close(parent));CHECK(!unlinkat(root,"models",AT_REMOVEDIR));CHECK(!close(root));CHECK(!close(input));
     CHECK(!unlink(source_path));CHECK(!unlink(source_alias));CHECK(!rmdir(root_path));CHECK(!rmdir(base));free(index);

@@ -8,4 +8,7 @@ const char *package_copy_record(int,int,int,int,const PackageIndex *,size_t,int)
 /* Durable reservation of a copy name before its inode exists. Same actions;
  * binds index/root/parent, never authorizes unrelated partial contents. */
 const char *package_copy_intent(int,int,int,const PackageIndex *,size_t,int);
+/* Retire exact copy metadata after both its temporary and final payload names
+ * are absent. Caller holds the same exclusive lease and bound parent/root. */
+const char *package_copy_forget_absent(int,int,int,const PackageIndex *,size_t);
 #endif

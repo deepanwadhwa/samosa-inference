@@ -10,4 +10,9 @@ const char *package_stage_file(int,const PackageIndex *,size_t,int,const char *(
 /* Registered copies may resume only the bound inode and a prefix matching the
  * current fully verified source. Journal must be private and outside payload/. */
 const char *package_stage_file_registered(int,int,const PackageIndex *,size_t,int,const char *(*)(void *),void *);
+/* Remove only an unpublished registered copy under the caller's exclusive
+ * assembly lease. Retires exact journal entries after durable unlink; retries
+ * after process death need no source artifact. Never removes published files,
+ * parent directories, or an intent-only unregistered inode. */
+const char *package_stage_remove_partial(int,int,const PackageIndex *,size_t,const char *(*)(void *),void *);
 #endif

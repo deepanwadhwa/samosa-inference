@@ -132,3 +132,35 @@ also passes public HTTPS installation, removal, repeated removal and cache-only
 reinstallation normally and under ASan/UBSan. Both runs delete only their owned
 temporary installed copies. Logs: `/private/tmp/samosa-public-remove-actual.log`
 and `/private/tmp/samosa-public-remove-actual-sanitize.log`.
+
+## Removing an interrupted unpublished copy
+
+`package_stage_remove_partial` removes one unpublished temporary copy under the
+caller's exclusive assembly lease. It traverses existing private directories
+without creating them, requires the exact root/parent/index/inode copy record,
+checks any retained intent, and refuses published names, symlinks, substituted
+inodes, multiple links and oversized files. It does not require the partial
+content to be a valid complete model: the copy record establishes ownership.
+
+The payload unlink and parent-directory fsync precede journal retirement. If the
+process dies there, `package_copy_forget_absent` reconstructs and validates the
+exact canonical copy record while both temporary and final payload names are
+absent. This retires metadata only; it cannot authorize deletion of a new inode.
+Known pending-record publication and two-link intent states use the existing
+recovery logic. Repeated cleanup is safe without a source artifact descriptor.
+
+Normal and ASan/UBSan staging gates pass 213 checks, including a real SIGKILL
+between durable unlink and metadata cleanup, restart from pending metadata,
+malformed and overflowing tuple refusal, published-file preservation, inode
+substitution, symlinks, hardlinks and cancellation. Completed-package removal
+regressions pass 199 checks in both builds. Log:
+`/private/tmp/samosa-partial-copy-remove-final.log`.
+Public setup, portable llama HTTPS removal/cache reinstall and native speech
+HTTPS installation also pass normally and under ASan/UBSan with the shared copy
+record changes; log `/private/tmp/samosa-partial-copy-setup-regression.log`.
+
+This is the per-file primitive for partial-install removal. Whole-package
+coordination, published files within an incomplete installation, empty directory
+retirement and quota release still need integration. An intent-only bootstrap
+inode remains unregistered and is preserved; it can already resume installation
+through verified source acquisition. Component 2 remains active.

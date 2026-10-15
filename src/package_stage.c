@@ -116,3 +116,42 @@ static const char *stage(int root,int journal,const PackageIndex *index,size_t s
 
 const char *package_stage_file(int root,const PackageIndex *index,size_t selected,int input,const char *(*control)(void *),void *context){return stage(root,-1,index,selected,input,control,context);}
 const char *package_stage_file_registered(int root,int journal,const PackageIndex *index,size_t selected,int input,const char *(*control)(void *),void *context){return stage(root,journal,index,selected,input,control,context);}
+
+const char *package_stage_remove_partial(int root,int journal,const PackageIndex *index,size_t selected,const char *(*control)(void *),void *context){
+    if(!index||!index->count||index->count>PACKAGE_INDEX_FILES||selected>=index->count)return "invalid_package_index";
+    const PackageFile *file=&index->files[selected];
+    if(!memchr(file->name,0,sizeof(file->name))||!memchr(file->sha256,0,sizeof(file->sha256))||
+       !package_file_name_valid(file->name,file->role)||strlen(file->sha256)!=64||strspn(file->sha256,"0123456789abcdef")!=64||
+       !file->bytes||file->bytes>PACKAGE_PAYLOAD_BYTES)return "invalid_package_index";
+    const char *e=control?control(context):NULL;if(e)return e;
+    if(!private(root,1)||!private(journal,1)||(fcntl(root,F_GETFL)&O_ACCMODE)!=O_RDONLY||
+       (fcntl(journal,F_GETFL)&O_ACCMODE)!=O_RDONLY)return "unsafe_package_stage";
+    char path[256];strcpy(path,file->name);char *leaf=path;
+    int parent=openat(root,".",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);if(parent<0)return "package_stage_unavailable";
+    for(char *slash=strchr(leaf,'/');!e&&slash;slash=strchr(leaf,'/')){
+        *slash=0;int next=openat(parent,leaf,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+        if(next<0||!private(next,1)||!bound(parent,leaf,next)){if(next>=0)close(next);e="unsafe_package_stage";break;}
+        close(parent);parent=next;leaf=slash+1;
+    }
+    char temporary[80];snprintf(temporary,sizeof(temporary),".copy-%zu-%s",selected,file->sha256);
+    struct stat s;int copy=-1;
+    /* Published files use the completed-file removal path. This operation owns
+     * only the unpublished inode registered before the first copy write. */
+    if(!e&&(!fstatat(parent,leaf,&s,AT_SYMLINK_NOFOLLOW)||errno!=ENOENT))e="package_partial_published";
+    if(!e){copy=openat(parent,temporary,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+        if(copy<0&&errno!=ENOENT)e="unsafe_package_stage";}
+    if(!e&&copy>=0){
+        if(!private(copy,0)||fstat(copy,&s)||s.st_nlink!=1||s.st_size<0||(uint64_t)s.st_size>file->bytes||!bound(parent,temporary,copy))e="unsafe_package_stage";
+        if(!e)e=package_copy_record(journal,root,parent,copy,index,selected,0);
+        if(!e){e=package_copy_intent(journal,root,parent,index,selected,0);if(e&&!strcmp(e,"package_copy_unregistered"))e=NULL;}
+        if(!e)e=control?control(context):NULL;
+        if(!e&&(!bound(parent,temporary,copy)||!fstatat(parent,leaf,&s,AT_SYMLINK_NOFOLLOW)||errno!=ENOENT))e="package_tree_changed";
+        if(!e&&(unlinkat(parent,temporary,0)||fsync(parent)))e="package_stage_failed";
+    }
+    /* Keep metadata until the unlink is durable. A killed process resumes from
+     * canonical root/parent/index metadata with both payload names absent. */
+    if(!e)e=control?control(context):NULL;
+    if(!e){e=package_copy_forget_absent(journal,root,parent,index,selected);if(e&&!strcmp(e,"package_copy_unregistered"))e=NULL;}
+    if(!e){e=package_copy_intent(journal,root,parent,index,selected,2);if(e&&!strcmp(e,"package_copy_unregistered"))e=NULL;}
+    if(copy>=0)close(copy);close(parent);return e;
+}
