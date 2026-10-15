@@ -2,8 +2,8 @@
 
 The `visionpsy-package-v1` catalog recipe applies host-qualified engine, config,
 tokenizer, weights and Metal-kernel pins before publication. The existing public
-VisionPsy bridge is reused. Component 2 remains open: the independent engine build
-installed-model qualification of the independent build, Molmo2 packages and production catalogs
+VisionPsy bridge is reused. Component 2 remains open: installed-model
+qualification of the independent build, Molmo2 packages and production catalogs
 still require completion.
 
 ## Controlled gates
