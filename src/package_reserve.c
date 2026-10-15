@@ -105,8 +105,8 @@ static const char *empty_check(int package,const PackageIndex *index,const char 
     DIR *scan=NULL;if(!e){int fd=openat(package,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);scan=fd>=0?fdopendir(fd):NULL;if(!scan){if(fd>=0)close(fd);e="package_reservation_unavailable";}}
     struct dirent *entry;while(!e&&(errno=0,(entry=readdir(scan)))){
         e=control?control(context):NULL;if(e)break;
-        if(strcmp(entry->d_name,".")&&strcmp(entry->d_name,"..")&&strcmp(entry->d_name,"assemble.lock")&&strcmp(entry->d_name,"assembly.identity"))e="package_reservation_not_empty";
-        if(!e&&!strcmp(entry->d_name,"assembly.identity")){int metadata=openat(package,entry->d_name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+        if(strcmp(entry->d_name,".")&&strcmp(entry->d_name,"..")&&strcmp(entry->d_name,"remove.lock")&&strcmp(entry->d_name,"assemble.lock")&&strcmp(entry->d_name,"assembly.identity"))e="package_reservation_not_empty";
+        if(!e&&(!strcmp(entry->d_name,"assembly.identity")||!strcmp(entry->d_name,"remove.lock"))){int metadata=openat(package,entry->d_name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
             if(metadata<0||!private(metadata,0)||!bound(package,entry->d_name,metadata))e="unsafe_package_reservation";if(metadata>=0)close(metadata);}
     }
     if(!e&&errno)e="package_reservation_unavailable";if(scan)closedir(scan);

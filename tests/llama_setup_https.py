@@ -89,7 +89,7 @@ try:
     policy = ["--llama-runtime-revision", args.revision, "--llama-kind", args.kind,
               "--llama-architecture", args.architecture, "--llama-engine-sha256", args.engine_pin]
 
-    def call(op, flags, extra=None, error=None):
+    def call(op, flags, extra=None, error=None, expected_status="installed_verified"):
         request = dict(contract_version=1, op=op, provider_id="llama-setup-qa")
         if extra:
             request.update(extra)
@@ -99,7 +99,7 @@ try:
         if error:
             assert result.returncode == 1 and receipt["error"]["code"] == error, receipt
         else:
-            assert result.returncode == 0 and receipt["status"] == "installed_verified" and receipt["readiness"] == "unqualified", receipt
+            assert result.returncode == 0 and receipt["status"] == expected_status and receipt["readiness"] == "unqualified", receipt
         return receipt
 
     call("provider_install", reservations, error="unqualified_llama_package_runtime")
@@ -120,7 +120,14 @@ try:
     call("provider_resume", reservations + policy)
     assert sorted(requests) == sorted(payloads), requests
     assert installed_engine.stat().st_ino == identity.st_ino
-    print(f"PASS llama setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; missing policy/public override/TLS refusal, complete publication, last-good preservation and offline status/resume")
+    # Removal is catalog-selected and works after runtime policy is revoked.
+    call("provider_remove", reservations, expected_status="removed")
+    assert not (package / "payload").exists() and not (package / "complete").exists() and not (package / "removal.record").exists()
+    call("provider_remove", reservations, expected_status="removed")
+    assert sorted(requests) == sorted(payloads), requests
+    call("provider_install", reservations + policy)
+    assert (package / "complete").is_file() and sorted(requests) == sorted(payloads)
+    print(f"PASS llama setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, catalog removal and cache-only reinstall")
 finally:
     if server is not None:
         if thread is not None and thread.is_alive():

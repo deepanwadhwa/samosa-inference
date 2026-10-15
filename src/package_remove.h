@@ -20,4 +20,7 @@ const char *package_remove_release(int,int,const PackageIndex *,const char *(*)(
  * then retire the journal last. Identity and assembly lock remain for safe
  * same-index reuse and idempotent recovery. Outputs untouched on failure. */
 const char *package_remove_finish(int,int,const PackageIndex *,const char *(*)(void *),void *,int *);
+/* Serialize the full completed-package removal/restart sequence. Uses only the
+ * selected pinned index and trusted directories, never acquires artifacts. */
+const char *package_remove_run(int,int,const PackageIndex *,const char *(*)(void *),void *,int *);
 #endif

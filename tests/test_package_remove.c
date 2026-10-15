@@ -89,6 +89,9 @@ int main(void){
     CHECK(waitpid(child,&status,0)==child&&WIFSIGNALED(status)&&WTERMSIG(status)==SIGKILL);CHECK(faccessat(package,"removal.record",F_OK,0)==0);CHECK(faccessat(package,"copy-journal",F_OK,0)<0);
     CHECK(!package_remove_finish(pool,package,index,NULL,NULL,&released));CHECK(released==0);CHECK(faccessat(package,"removal.record",F_OK,0)<0);CHECK(faccessat(package,"copy-journal",F_OK,0)<0);CHECK(faccessat(package,"publish.lock",F_OK,0)<0);CHECK(!package_remove_finish(pool,package,index,NULL,NULL,&released));
     CHECK(!package_reserve(pool,package,index,6,1,&charge));CHECK(charge.packages==1&&charge.reserved_bytes==6);CHECK(!package_remove_finish(pool,package,index,NULL,NULL,&released));CHECK(released==1);
+    CHECK(!package_remove_run(pool,package,index,NULL,NULL,&released));CHECK(released==0);
+    int operation=openat(package,"remove.lock",O_RDWR|O_NOFOLLOW);CHECK(operation>=0);CHECK(!flock(operation,LOCK_EX|LOCK_NB));released=-7;CHECK(!strcmp(package_remove_run(pool,package,index,NULL,NULL,&released),"package_removal_busy"));CHECK(released==-7);CHECK(!flock(operation,LOCK_UN));CHECK(!close(operation));
+    CHECK(!package_remove_run(pool,package,index,NULL,NULL,&released));CHECK(released==0);CHECK(!unlinkat(package,"remove.lock",0));
     CHECK(!close(pool_lock));CHECK(!unlinkat(pool,"reserve.lock",0));CHECK(!close(pool));CHECK(!rmdir(pool_path));
     CHECK(!close(payload));CHECK(!unlinkat(package,"assembly.identity",0));CHECK(!close(lock));CHECK(!unlinkat(package,"assemble.lock",0));CHECK(!close(package));CHECK(!rmdir(path));free(index);free(snapshot);free(record);
     printf("PASS payload removal: %u checks; recorded inodes, writer exclusion, foreign refusal, SIGKILL resume and idempotent payload emptying\n",checks);return 0;

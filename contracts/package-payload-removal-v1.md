@@ -104,3 +104,31 @@ before journal creation or deletion, a real killed inventory publisher, disk-onl
 reconstruction, committed retry and two-link publication recovery. Log:
 `/private/tmp/samosa-removal-begin-coordinator.log`. Public catalog-selected removal
 coordination and partial-install cleanup remain the following component-2 steps.
+
+## Catalog-selected completed-package removal
+
+`provider_remove` accepts only the contract version, operation and catalog
+provider ID. Trusted host configuration supplies the catalog, package root and
+reservation pool. The installer resolves the verified cached index without
+network access or runtime credentials, then `package_remove_run` serializes the
+complete removal sequence with a private persistent `remove.lock`. Concurrent
+removers receive `package_removal_busy`; retaining the lock file prevents separate
+processes from locking different inodes at the same name.
+
+The coordinator resumes inventory publication, payload deletion, completion/root
+retirement and quota release/metadata cleanup using the existing phase validators.
+A clean retry does not recreate an inventory. Success reports `removed`; a later
+installation can reuse the verified artifact cache. Partial installations without
+a completed ownership inventory still fail closed and remain component-2 work.
+
+Normal and ASan/UBSan native removal gates pass 199 checks, and reservation
+regressions pass 97 checks in each build. Portable public HTTPS setup gates cover
+removal, repeated removal and cache-only reinstall without additional downloads.
+Log: `/private/tmp/samosa-public-package-removal-final.log`.
+
+The actual three-file EmbeddingGemma package (325,805,737 bytes; index
+`6e61ef6a8aba534521b6dd3a4bf1f0e0c0df04c785b5666d3b01ac458f875865`)
+also passes public HTTPS installation, removal, repeated removal and cache-only
+reinstallation normally and under ASan/UBSan. Both runs delete only their owned
+temporary installed copies. Logs: `/private/tmp/samosa-public-remove-actual.log`
+and `/private/tmp/samosa-public-remove-actual-sanitize.log`.

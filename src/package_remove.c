@@ -178,12 +178,12 @@ static const char *retired_check(int directory,const PackageIndex *index,const c
         if(!entry){if(errno)e="unsafe_package_removal_payload";break;}
         const char *name=entry->d_name;if(!strcmp(name,".")||!strcmp(name,".."))continue;
         int journal=!strcmp(name,"copy-journal");
-        if(!journal&&strcmp(name,"assemble.lock")&&strcmp(name,"publish.lock")&&strcmp(name,"assembly.identity")&&strcmp(name,"removal.record")){e="package_reservation_not_empty";break;}
+        if(!journal&&strcmp(name,"remove.lock")&&strcmp(name,"assemble.lock")&&strcmp(name,"publish.lock")&&strcmp(name,"assembly.identity")&&strcmp(name,"removal.record")){e="package_reservation_not_empty";break;}
         int item=openat(directory,name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC|(journal?O_DIRECTORY:0));
         if(item<0||fstat(item,&s)||s.st_uid!=geteuid()||(s.st_mode&077)||!bound(directory,name,item)||
             (journal?!S_ISDIR(s.st_mode):!S_ISREG(s.st_mode)||s.st_nlink!=1))e="unsafe_package_removal_payload";
         if(!e&&journal)e=empty(item);
-        if(!e&&(!strcmp(name,"assemble.lock")||!strcmp(name,"publish.lock"))&&s.st_size)e="unsafe_package_removal_payload";
+        if(!e&&(!strcmp(name,"remove.lock")||!strcmp(name,"assemble.lock")||!strcmp(name,"publish.lock"))&&s.st_size)e="unsafe_package_removal_payload";
         if(item>=0)close(item);if(e)break;
     }
     closedir(scan);return e;
@@ -198,7 +198,7 @@ static const char *finished_check(int directory,const PackageIndex *index,const 
     int fd=openat(directory,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);DIR *scan=fd>=0?fdopendir(fd):NULL;
     if(!scan){if(fd>=0)close(fd);return "unsafe_package_removal_payload";}
     for(;;){e=control?control(context):NULL;if(e)break;errno=0;struct dirent *entry=readdir(scan);if(!entry){if(errno)e="unsafe_package_removal_payload";break;}
-        if(strcmp(entry->d_name,".")&&strcmp(entry->d_name,"..")&&strcmp(entry->d_name,"assemble.lock")&&strcmp(entry->d_name,"assembly.identity")){e="package_reservation_not_empty";break;}}
+        if(strcmp(entry->d_name,".")&&strcmp(entry->d_name,"..")&&strcmp(entry->d_name,"remove.lock")&&strcmp(entry->d_name,"assemble.lock")&&strcmp(entry->d_name,"assembly.identity")){e="package_reservation_not_empty";break;}}
     closedir(scan);return e;
 }
 static const char *cleanup(int directory,const PackageIndex *index,const char *(*control)(void *),void *context){
@@ -218,4 +218,24 @@ static const char *cleanup(int directory,const PackageIndex *index,const char *(
 }
 const char *package_remove_finish(int pool,int directory,const PackageIndex *index,const char *(*control)(void *),void *context,int *out){
     return package_reservation_release_finish(pool,directory,index,finished_check,cleanup,control,context,out);
+}
+
+const char *package_remove_run(int pool,int directory,const PackageIndex *index,const char *(*control)(void *),void *context,int *out){
+    if(!index||!out)return "invalid_package_removal_record";const char *e=control?control(context):NULL;if(e)return e;
+    struct stat s;if(fstat(directory,&s)||!S_ISDIR(s.st_mode)||s.st_uid!=geteuid()||(s.st_mode&077)||(fcntl(directory,F_GETFL)&O_ACCMODE)!=O_RDONLY)return "unsafe_package_removal_payload";
+    if(fstat(pool,&s)||!S_ISDIR(s.st_mode)||s.st_uid!=geteuid()||(s.st_mode&077)||(fcntl(pool,F_GETFL)&O_ACCMODE)!=O_RDONLY)return "unsafe_package_reservation";
+    int operation=openat(directory,"remove.lock",O_RDWR|O_CREAT|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC,0600);if(operation<0)return "unsafe_package_removal_payload";
+    if(fstat(operation,&s)||!S_ISREG(s.st_mode)||s.st_uid!=geteuid()||(s.st_mode&077)||s.st_nlink!=1||s.st_size||!bound(directory,"remove.lock",operation))e="unsafe_package_removal_payload";
+    if(!e&&flock(operation,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"package_removal_busy":"package_removal_unavailable";
+    int payload=0,complete=0,record=0,pending=0;
+    const char *names[]={"payload","complete","removal.record",".removal.record.pending"};int *present[]={&payload,&complete,&record,&pending};
+    for(size_t i=0;!e&&i<4;i++){if(!fstatat(directory,names[i],&s,AT_SYMLINK_NOFOLLOW))*present[i]=1;else if(errno!=ENOENT)e="unsafe_package_removal_payload";}
+    /* A fully cleaned retry must not recreate an inventory. The finish validator
+     * admits only its exact empty registered namespace. */
+    if(!e&&(payload||complete||record||pending))e=package_remove_begin(directory,index,control,context);
+    if(!e&&payload&&complete)e=package_remove_payload(directory,index,control,context);
+    if(!e&&(payload||complete))e=package_remove_retire(directory,index,control,context);
+    int released=0;if(!e)e=package_remove_finish(pool,directory,index,control,context,&released);
+    if(!e&&!bound(directory,"remove.lock",operation))e="unsafe_package_removal_payload";
+    if(!e)*out=released;close(operation);return e;
 }

@@ -2,6 +2,7 @@
 #include "package_installer.h"
 #include "package_reserve.h"
 #include "package_compatibility.h"
+#include "package_remove.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -60,7 +61,7 @@ const char *package_install_from_file(const char *path,const char *id,const Pack
     free(catalog);return e;
 }
 
-static const char *cached_catalog_operation(const char *path,const char *id,const PackageInstaller *config,PackageAssemblyStatus *out,int *released){
+static const char *cached_catalog_operation(const char *path,const char *id,const PackageInstaller *config,PackageAssemblyStatus *out,int *released,int remove){
     if(!config||(!out&&!released))return "invalid_package_installer";
     const char *e=config->assembly.control?config->assembly.control(config->assembly.context):NULL;if(e)return e;
     ProviderCatalog *catalog=calloc(1,sizeof(*catalog));PackageIndex *index=calloc(1,sizeof(*index));
@@ -76,8 +77,10 @@ static const char *cached_catalog_operation(const char *path,const char *id,cons
     if(fd>=0)close(fd);
     if(!e){PackageAssembly assembly=config->assembly;assembly.index=index;
         if(out)e=package_assembly_status(&assembly,out);
+        else if(remove)e=package_remove_run(assembly.reservation_directory,assembly.directory,index,assembly.control,assembly.context,released);
         else e=package_reservation_release_empty(assembly.reservation_directory,assembly.directory,index,assembly.control,assembly.context,released);}
     free(index);free(catalog);return e;
 }
-const char *package_status_from_file(const char *path,const char *id,const PackageInstaller *config,PackageAssemblyStatus *out){return cached_catalog_operation(path,id,config,out,NULL);}
-const char *package_release_empty_from_file(const char *path,const char *id,const PackageInstaller *config,int *out){return cached_catalog_operation(path,id,config,NULL,out);}
+const char *package_status_from_file(const char *path,const char *id,const PackageInstaller *config,PackageAssemblyStatus *out){return cached_catalog_operation(path,id,config,out,NULL,0);}
+const char *package_release_empty_from_file(const char *path,const char *id,const PackageInstaller *config,int *out){return cached_catalog_operation(path,id,config,NULL,out,0);}
+const char *package_remove_from_file(const char *path,const char *id,const PackageInstaller *config,int *out){return cached_catalog_operation(path,id,config,NULL,out,1);}

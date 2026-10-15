@@ -27,4 +27,7 @@ const char *package_status_from_file(const char *,const char *,const PackageInst
 /* Catalog-selected exact-charge reclamation; verified cached index required.
  * Never downloads or deletes package contents. Output unchanged on failure. */
 const char *package_release_empty_from_file(const char *,const char *,const PackageInstaller *,int *);
+/* Remove only the selected registered completed package; cache-only index
+ * lookup, with the same strict host catalog identity checks. */
+const char *package_remove_from_file(const char *,const char *,const PackageInstaller *,int *);
 #endif

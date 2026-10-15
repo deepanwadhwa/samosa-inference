@@ -87,7 +87,7 @@ int main(int argc,char **argv) {
     else if(!json_uint(&j,json_get(&j,0,"contract_version"),&version)||version!=1)error="unsupported_contract";
     else if(!(op=json_string(&j,json_get(&j,0,"op"))))error="invalid_request";
     else if(!strcmp(op,"provider_catalog")){if(j.tokens[0].count!=2)error="invalid_request";}
-    else if(strcmp(op,"provider_install")&&strcmp(op,"provider_resume")&&strcmp(op,"provider_status")&&strcmp(op,"provider_release_empty"))error="unsupported_operation";
+    else if(strcmp(op,"provider_install")&&strcmp(op,"provider_resume")&&strcmp(op,"provider_status")&&strcmp(op,"provider_release_empty")&&strcmp(op,"provider_remove"))error="unsupported_operation";
     else if(j.tokens[0].count!=3||!(id=json_string(&j,json_get(&j,0,"provider_id"))))error="invalid_request";
     if(!error&&!catalog)error="allocation_failed";
     if(!error)error=provider_catalog_load(catalog_path,catalog);
@@ -99,7 +99,7 @@ int main(int argc,char **argv) {
         if(!error)provider_catalog_artifact(entry,&c);
     }
     if(!error&&id&&!strcmp(op,"provider_status")&&!package_path)error=artifact_status(&c,&status);
-    if(!error&&id&&!strcmp(op,"provider_release_empty")&&!package_path)error="invalid_package_directory";
+    if(!error&&id&&(!strcmp(op,"provider_release_empty")||!strcmp(op,"provider_remove"))&&!package_path)error="invalid_package_directory";
     if(!error&&id&&(!strcmp(op,"provider_install")||!strcmp(op,"provider_resume"))) {
         if(key_path&&!private_key_read(key_path,key))error="invalid_provider_credentials";
         if(!error) {
@@ -126,6 +126,7 @@ int main(int argc,char **argv) {
             .assembly={.directory=package,.source=-1,.payload_path=payload,.copy_ceiling=copy_ceiling,.reservation_directory=pool,.reservation_ceiling=pool_ceiling,.reservation_capacity=(size_t)pool_capacity,.control=control,.context=&controls,.llama_policy=qualified}};
         if(!error&&observing){PackageAssemblyStatus observed;error=package_status_from_file(catalog_path,id,&installer,&observed);if(!error)status=observed.state;}
         else if(!error&&!strcmp(op,"provider_release_empty")){int released;error=package_release_empty_from_file(catalog_path,id,&installer,&released);if(!error)status=released?"reservation_released":"reservation_absent";}
+        else if(!error&&!strcmp(op,"provider_remove")){int released;error=package_remove_from_file(catalog_path,id,&installer,&released);if(!error)status="removed";}
         else if(!error){PackageTreeResult installed;error=package_install_selected(catalog,id,&installer,&installed);if(!error)status="installed_verified";}
         /* A renamed configuration root cannot produce a successful response. */
         if(!error){int named=directory(package_path);struct stat a,b;if(named<0||fstat(named,&a)||fstat(package,&b)||a.st_dev!=b.st_dev||a.st_ino!=b.st_ino)error="package_tree_changed";if(named>=0)close(named);}
