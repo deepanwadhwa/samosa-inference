@@ -171,23 +171,18 @@ int operation_public(const InferenceConfig *cfg,const char *op,const char *id,FI
     if(error&&!strcmp(error,"operation_interrupted"))error=NULL;
     sqlite3_stmt *stmt=NULL;
     if(!error&&!strcmp(op,"operation_cancel")){
-        if(!prepare(&o,&stmt,"SELECT status FROM operations WHERE owner=? AND id=?"))error="store_failed";
-        else{
-            bind(stmt,1,o.owner);bind(stmt,2,id);
-            if(sqlite3_step(stmt)!=SQLITE_ROW)error="unknown_operation";
-            else{
-                const char *status=(const char*)sqlite3_column_text(stmt,0);
-                if(status&&!strcmp(status,"running")){
-                    int fd=lease_file(&o,slot,1);
-                    if(fd<0||pwrite(fd,"1",1,0)!=1||fsync(fd))error="state_unavailable";
-                    if(fd>=0)close(fd);
-                }
-            }
+        /* Commit the request before exposing the marker: a worker can observe
+         * that byte and finish immediately. Updating only still-running rows
+         * afterwards loses the acknowledgement when completion wins the race. */
+        int notify=0;
+        if(!prepare(&o,&stmt,"UPDATE operations SET cancel_requested=1 WHERE owner=? AND id=? AND status='running'"))error="store_failed";
+        if(!error){bind(stmt,1,o.owner);bind(stmt,2,id);if(sqlite3_step(stmt)!=SQLITE_DONE)error="store_failed";else notify=sqlite3_changes(o.db)==1;}
+        sqlite3_finalize(stmt);stmt=NULL;
+        if(!error&&notify){
+            int fd=lease_file(&o,slot,1);
+            if(fd<0||pwrite(fd,"1",1,0)!=1||fsync(fd))error="state_unavailable";
+            if(fd>=0)close(fd);
         }
-        sqlite3_finalize(stmt);stmt=NULL;
-        if(!error&&!prepare(&o,&stmt,"UPDATE operations SET cancel_requested=1 WHERE owner=? AND id=? AND status='running'"))error="store_failed";
-        if(!error){bind(stmt,1,o.owner);bind(stmt,2,id);if(sqlite3_step(stmt)!=SQLITE_DONE)error="store_failed";}
-        sqlite3_finalize(stmt);stmt=NULL;
     }
     if(!error&&!prepare(&o,&stmt,"SELECT status,cancel_requested,(SELECT parent FROM operation_parents WHERE operation_parents.owner=operations.owner AND operation_parents.id=operations.id) FROM operations WHERE owner=? AND id=?"))error="store_failed";
     if(!error){

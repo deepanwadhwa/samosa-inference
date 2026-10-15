@@ -594,3 +594,20 @@ sanitize-package-remove: | build
 	./build/test-package-remove-incomplete-sanitize
 test: test-package-remove
 sanitize: sanitize-package-remove
+
+# Redirect only operations.c's explicit filesystem sync in this regression.
+# The test runs the real public cancellation API with an independent worker DB.
+.PHONY: test-operations-cancel sanitize-operations-cancel
+OPERATIONS_CANCEL_SOURCES = $(filter-out src/operations.c,$(SOURCES))
+build/operations-cancel-test.o: src/operations.c src/operations.h $(HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Dfsync=operations_cancel_test_fsync -Isrc -c $< -o $@
+build/test-operations-cancel: tests/test_operations_cancel.c build/operations-cancel-test.o $(OPERATIONS_CANCEL_SOURCES) $(HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc tests/test_operations_cancel.c build/operations-cancel-test.o $(OPERATIONS_CANCEL_SOURCES) $(LIBS) -o $@
+test-operations-cancel: build/test-operations-cancel
+	./build/test-operations-cancel
+sanitize-operations-cancel: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Dfsync=operations_cancel_test_fsync -Isrc -c src/operations.c -o build/operations-cancel-test-sanitize.o
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Isrc tests/test_operations_cancel.c build/operations-cancel-test-sanitize.o $(OPERATIONS_CANCEL_SOURCES) $(LIBS) -o build/test-operations-cancel-sanitize
+	./build/test-operations-cancel-sanitize
+test: test-operations-cancel
+sanitize: sanitize-operations-cancel
