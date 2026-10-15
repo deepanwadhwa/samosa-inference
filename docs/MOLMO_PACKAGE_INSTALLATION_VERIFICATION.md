@@ -1,8 +1,9 @@
 # Molmo2 installation verification
 
 The static native compatibility gate reuses the existing temporal model verifier
-and binds its receipt to the shared installation index. Public catalog/setup
-dispatch, installed video inference and an independent engine build remain open.
+and binds its receipt to the shared installation index. Catalog/setup dispatch
+is connected; actual HTTPS installation, installed video inference and an
+independent engine build remain open.
 This document records evidence for component 2 without claiming that the full
 installation slice or later engine lifecycle work is complete.
 
@@ -28,7 +29,8 @@ files under the fixed model directory. The package passed the normal native
 compatibility gate (11 harness checks), including the shared closed namespace,
 actual host executable/library inspection, native model pre/post verification
 and exact generic-index/native-manifest binding. The sanitizer-equipped actual
-package check is still pending.
+package check also passed (11 checks). These are static verification tests;
+neither run loads the model or generates an observation.
 
 | Artifact | SHA-256 |
 | --- | --- |

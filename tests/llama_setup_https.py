@@ -25,8 +25,12 @@ parser.add_argument("--config-pin")
 parser.add_argument("--tokenizer-pin")
 parser.add_argument("--weights-pin")
 parser.add_argument("--kernels-pin")
+parser.add_argument("--manifest-pin")
+parser.add_argument("--reject-model", action="store_true", help="Controlled Molmo fixture must refuse its invalid native manifest")
 parser.add_argument("--profile", help="Whisper model profile")
 parser.add_argument("--model-pin", help="Separate host-qualified Whisper model pin")
+parser.add_argument("--temporal-cli")
+parser.add_argument("--temporal-test")
 parser.add_argument("--vision-cli")
 parser.add_argument("--vision-test")
 parser.add_argument("--image")
@@ -42,10 +46,14 @@ assert not args.summary_cli or args.kind == "summary"
 body = Path(args.index).read_bytes()
 assert hashlib.sha256(body).hexdigest() == args.pin
 index = json.loads(body)
-assert index["recipe"] in ("llama-gguf-package-v1", "whisper-ggml-package-v1", "visionpsy-package-v1")
+assert index["recipe"] in ("llama-gguf-package-v1", "whisper-ggml-package-v1", "visionpsy-package-v1", "molmo2-mlx-package-v1")
 is_whisper = index["recipe"] == "whisper-ggml-package-v1"
 is_vision = index["recipe"] == "visionpsy-package-v1"
-assert (args.config_pin and args.tokenizer_pin and args.weights_pin and args.kernels_pin) if is_vision else (args.revision and ((args.profile and args.model_pin) if is_whisper else (args.kind and args.architecture)))
+is_molmo = index["recipe"] == "molmo2-mlx-package-v1"
+assert not args.reject_model or is_molmo
+assert (args.manifest_pin and args.kernels_pin) if is_molmo else ((args.config_pin and args.tokenizer_pin and args.weights_pin and args.kernels_pin) if is_vision else (args.revision and ((args.profile and args.model_pin) if is_whisper else (args.kind and args.architecture))))
+temporal_test_args = (args.temporal_cli, args.temporal_test)
+assert not any(temporal_test_args) or (is_molmo and all(temporal_test_args) and not args.reject_model)
 vision_test_args = (args.vision_cli, args.vision_test, args.image)
 assert not any(vision_test_args) or (is_vision and all(vision_test_args))
 whisper_test_args = (args.whisper_cli, args.whisper_test, args.sources_cli, args.audio)
@@ -115,7 +123,11 @@ try:
               "--byte-ceiling", str(total + len(body)), "--disk-ceiling", str(2 * (total + len(body))),
               "--artifact-capacity", "513", "--package-directory", str(package)]
     reservations = ["--reservation-directory", str(pool), "--copy-ceiling", str(total), "--reservation-ceiling", str(total), "--reservation-capacity", "1"]
-    if is_vision:
+    if is_molmo:
+        policy = ["--molmo-engine-sha256", args.engine_pin, "--molmo-kernels-sha256", args.kernels_pin,
+                  "--molmo-manifest-sha256", args.manifest_pin]
+        runtime_error = "unqualified_molmo_package_runtime"
+    elif is_vision:
         policy = ["--vision-engine-sha256", args.engine_pin, "--vision-config-sha256", args.config_pin,
                   "--vision-tokenizer-sha256", args.tokenizer_pin, "--vision-weights-sha256", args.weights_pin, "--vision-kernels-sha256", args.kernels_pin]
         runtime_error = "unqualified_vision_package_runtime"
@@ -150,21 +162,37 @@ try:
         assert provider["supported"] == supported, provider
         if not supported:
             assert provider["unavailable_reason"] == runtime_error, provider
-    if is_whisper or is_vision:
+    if is_whisper or is_vision or is_molmo:
         incomplete = subprocess.run(config + policy[:-2], input="{}", text=True, capture_output=True, timeout=15)
         assert incomplete.returncode == 2 and not incomplete.stdout
     call("provider_install", reservations, error=runtime_error)
     assert not requests and not (package / "assemble.lock").exists() and not (base / "cache").exists()
-    call("provider_install", reservations + policy, extra={"vision_engine_sha256": args.engine_pin} if is_vision else ({"whisper_model_sha256": args.model_pin} if is_whisper else {"llama_engine_sha256": args.engine_pin}), error="invalid_request")
+    call("provider_install", reservations + policy, extra={"molmo_engine_sha256": args.engine_pin} if is_molmo else ({"vision_engine_sha256": args.engine_pin} if is_vision else ({"whisper_model_sha256": args.model_pin} if is_whisper else {"llama_engine_sha256": args.engine_pin})), error="invalid_request")
     call("provider_install", reservations + policy + ["--digest-endpoint", endpoint], error="artifact_tls_verification_failed")
     assert not requests and not (package / "payload").exists()
+    if args.reject_model:
+        call("provider_install", reservations + policy + ["--digest-endpoint", endpoint, "--ca-file", str(cert)], error="invalid_model_package")
+        assert sorted(requests) == sorted(payloads) and not (package / "complete").exists()
+        engine = package / "payload" / next(f["name"] for f in index["files"] if f["role"] == "engine")
+        identity = engine.stat()
+        call("provider_status", policy, expected_status="incomplete_unverified")
+        call("provider_resume", reservations + policy, error="invalid_model_package")
+        assert not (package / "complete").exists() and engine.stat().st_ino == identity.st_ino
+        assert sorted(requests) == sorted(payloads)
+        call("provider_remove", reservations, expected_status="removed")
+        call("provider_remove", reservations, expected_status="removed")
+        assert not (package / "payload").exists() and sorted(requests) == sorted(payloads)
+        print("PASS Molmo setup controlled refusal: policy/TLS checks, hash-consistent invalid native model refused, no completion, offline resume/status and owned incomplete removal")
+        raise SystemExit(0)
     call("provider_install", reservations + policy + ["--digest-endpoint", endpoint, "--ca-file", str(cert)])
     assert sorted(requests) == sorted(payloads), requests
     installed_engine = package / "payload" / next(f["name"] for f in index["files"] if f["role"] == "engine")
     identity = installed_engine.stat()
     assert identity.st_mode & 0o777 == 0o500
     wrong = policy.copy()
-    if is_vision:
+    if is_molmo:
+        wrong[wrong.index("--molmo-engine-sha256") + 1] = "0" * 64
+    elif is_vision:
         wrong[wrong.index("--vision-engine-sha256") + 1] = "0" * 64
     elif is_whisper:
         wrong[wrong.index("--whisper-runtime-revision") + 1] = "0" * 40
@@ -182,6 +210,12 @@ try:
             wrong_model = policy.copy()
             wrong_model[wrong_model.index(flag) + 1] = "0" * 64
             call("provider_resume", reservations + wrong_model, error="unqualified_vision_package_model")
+            assert (package / "complete").is_file() and installed_engine.stat().st_ino == identity.st_ino
+    if is_molmo:
+        for flag, code in (("--molmo-kernels-sha256", runtime_error), ("--molmo-manifest-sha256", "unqualified_molmo_package_model")):
+            wrong_model = policy.copy()
+            wrong_model[wrong_model.index(flag) + 1] = "0" * 64
+            call("provider_resume", reservations + wrong_model, error=code)
             assert (package / "complete").is_file() and installed_engine.stat().st_ino == identity.st_ino
     call("provider_status", policy)
     call("provider_resume", reservations + policy)
@@ -208,6 +242,10 @@ try:
         subprocess.run([os.path.abspath(args.summary_test), os.path.abspath(args.summary_cli),
                         str(installed_engine), str(package / "payload" / model["name"])],
                        check=True, timeout=600)
+    if args.temporal_cli:
+        subprocess.run([os.path.abspath(args.temporal_test), os.path.abspath(args.temporal_cli),
+                        str(installed_engine), str(package / "payload" / "model"), str(base / "actual-temporal")],
+                       check=True, timeout=600)
     if args.vision_cli:
         subprocess.run([os.path.abspath(args.vision_test), os.path.abspath(args.vision_cli),
                         str(installed_engine), str(package / "payload" / "model"), os.path.abspath(args.image)],
@@ -217,7 +255,7 @@ try:
         subprocess.run([os.path.abspath(args.whisper_test), os.path.abspath(args.whisper_cli),
                         os.path.abspath(args.sources_cli), str(installed_engine), str(package / "payload" / model["name"]),
                         os.path.abspath(args.audio)], check=True, timeout=600)
-    print(f"PASS {'VisionPsy' if is_vision else ('Whisper' if is_whisper else 'llama')} setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
+    print(f"PASS {'Molmo' if is_molmo else ('VisionPsy' if is_vision else ('Whisper' if is_whisper else 'llama'))} setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
 finally:
     if server is not None:
         if thread is not None and thread.is_alive():

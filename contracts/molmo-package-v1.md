@@ -66,5 +66,28 @@ missing kernel, foreign symlink, cancellation, unchanged failure output and
 refusal of a hash-consistent but invalid native model manifest. The temporal
 input regression gates also passed normally and with sanitizers. Actual native
 package success is tested separately with `test-molmo-package --real ROOT INDEX
-INDEX_PIN ENGINE_PIN KERNEL_PIN MANIFEST_PIN`. Setup dispatch and actual installed
-inference remain required before this recipe can be advertised as installable.
+INDEX_PIN ENGINE_PIN KERNEL_PIN MANIFEST_PIN`.
+
+## Catalog setup
+
+The catalog recipe `molmo2-mlx-package-v1` requires three host-only flags:
+
+```
+--molmo-engine-sha256 ENGINE_PIN --molmo-kernels-sha256 KERNEL_PIN
+--molmo-manifest-sha256 MANIFEST_PIN
+```
+
+All three are required together. Missing policy makes discovery report the
+recipe unsupported and refuses installation before acquisition/state creation.
+Malformed or incomplete flags exit with code 2. Public request bodies cannot
+provide policy. Both publication and completed read-only status apply the native
+gate. Removal uses the cached pinned index and owned inventory without runtime
+policy or credentials, including after a compatibility failure.
+
+The portable setup fixture intentionally has an invalid native model manifest.
+It must refuse publication even though all bytes match their hashes. Normal and
+sanitizer setup tests cover policy/TLS refusal, failed compatibility leaving no
+completion, `incomplete_unverified` status, offline failed resume preserving
+copied inodes, and repeated owned incomplete removal. A synthetic fixture is not
+allowed to stand in for a valid Molmo checkpoint. Full actual-package HTTPS
+installation and installed inference are separate qualification gates.

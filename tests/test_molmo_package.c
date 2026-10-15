@@ -27,7 +27,7 @@ int main(int argc,char **argv){
         const char *e=molmo_package_verify(root,argv[2],index,&policy,NULL,NULL,&out);if(e)fprintf(stderr,"actual Molmo package: %s\n",e);CHECK(!e);CHECK(!close(root));free(index);
         printf("PASS actual Molmo static package admission: %u checks; closed native runtime and exact existing temporal model manifest/index binding; no readiness claim\n",checks);return 0;
     }
-    CHECK(argc==1);char path[]="/tmp/samosa-molmo-package-XXXXXX";CHECK(mkdtemp(path));int root=open(path,O_RDONLY|O_DIRECTORY);CHECK(root>=0);CHECK(!mkdirat(root,"model",0700));
+    int exporting=argc==2&&!strcmp(argv[1],"--export");CHECK(argc==1||exporting);char path[]="/tmp/samosa-molmo-package-XXXXXX";CHECK(mkdtemp(path));int root=open(path,O_RDONLY|O_DIRECTORY);CHECK(root>=0);CHECK(!mkdirat(root,"model",0700));
     PackageIndex *index=calloc(1,sizeof(*index));CHECK(index);index->count=8;memset(index->manifest_sha256,'a',64);strcpy(index->recipe,"molmo2-mlx-package-v1");strcpy(index->minimum_os,"1.0");char os[65];CHECK(!provider_catalog_host(index->platform,os));
     const char *names[]={"engine","mlx.metallib","molmo-package.json","model/manifest.json","model/config.json","model/tokenizer.json","model/processor.json","model/weights.safetensors"};
     const enum PackageFileRole roles[]={PACKAGE_ENGINE,PACKAGE_DATA,PACKAGE_METADATA,PACKAGE_METADATA,PACKAGE_METADATA,PACKAGE_DATA,PACKAGE_METADATA,PACKAGE_MODEL};
@@ -45,6 +45,9 @@ int main(int argc,char **argv){
     CHECK(!unlinkat(root,"mlx.metallib",0));rejects(root,path,index,&policy,"package_file_missing");put(root,index,1,"{}",2);
     CHECK(!symlinkat("model",root,"foreign"));rejects(root,path,index,&policy,"unsupported_package_artifact");CHECK(!unlinkat(root,"foreign",0));
     rejects(root,path,index,&policy,"invalid_model_package");
+    if(exporting){char *json=NULL;size_t bytes=0;FILE *stream=open_memstream(&json,&bytes);CHECK(stream);fprintf(stream,"{\"format\":\"samosa.inference.package.v1\",\"platform\":\"%s\",\"minimum_os\":\"1.0\",\"recipe\":\"molmo2-mlx-package-v1\",\"files\":[",index->platform);
+        const char *role_names[]={"engine","data","metadata","metadata","metadata","data","metadata","model"};for(size_t i=0;i<8;i++){if(i)fputc(',',stream);fprintf(stream,"{\"name\":\"%s\",\"role\":\"%s\",\"bytes\":%llu,\"sha256\":\"%s\"}",index->files[i].name,role_names[i],(unsigned long long)index->files[i].bytes,index->files[i].sha256);}fputs("]}",stream);CHECK(!fclose(stream));char pin[65],target[256];hash_bytes(json,bytes,pin);CHECK(snprintf(target,sizeof(target),"%s.index.json",path)<(int)sizeof(target));int fd=open(target,O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(fd>=0);CHECK(write(fd,json,bytes)==(ssize_t)bytes);CHECK(!close(fd));
+        printf("{\"root\":\"%s\",\"index\":\"%s\",\"pin\":\"%s\",\"engine_pin\":\"%s\",\"kernels_pin\":\"%s\",\"manifest_pin\":\"%s\"}\n",path,target,pin,index->files[0].sha256,index->files[1].sha256,index->files[3].sha256);free(json);free(index);CHECK(!close(root));return 0;}
     for(size_t i=0;i<8;i++)CHECK(!unlinkat(root,index->files[i].name,0));CHECK(!unlinkat(root,"model",AT_REMOVEDIR));free(index);CHECK(!close(root));CHECK(!rmdir(path));
     printf("PASS Molmo native admission refusal: %u checks; independent policy, bound root, closed tree, missing kernel, native model profile and controls; actual model gate separate\n",checks);return 0;
 }
