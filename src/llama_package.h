@@ -1,6 +1,8 @@
 #ifndef SAMOSA_INFERENCE_LLAMA_PACKAGE_H
 #define SAMOSA_INFERENCE_LLAMA_PACKAGE_H
 #include "llama_package_descriptor.h"
+/* Kinds bind separate host-qualified engine protocols: text, embedding, or
+ * the native encoder/decoder T5 summary engine. A model cannot select policy. */
 typedef struct {const char *runtime_revision,*kind,*architecture,*engine_sha256;} LlamaPackagePolicy;
 int llama_package_policy_valid(const LlamaPackagePolicy *);
 /* Host-owned qualified runtime policy, never derived from the package manifest.

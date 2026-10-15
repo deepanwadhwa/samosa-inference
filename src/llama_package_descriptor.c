@@ -13,7 +13,7 @@ const char *llama_package_descriptor_parse(const char *body,size_t bytes,const P
     Json j;if(!json_parse(&j,body,bytes)||j.tokens[0].type!=JT_OBJECT||j.tokens[0].count!=6)return "invalid_llama_package_descriptor";
     LlamaPackageDescriptor result={0};char format[65],engine[256],model[256];
     if(!field(&j,"format",format,sizeof(format))||strcmp(format,"samosa.inference.llama-package.v1")||
-        !field(&j,"kind",result.kind,sizeof(result.kind))||(strcmp(result.kind,"text")&&strcmp(result.kind,"embedding"))||
+        !field(&j,"kind",result.kind,sizeof(result.kind))||(strcmp(result.kind,"text")&&strcmp(result.kind,"embedding")&&strcmp(result.kind,"summary"))||
         !field(&j,"runtime_revision",result.runtime_revision,sizeof(result.runtime_revision))||strlen(result.runtime_revision)!=40||strspn(result.runtime_revision,"0123456789abcdef")!=40||
         !field(&j,"architecture",result.architecture,sizeof(result.architecture))||
         !field(&j,"engine",engine,sizeof(engine))||!field(&j,"model",model,sizeof(model))||
@@ -31,8 +31,11 @@ const char *llama_package_descriptor_parse(const char *body,size_t bytes,const P
     *out=result;return NULL;
 }
 const char *llama_package_descriptor_model(const LlamaPackageDescriptor *descriptor,const GgufMetadata *metadata){
-    if(!descriptor||!metadata||!memchr(descriptor->architecture,0,sizeof(descriptor->architecture))||!descriptor->architecture[0]||
+    if(!descriptor||!metadata||!memchr(descriptor->kind,0,sizeof(descriptor->kind))||
+        (strcmp(descriptor->kind,"text")&&strcmp(descriptor->kind,"embedding")&&strcmp(descriptor->kind,"summary"))||
+        !memchr(descriptor->architecture,0,sizeof(descriptor->architecture))||!descriptor->architecture[0]||
         !memchr(metadata->architecture,0,sizeof(metadata->architecture))||!metadata->architecture[0])return "invalid_llama_package_descriptor";
-    if(metadata->version!=3||!metadata->tensors||strcmp(descriptor->architecture,metadata->architecture))return "incompatible_llama_package_model";
+    if(metadata->version!=3||!metadata->tensors||strcmp(descriptor->architecture,metadata->architecture)||
+        (!strcmp(descriptor->kind,"summary")&&strcmp(descriptor->architecture,"t5")))return "incompatible_llama_package_model";
     return NULL;
 }

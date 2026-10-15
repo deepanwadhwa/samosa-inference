@@ -14,7 +14,8 @@ parsed PackageIndex. Its strict JSON object has exactly these six fields:
 }
 ```
 
-Kinds are `text` or `embedding`. Runtime revision is a lowercase 40-character
+Kinds are `text`, `embedding` or `summary` (native T5 encoder/decoder engine).
+Summary policy/model validation requires architecture `t5`. Runtime revision is a lowercase 40-character
 hex declaration, architecture is a bounded lowercase identifier, and file names
 use the existing canonical package grammar. Exactly one engine and one model
 must exist in the index with those roles; declarations return their index positions.

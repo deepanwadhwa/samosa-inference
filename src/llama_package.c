@@ -10,7 +10,8 @@
 static int pin(const char *s,size_t n){return s&&strnlen(s,n+1)==n&&strspn(s,"0123456789abcdef")==n;}
 int llama_package_policy_valid(const LlamaPackagePolicy *policy){
     if(!policy||!pin(policy->runtime_revision,40)||!pin(policy->engine_sha256,64)||!policy->kind||strnlen(policy->kind,16)>=16||
-        (strcmp(policy->kind,"text")&&strcmp(policy->kind,"embedding"))||!policy->architecture||!policy->architecture[0]||strnlen(policy->architecture,65)>64)return 0;
+        (strcmp(policy->kind,"text")&&strcmp(policy->kind,"embedding")&&strcmp(policy->kind,"summary"))||!policy->architecture||!policy->architecture[0]||strnlen(policy->architecture,65)>64)return 0;
+    if(!strcmp(policy->kind,"summary")&&strcmp(policy->architecture,"t5"))return 0;
     for(const unsigned char *p=(const unsigned char *)policy->architecture;*p;p++)if(!((*p>='a'&&*p<='z')||(*p>='0'&&*p<='9')||strchr("._-",*p)))return 0;return 1;
 }
 static int open_file(int root,const char *name){

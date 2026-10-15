@@ -47,7 +47,7 @@ int main(int argc,char **argv){
         printf("PASS actual native runtime package: %zu files; %llu pinned bytes; index %s; loader compatibility only\n",index->count,(unsigned long long)index->payload_bytes,index->manifest_sha256);
         free(index);free(body);CHECK(!close(fd));CHECK(!close(root));return 0;
     }
-    int export_only=argc==2&&!strcmp(argv[1],"--export-llama");CHECK(argc==1||export_only);
+    int export_summary=argc==2&&!strcmp(argv[1],"--export-summary");int export_only=export_summary||(argc==2&&!strcmp(argv[1],"--export-llama"));CHECK(argc==1||export_only);
     char path[]="/tmp/samosa-native-package-XXXXXX";CHECK(mkdtemp(path));int root=open(path,O_RDONLY|O_DIRECTORY);CHECK(root>=0);
     PackageIndex *index=calloc(1,sizeof(*index));CHECK(index);memset(index->manifest_sha256,'a',64);index->count=3;strcpy(index->minimum_os,"1.0");strcpy(index->recipe,"native-runtime-test");char os[65];CHECK(!provider_catalog_host(index->platform,os));
     strcpy(index->files[0].name,"engine");index->files[0].role=PACKAGE_ENGINE;strcpy(index->files[1].name,"library");index->files[1].role=PACKAGE_LIBRARY;strcpy(index->files[2].name,"model");index->files[2].role=PACKAGE_MODEL;
@@ -79,6 +79,17 @@ int main(int argc,char **argv){
     unchanged_descriptor=descriptor;qualified.runtime_revision="0000000000000000000000000000000000000000";CHECK(!strcmp(llama_package_verify(root,index,&qualified,NULL,NULL,&descriptor),"unqualified_llama_package_runtime"));CHECK(!memcmp(&descriptor,&unchanged_descriptor,sizeof(descriptor)));qualified.runtime_revision="4fbc76dec51d0add466f0210855c0596589b60d4";
     bytes[at-strlen(architecture)]='q';put(root,&index->files[2],bytes,at);CHECK(!strcmp(llama_package_verify(root,index,&qualified,NULL,NULL,&descriptor),"incompatible_llama_package_model"));CHECK(!memcmp(&descriptor,&unchanged_descriptor,sizeof(descriptor)));bytes[at-strlen(architecture)]='g';put(root,&index->files[2],bytes,at);
     CHECK(!symlinkat("model",root,"foreign"));CHECK(package_native_runtime_verify(root,index,NULL,NULL));CHECK(!unlinkat(root,"foreign",0));
+    /* The T5 engine has a distinct host-qualified protocol identity even
+     * though its model metadata and native package gates are shared. */
+    const char *summary_manifest="{\"format\":\"samosa.inference.llama-package.v1\",\"kind\":\"summary\",\"runtime_revision\":\"9fcaed763ccda38ea81068ad9d7f991aaddca451\",\"engine\":\"engine\",\"model\":\"model\",\"architecture\":\"t5\"}";
+    size_t architecture_at=at-strlen(architecture);lib_w64(bytes+architecture_at-8,2);memcpy(bytes+architecture_at,"t5",2);
+    put(root,&index->files[2],bytes,architecture_at+2);put(root,&index->files[3],summary_manifest,strlen(summary_manifest));index->payload_bytes=8192+architecture_at+2+strlen(summary_manifest);
+    CHECK(!strcmp(llama_package_verify(root,index,&qualified,NULL,NULL,&descriptor),"unqualified_llama_package_runtime"));
+    LlamaPackagePolicy summary_policy={.runtime_revision="9fcaed763ccda38ea81068ad9d7f991aaddca451",.kind="summary",.architecture="t5",.engine_sha256=index->files[0].sha256};
+    CHECK(llama_package_policy_valid(&summary_policy));CHECK(!llama_package_verify(root,index,&summary_policy,NULL,NULL,&descriptor));CHECK(!strcmp(descriptor.kind,"summary")&&!strcmp(descriptor.architecture,"t5"));
+    unchanged_descriptor=descriptor;summary_policy.architecture="gemma-embedding2";CHECK(!llama_package_policy_valid(&summary_policy));CHECK(!strcmp(llama_package_verify(root,index,&summary_policy,NULL,NULL,&descriptor),"invalid_llama_package_policy"));CHECK(!memcmp(&descriptor,&unchanged_descriptor,sizeof(descriptor)));summary_policy.architecture="t5";
+    summary_policy.kind="text";CHECK(!strcmp(llama_package_verify(root,index,&summary_policy,NULL,NULL,&descriptor),"unqualified_llama_package_runtime"));CHECK(!memcmp(&descriptor,&unchanged_descriptor,sizeof(descriptor)));summary_policy.kind="summary";
+    if(!export_summary){lib_w64(bytes+architecture_at-8,strlen(architecture));memcpy(bytes+architecture_at,architecture,strlen(architecture));put(root,&index->files[2],bytes,at);put(root,&index->files[3],manifest,strlen(manifest));index->payload_bytes=8192+at+strlen(manifest);}
     if(export_only){char *body=NULL;size_t size=0;FILE *stream=open_memstream(&body,&size);CHECK(stream);
         fprintf(stream,"{\"format\":\"samosa.inference.package.v1\",\"platform\":\"%s\",\"minimum_os\":\"1.0\",\"recipe\":\"llama-gguf-package-v1\",\"files\":[",index->platform);
         const char *roles[]={"engine","library","model","metadata"};for(size_t i=0;i<index->count;i++){if(i)fputc(',',stream);fprintf(stream,"{\"name\":\"%s\",\"role\":\"%s\",\"bytes\":%llu,\"sha256\":\"%s\"}",index->files[i].name,roles[i],(unsigned long long)index->files[i].bytes,index->files[i].sha256);}

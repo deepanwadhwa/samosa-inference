@@ -21,7 +21,11 @@ parser.add_argument("--revision", required=True)
 parser.add_argument("--kind", required=True)
 parser.add_argument("--architecture", required=True)
 parser.add_argument("--engine-pin", required=True)
+parser.add_argument("--summary-cli", help="Optional actual T5 provider CLI qualification")
+parser.add_argument("--summary-test", help="Actual-model summary harness; used with --summary-cli")
 args = parser.parse_args()
+assert bool(args.summary_cli) == bool(args.summary_test)
+assert not args.summary_cli or args.kind == "summary"
 body = Path(args.index).read_bytes()
 assert hashlib.sha256(body).hexdigest() == args.pin
 index = json.loads(body)
@@ -134,6 +138,13 @@ try:
     call("provider_remove", reservations, expected_status="removed")
     call("provider_install", reservations + policy)
     assert (package / "complete").is_file() and sorted(requests) == sorted(payloads)
+    if args.summary_cli:
+        # Qualify fresh installed inodes, including the complete private library
+        # package, rather than the candidate binaries edited by the QA packager.
+        model = next(file for file in index["files"] if file["role"] == "model")
+        subprocess.run([os.path.abspath(args.summary_test), os.path.abspath(args.summary_cli),
+                        str(installed_engine), str(package / "payload" / model["name"])],
+                       check=True, timeout=600)
     print(f"PASS llama setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
 finally:
     if server is not None:

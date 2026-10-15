@@ -6,6 +6,12 @@ qualified runtime revision, modality, model architecture and engine SHA-256.
 These policy values never come from the package manifest or public request.
 The caller retains the package lease and named-root binding.
 
+Policy kinds are text generation, embeddings and native T5 summaries (`summary`
+with architecture `t5`). Each kind requires its separately qualified engine pin;
+sharing the GGUF inspector does not make these engine protocols interchangeable.
+The CPU T5 package's standalone build, cold installation and actual-model gates
+are recorded in [T5 installation evidence](../docs/T5_PACKAGE_INSTALLATION_VERIFICATION.md).
+
 The index must contain `llama-package.json` as pinned metadata of at most 4KiB.
 Its hash is checked around parsing. Engine/model names and roles must resolve
 exactly through the index. The declared revision, kind and architecture must match
