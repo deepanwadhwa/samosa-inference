@@ -3,7 +3,7 @@
 The `visionpsy-package-v1` catalog recipe applies host-qualified engine, config,
 tokenizer, weights and Metal-kernel pins before publication. The existing public
 VisionPsy bridge is reused. Component 2 remains open: the independent engine build
-and its installed-model qualification, Molmo2 packages and production catalogs
+installed-model qualification of the independent build, Molmo2 packages and production catalogs
 still require completion.
 
 ## Controlled gates
@@ -59,3 +59,29 @@ An earlier exploratory run was invalidated by rebuilding the setup executable
 between calls and is excluded from passing evidence. The executable snapshot and
 mandatory kernel policy were in effect for the passing run. Actual sanitizer
 qualification of this engine pair has not yet been performed.
+
+## Independent build
+
+The inference repository now carries the existing native VisionPsy sources and
+their support headers, byte-for-byte equal to Chat's source at extraction.
+`tools/build_vision_runtime.sh` materializes clean pinned MLX/fmt revisions and
+checksum-verified json/metal-cpp archives into a new private directory with
+FetchContent disconnected. The copied C++ sources passed syntax checking and a
+full MLX build and executable link on macOS 26.5.1 arm64. Dependency licenses are
+copied into the output. A corrupt dependency archive was refused before output
+directory creation.
+
+The initial configuration incorrectly changed MLX's kernel output destination
+along with its fallback. After correcting the compiled fallback definition only,
+the same owned build directory was reconfigured and the build/link passed.
+The upstream checkout was unchanged. The resulting engine has SHA-256
+`8547c6c629b28b48753ef88e114dbc1b6250be82edf88b1a982855a101f8b346`;
+its kernels match the existing kernel pin above. The executable links only system
+libraries/frameworks and reports minimum OS 26.5.1. This build targets the current
+host; it does not establish support for an older macOS release.
+
+The compiled kernel fallback is `/samosa-inference-no-fallback/mlx.metallib`.
+Only the package's colocated kernel should supply runtime kernels in qualification.
+Actual installed-model tests of this new engine remain pending; the successful
+existing-engine run above must not be substituted for them. See
+[engine build inputs](../engines/README.md#visionpsy).
