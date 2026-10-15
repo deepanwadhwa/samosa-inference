@@ -94,7 +94,10 @@ hex digits and terminator. The engine/model sources remain unchanged.
 Strict C++20 compilation with pedantic errors and Unicode key, BMP character,
 surrogate-pair and escaped-newline checks passed locally; the checks also passed
 with ASan/UBSan. Existing native contract/processor tests passed in both modes.
-The exact corrected commit still requires hosted GCC qualification.
+Commit `7a19b62` subsequently passed hosted macOS and Ubuntu CI. The full
+shared native suite also passed locally on macOS 26.5.1 arm64 and Ubuntu 24.04
+arm64, including GCC 13 C++ component checks and normal/sanitizer modes.
+Hosted Ubuntu additionally covers its configured x86_64 runner.
 
 Before the portability change, the independent-engine candidate also passed
 normal and sanitizer-equipped static admission (11 checks each): 29 files,
@@ -105,3 +108,20 @@ Relinking the corrected source into a separate output produced engine SHA-256
 `9a6a718e31d73c006be15f9266996286214f7f492c380d1b09097006d61b87af`.
 The prior pinned executable was preserved. The corrected binary requires its
 own package qualification; previous pins must not be silently reused.
+
+## Installed execution failure
+
+The existing-engine candidate completed verified HTTPS acquisition, native
+compatibility admission and publication in the installation harness. Installed
+actual video inference then failed with `provider_process_failed`; the actual
+sanitizer execution gate was not reached. This is a failed qualification, not
+an installation/readiness success.
+
+A separate diagnostic guardian, retaining the production limits, observed the
+engine terminate with macOS signal 25 (`SIGXFSZ`). The legacy workspace guardian
+sets `RLIMIT_FSIZE` to 67108864 bytes for every regular file written by the
+engine, including runtime temporary files. Identifying the offending write and
+qualifying a correction remain required. Diagnostic executables are temporary
+QA tools and are not package artifacts or evidence of successful inference.
+The independently built corrected engine also still needs its own complete
+installed execution qualification.
