@@ -2,9 +2,10 @@
 
 The `visionpsy-package-v1` catalog recipe applies host-qualified engine, config,
 tokenizer, weights and Metal-kernel pins before publication. The existing public
-VisionPsy bridge is reused. Component 2 remains open: sanitizer-equipped actual
-model qualification of the independent build, Molmo2 packages, OpenDecision
-integration and production catalogs still require completion.
+VisionPsy bridge is reused. The independent VisionPsy installation slice passed
+normal and sanitizer-equipped actual-model qualification on macOS 26.5.1 arm64.
+Component 2 remains open: Molmo2 packages, OpenDecision integration, production
+catalogs and installation acceptance still require completion.
 
 ## Controlled gates
 
@@ -88,7 +89,8 @@ actual heading-recognition checks from fresh installed inodes. The seven-file
 payload totals 1199704796 bytes; index SHA-256 is
 `b8fe138bf4d3dc8594c45d38466cf0745f124523da89b3ac7ee00b8d9105a890`.
 The observed result contained `hello`, with derived-input provenance, uncertainty
-and durable replay checks. The sanitizer-equipped installation/provider/harness
-run is still pending; MLX and the engine itself are release builds. The passing
-normal run establishes only macOS 26.5.1 arm64 execution. See
+and durable replay checks. Both normal and sanitizer-equipped setup/provider/
+harness runs passed the full seven-file HTTPS gate and 15882 actual image checks
+per mode. MLX and the engine itself are release builds, without sanitizer
+instrumentation. These runs establish only macOS 26.5.1 arm64 execution. See
 [engine build inputs](../engines/README.md#visionpsy).
