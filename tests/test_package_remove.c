@@ -24,6 +24,9 @@ static const char *kill_after_marker(void *opaque){int package=*(int *)opaque;
 static const char *kill_during_cleanup(void *opaque){int package=*(int *)opaque;
     if(faccessat(package,"copy-journal",F_OK,0)<0&&faccessat(package,"removal.record",F_OK,0)==0)kill(getpid(),SIGKILL);return NULL;
 }
+static const char *kill_after_inventory(void *opaque){int package=*(int *)opaque;struct stat s;
+    if(!fstatat(package,".removal.record.pending",&s,AT_SYMLINK_NOFOLLOW)&&(s.st_mode&0777)==0400)kill(getpid(),SIGKILL);return NULL;
+}
 int main(void){
     char path[]="/tmp/samosa-remove-payload-XXXXXX";CHECK(mkdtemp(path));int package=open(path,O_RDONLY|O_DIRECTORY);CHECK(package>=0);
     int lock=openat(package,"assemble.lock",O_RDWR|O_CREAT|O_EXCL,0600);CHECK(lock>=0);CHECK(!mkdirat(package,"payload",0700));int payload=openat(package,"payload",O_RDONLY|O_DIRECTORY);CHECK(payload>=0);
@@ -34,7 +37,16 @@ int main(void){
         int fd=openat(payload,names[i],O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(fd>=0);CHECK(write(fd,data[i],3)==3);CHECK(!close(fd));}
     CHECK(!package_identity_bind(package,index,NULL,NULL));struct stat p,c,r;CHECK(!fstat(payload,&p));char complete[256];int n=snprintf(complete,sizeof(complete),"samosa.package.complete.v1\n%s\n%llu %llu\n",index->manifest_sha256,(unsigned long long)p.st_dev,(unsigned long long)p.st_ino);
     int fd=openat(package,"complete",O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(fd>=0);CHECK(write(fd,complete,(size_t)n)==n);CHECK(!close(fd));CHECK(!fstat(package,&r));CHECK(!fstatat(package,"complete",&c,AT_SYMLINK_NOFOLLOW));
-    PackageTreeSnapshot *snapshot=malloc(sizeof(*snapshot));PackageRemovalRecord *record=malloc(sizeof(*record));CHECK(snapshot&&record);CHECK(!package_tree_snapshot(payload,index,NULL,NULL,snapshot));CHECK(!package_removal_record_capture(index,snapshot,&r,&c,record));CHECK(!package_removal_record_store(package,index,record,NULL,NULL));
+    PackageTreeSnapshot *snapshot=malloc(sizeof(*snapshot));PackageRemovalRecord *record=malloc(sizeof(*record));CHECK(snapshot&&record);
+    CHECK(!strcmp(package_remove_begin(package,index,cancel,NULL),"cancelled"));CHECK(faccessat(package,"removal.record",F_OK,0)<0);
+    CHECK(!flock(lock,LOCK_SH|LOCK_NB));CHECK(!strcmp(package_remove_begin(package,index,NULL,NULL),"package_assembly_busy"));CHECK(!flock(lock,LOCK_UN));
+    fd=openat(payload,"unknown",O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(fd>=0);CHECK(!close(fd));CHECK(package_remove_begin(package,index,NULL,NULL));CHECK(faccessat(package,"removal.record",F_OK,0)<0);CHECK(!unlinkat(payload,"unknown",0));
+    fd=openat(package,".removal.record.pending",O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(fd>=0);CHECK(write(fd,"foreign",7)==7);CHECK(!close(fd));
+    CHECK(!strcmp(package_remove_begin(package,index,NULL,NULL),"unsafe_package_removal_record"));CHECK(faccessat(package,".removal.record.pending",F_OK,0)==0);CHECK(faccessat(payload,names[0],F_OK,0)==0);CHECK(!unlinkat(package,".removal.record.pending",0));
+    pid_t starter=fork();CHECK(starter>=0);if(!starter)_exit(package_remove_begin(package,index,kill_after_inventory,&package)?2:3);int starter_status;
+    CHECK(waitpid(starter,&starter_status,0)==starter&&WIFSIGNALED(starter_status)&&WTERMSIG(starter_status)==SIGKILL);CHECK(faccessat(package,"removal.record",F_OK,0)<0);
+    CHECK(!package_remove_begin(package,index,NULL,NULL));CHECK(!package_remove_begin(package,index,NULL,NULL));CHECK(faccessat(package,".removal.record.pending",F_OK,0)<0);
+    CHECK(!linkat(package,"removal.record",package,".removal.record.pending",0));CHECK(!package_remove_begin(package,index,NULL,NULL));CHECK(faccessat(package,".removal.record.pending",F_OK,0)<0);
     char pool_path[256];CHECK(snprintf(pool_path,sizeof(pool_path),"%s.pool",path)<(int)sizeof(pool_path));CHECK(!mkdir(pool_path,0700));int pool=open(pool_path,O_RDONLY|O_DIRECTORY);CHECK(pool>=0);
     PackageReservationResult charge;CHECK(!package_reserve(pool,package,index,6,1,&charge));CHECK(charge.packages==1&&charge.reserved_bytes==6);int released=-7;
     CHECK(!strcmp(package_remove_release(pool,package,index,NULL,NULL,&released),"package_reservation_not_empty"));CHECK(released==-7);

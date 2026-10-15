@@ -81,3 +81,26 @@ already-completed retry and exact recharge/release of the clean namespace. All
 `/private/tmp/samosa-removal-metadata-cleanup.log`. This completes these native
 completed-payload removal phases; public coordination, partial-copy removal,
 other backend packages and the remaining component-2 acceptance work stay open.
+
+## Starting a removal transaction
+
+`package_remove_begin` acquires the exclusive assembly lease and verifies the
+registered package identity. For a new transaction it binds the payload name,
+captures its complete pinned inode inventory, reads and checks the exact completion
+declaration, and rechecks completion/payload/lock bindings before durable record
+publication. It does not delete package data. No backend readiness callback is
+needed to establish ownership of a fully pinned, registered completed payload.
+
+On restart it first checks pending publication, reconstructs the complete validated
+record from disk and explicitly recovers it, including the known two-link interval.
+An existing valid committed record is reused without recapturing already removed
+files. Malformed pending state refuses even if another committed record exists;
+it is never silently ignored or adopted. The caller retains named-root bindings
+through trusted request control.
+
+Normal and ASan/UBSan coordinator/removal gates pass 188 checks, including
+cancelled startup, reader exclusion, foreign payload/pending metadata refusal
+before journal creation or deletion, a real killed inventory publisher, disk-only
+reconstruction, committed retry and two-link publication recovery. Log:
+`/private/tmp/samosa-removal-begin-coordinator.log`. Public catalog-selected removal
+coordination and partial-install cleanup remain the following component-2 steps.

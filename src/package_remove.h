@@ -1,6 +1,9 @@
 #ifndef SAMOSA_INFERENCE_PACKAGE_REMOVE_H
 #define SAMOSA_INFERENCE_PACKAGE_REMOVE_H
 #include "package_removal_record.h"
+/* Verify registered completion and full payload pins under the exclusive lease,
+ * then persist/recover its removal record. Does not delete package data. */
+const char *package_remove_begin(int,const PackageIndex *,const char *(*)(void *),void *);
 /* Resume deletion of a registered completed payload using its durable record.
  * Acquires the exclusive assembly lease; refuses readers, foreign nodes and
  * substituted inodes. Leaves payload root, completion, journal and quota charge

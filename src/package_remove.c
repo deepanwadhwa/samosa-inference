@@ -71,6 +71,33 @@ static const char *lease(int directory,int *out){
     if(!e&&flock(fd,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"package_assembly_busy":"package_assembly_unavailable";
     if(e)close(fd);else *out=fd;return e;
 }
+const char *package_remove_begin(int directory,const PackageIndex *index,const char *(*control)(void *),void *context){
+    if(!index)return "invalid_package_removal_record";const char *e=control?control(context):NULL;if(e)return e;
+    int lock=-1,payload=-1,completion=-1;e=lease(directory,&lock);if(e)return e;
+    e=package_identity_verify(directory,index,control,context);PackageRemovalRecord *r=NULL;PackageTreeSnapshot *snapshot=NULL;
+    if(!e){r=malloc(sizeof(*r));if(!r)e="allocation_failed";}
+    if(!e){e=package_removal_record_load_pending(directory,index,control,context,r);
+        if(!e){e=package_removal_record_store(directory,index,r,control,context);goto done;}
+        if(strcmp(e,"package_removal_record_absent"))goto done;
+        e=package_removal_record_load(directory,index,control,context,r);
+        if(!e)goto done;if(strcmp(e,"package_removal_record_absent"))goto done;e=NULL;
+    }
+    if(!e){snapshot=malloc(sizeof(*snapshot));if(!snapshot)e="allocation_failed";}
+    if(!e){payload=openat(directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);if(payload<0||!bound(directory,"payload",payload))e="unsafe_package_removal_payload";}
+    if(!e)e=package_tree_snapshot(payload,index,control,context,snapshot);
+    struct stat package_stat,complete_stat;
+    if(!e){completion=openat(directory,"complete",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+        if(completion<0||fstat(directory,&package_stat)||fstat(completion,&complete_stat)||!bound(directory,"complete",completion))e="unsafe_package_removal_payload";}
+    if(!e)e=package_removal_record_capture(index,snapshot,&package_stat,&complete_stat,r);
+    if(!e){char expected[256],actual[256];int length=snprintf(expected,sizeof(expected),"samosa.package.complete.v1\n%s\n%llu %llu\n",index->manifest_sha256,(unsigned long long)r->payload.value[0],(unsigned long long)r->payload.value[1]);
+        if(complete_stat.st_size!=length||pread(completion,actual,(size_t)length,0)!=length||memcmp(expected,actual,(size_t)length))e="unsafe_package_removal_payload";}
+    if(!e)e=control?control(context):NULL;
+    if(!e){struct stat current;
+        if(fstat(completion,&current)||!matches(&r->completion,&current,1)||!bound(directory,"complete",completion)||!bound(directory,"payload",payload)||!bound(directory,"assemble.lock",lock))e="unsafe_package_removal_payload";}
+    if(!e)e=package_removal_record_store(directory,index,r,control,context);
+done:
+    free(snapshot);free(r);if(completion>=0)close(completion);if(payload>=0)close(payload);close(lock);return e;
+}
 const char *package_remove_payload(int directory,const PackageIndex *index,const char *(*control)(void *),void *context){
     if(!index)return "invalid_package_removal_record";const char *e=control?control(context):NULL;if(e)return e;
     int lock=-1;struct stat s;int payload=-1,completion=-1;e=lease(directory,&lock);if(e)return e;
