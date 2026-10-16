@@ -43,7 +43,17 @@ static const char *interrupt(void *opaque){Interrupt *x=opaque;char path[1024];s
         return "cancelled";}
     return NULL;}
 static const char *cancel(void *unused){(void)unused;return "deadline_exceeded";}
-int main(void) {
+int main(int argc,char **argv) {
+    /* Re-enter the killed writer through exec: Apple's SQLite opens signposts
+     * and is not safe to call in a forked child before exec. This still kills
+     * the actual publisher while its transaction is uncommitted. */
+    if(argc==6&&!strcmp(argv[1],"--crash-writer")) {
+        AudioStoreConfig writer={argv[2],"alice","speech"};AudioReceipt receipt;
+        Interrupt x={argv[2],atoi(argv[5]),1,0};
+        const char *e=audio_store_publish(&writer,"crash",argv[3],atoi(argv[4]),interrupt,&x,&receipt);
+        fprintf(stderr,"crash writer returned before notification: %s\n",e?e:"success");return 2;
+    }
+    CHECK(argc==1);
     char base[]="/private/tmp/samosa-audio-store.XXXXXX";
 #ifndef __APPLE__
     strcpy(base,"/tmp/samosa-audio-store.XXXXXX");
@@ -77,8 +87,10 @@ int main(void) {
     /* Failed transactional publication and killed writers leave no artifact. */
     close(fd);fd=packet(base,1048576);Interrupt x={state,-1,0,0};
     error(audio_store_publish(&c,"partial",request,fd,interrupt,&x,&got),"cancelled");CHECK(x.hit);zero(&got);CHECK(rows(state)==0);
-    int pipefd[2];CHECK(!pipe(pipefd));pid_t child=fork();CHECK(child>=0);
-    if(!child){close(pipefd[0]);x.notification=pipefd[1];x.kill=1;(void)audio_store_publish(&c,"crash",request,fd,interrupt,&x,&got);_exit(2);}
+    int pipefd[2];CHECK(!pipe(pipefd));char packet_arg[32],notification_arg[32];
+    snprintf(packet_arg,sizeof(packet_arg),"%d",fd);snprintf(notification_arg,sizeof(notification_arg),"%d",pipefd[1]);
+    pid_t child=fork();CHECK(child>=0);
+    if(!child){close(pipefd[0]);execl(argv[0],argv[0],"--crash-writer",state,request,packet_arg,notification_arg,(char*)NULL);_exit(2);}
     close(pipefd[1]);char signalbyte;CHECK(read(pipefd[0],&signalbyte,1)==1);close(pipefd[0]);CHECK(!kill(child,SIGKILL));int status;CHECK(waitpid(child,&status,0)==child&&WIFSIGNALED(status));
     CHECK(rows(state)==0);CHECK(!audio_store_publish(&c,"after-crash",request,fd,NULL,NULL,&r));
     CHECK(!audio_store_read(&c,r.id,65534,AUDIO_RANGE_MAX,out,NULL,NULL,&got));unsigned char expected[AUDIO_RANGE_MAX];memset(expected,'A',sizeof(expected));CHECK(!memcmp(out,expected,sizeof(expected)));
