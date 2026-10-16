@@ -148,5 +148,8 @@ model/tokenizer connection is now [qualified for ten cases](OPENDECISION_NATIVE_
 on macOS ARM64, including native structured-state rendering. Isolated normal/sanitizer runs each passed 15,560 checks with
 exact token matrices, matching discrete results and maximum typed-result
 difference approximately `0.000583839`. Native state rendering additionally
-passed 25,651 Python differential and ABI checks. Typed request/result JSON,
-engine protocol and public service integration remain open.
+passed 25,651 Python differential and ABI checks. The strict
+[typed JSON request/result layer](OPENDECISION_TYPED_REQUESTS.md) now passes
+all ten fresh-model cases on macOS in isolated normal and sanitizer runs,
+including exact result shapes and token matrices. Engine protocol and public
+service integration remain open; no public decision provider is advertised.

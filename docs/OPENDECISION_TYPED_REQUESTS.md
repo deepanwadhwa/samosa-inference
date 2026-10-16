@@ -7,8 +7,7 @@ inputs and writes typed result JSON. Embedded NUL is preserved; no untrusted
 JSON is passed to the model bridge's small internal parser.
 
 This is an engine building block, not a registered public inference endpoint.
-The framed engine transport, common provider controls and actual-model JSON
-round-trip qualification remain required.
+The framed engine transport and common provider controls remain required.
 
 Every request contains `method`. Unknown root fields and duplicate request or
 criteria keys are rejected. Candidate objects retain insertion order, which
@@ -53,3 +52,30 @@ result shapes, structured state, embedded NUL, strict refusal and preservation
 of previous output after inference failure. Linux and the full shared suites
 for this request-layer change remain pending. The preceding structured-state
 revision passed the full shared suites on macOS and Ubuntu ARM64.
+
+## Fresh-model JSON round trip
+
+The native qualification runner now accepts `--json-requests` alongside its
+existing native tokenizer/model arguments. In this mode every pinned reference
+case becomes a complete JSON request. The real Rust decoder and C++ request
+dispatcher run fresh native inference, then the harness compares the complete
+result JSON with the original OpenDecision result. Keys, shapes, legends,
+discrete results and backend metadata must match; numeric result fields use the
+previously fixed absolute tolerance `0.005`. Every model batch still requires
+exact token IDs, attention masks and token type IDs and logit tolerance `0.01`.
+
+On macOS 26.5.1 ARM64 / Apple Clang 21, isolated normal and ASan/UBSan runs each
+passed all ten cases and 64,259 assertions, including fixture serialization
+checks. The maximum absolute differences were `0.005859375` for logits and
+approximately `0.000583839` across numeric result fields. The cases cover Choice
+adjudication and duplicate descriptions, Score, both Noul modes, both relation
+directions, structured Unicode state and eight long relation pairs.
+
+The pinned static tokenizer/request archive for this run has SHA-256
+`3bf1aa96d7288f145bf9d60f1ceddf3336074fb064795f36bc6990427ce6af83`.
+Model, initializer, runtime and report pins match
+[the connected native text gate](OPENDECISION_NATIVE_TEXT_VERIFICATION.md).
+The runner snapshots source and libraries, verifies all inputs before/after,
+and records `scope: fresh native JSON requests/results; public provider still
+unqualified` in its qualification record. The shared CI additionally compiles
+this actual-model harness without downloading models.

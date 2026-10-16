@@ -461,7 +461,9 @@ build/decision-native-text.o: engines/decision/native_text.cpp engines/decision/
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -c engines/decision/native_text.cpp -o $@
 build/decision-native-text-real-harness.o: tests/test_decision_evidence_reference.cpp engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/text_evidence.h engines/json.h src/sha256.h | build
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_DECISION_NATIVE_REAL -Iengines -Isrc -c tests/test_decision_evidence_reference.cpp -o $@
-test-decision-evidence: build/test-decision-evidence build/test-decision-evidence-reference build/decision-native-text.o build/decision-native-text-real-harness.o
+build/decision-native-json-real-harness.o: tests/test_decision_evidence_reference.cpp engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/text_evidence.h engines/decision/request.h engines/json.h src/sha256.h | build
+	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_DECISION_NATIVE_REAL -DSAMOSA_DECISION_JSON_REAL -Iengines -Isrc -c tests/test_decision_evidence_reference.cpp -o $@
+test-decision-evidence: build/test-decision-evidence build/test-decision-evidence-reference build/decision-native-text.o build/decision-native-text-real-harness.o build/decision-native-json-real-harness.o
 	./build/test-decision-evidence
 sanitize-decision-evidence: | build
 	$(CXX) -O1 -g -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer engines/decision/text_evidence.cpp tests/test_decision_evidence.cpp -o build/test-decision-evidence-sanitize

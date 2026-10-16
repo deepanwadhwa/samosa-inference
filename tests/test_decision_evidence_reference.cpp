@@ -4,8 +4,12 @@
 #include "sha256.h"
 #ifdef SAMOSA_DECISION_NATIVE_REAL
 #include "decision/native_text.h"
+#ifdef SAMOSA_DECISION_JSON_REAL
+#include "decision/request.h"
+#endif
 #endif
 #include <cmath>
+#include <charconv>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -18,10 +22,21 @@ static jval* get(jval* value, const char* name, jtype type) {
 }
 static std::string text(jval* value,const char* name) {return get(value,name,J_STR)->str;}
 #ifdef SAMOSA_DECISION_NATIVE_REAL
-// The authenticated report's one structured-state fixture contains only string
-// keys/values. Serialize that QA input without implementing a public JSON parser.
+// Serialize authenticated QA fixtures, not public request input. The production
+// request decoder is the Rust implementation exercised by the JSON-real mode.
 static std::string fixture_json(jval* value) {
-  CHECK(value&&(value->t==J_STR||value->t==J_OBJ));
+  CHECK(value);
+  if(value->t==J_NULL)return "null";
+  if(value->t==J_BOOL)return value->boolean?"true":"false";
+  if(value->t==J_NUM) {
+    char bytes[64];auto result=std::to_chars(bytes,bytes+sizeof(bytes),value->num);
+    CHECK(result.ec==std::errc{});return std::string(bytes,result.ptr);
+  }
+  if(value->t==J_ARR) {
+    std::string result="[";
+    for(int i=0;i<value->len;++i){if(i)result+=',';result+=fixture_json(value->kids[i]);}
+    return result+']';
+  }
   if(value->t==J_STR) {
     std::string result="\"";for(const char* p=value->str;*p;++p) {
       CHECK(static_cast<unsigned char>(*p)>=32);
@@ -38,6 +53,20 @@ static std::string fixture_json(jval* value) {
   }
   return result+'}';
 }
+#ifdef SAMOSA_DECISION_JSON_REAL
+template<class Close>
+static void compare_result(jval* actual,jval* expected,const Close& close) {
+  CHECK(actual&&expected&&actual->t==expected->t);
+  if(expected->t==J_NUM) {CHECK(close(actual->num,expected->num));}
+  else if(expected->t==J_STR) {CHECK(std::string(actual->str)==expected->str);}
+  else if(expected->t==J_BOOL) {CHECK(actual->boolean==expected->boolean);}
+  else if(expected->t==J_ARR||expected->t==J_OBJ) {
+    CHECK(actual->len==expected->len);
+    for(int i=0;i<expected->len;++i)
+      compare_result(expected->t==J_OBJ?json_get(actual,expected->keys[i]):actual->kids[i],expected->kids[i],close);
+  }
+}
+#endif
 static void verify_file(const char* path,const char* expected) {
   std::ifstream input(path,std::ios::binary);CHECK(input.good());Sha256 sha;sha256_init(&sha);
   char block[65536];while(input) {input.read(block,sizeof(block));sha256_update(&sha,block,static_cast<size_t>(input.gcount()));}
@@ -148,6 +177,16 @@ int main(int argc,char** argv) {
         return true;
       };
       std::string error;jval* expected=json_get(test,"result");CHECK(expected);
+#ifdef SAMOSA_DECISION_JSON_REAL
+      const std::string arguments=fixture_json(args);
+      CHECK(!arguments.empty()&&arguments[0]=='{');
+      const std::string request="{\"method\":\""+method+"\","+arguments.substr(1);
+      std::string response="sentinel";
+      if(!execute_request(infer,request,&response,&error)) throw std::runtime_error(error);
+      char* response_arena=nullptr;jval* result=json_parse(response.c_str(),&response_arena);
+      struct ResultCleanup {jval* value;char* arena;~ResultCleanup(){json_free(value);free(arena);}} result_cleanup{result,response_arena};
+      compare_result(result,expected,close);
+#else
       if(method=="choice"||method=="score") {
         std::vector<double> probabilities;double certainty;
         if(method=="choice") {
@@ -202,6 +241,7 @@ int main(int argc,char** argv) {
           CHECK(close(actual[index].contradicts,get(scores,"contradicts",J_NUM)->num));
         }
       }
+#endif
       CHECK(next==static_cast<size_t>(batches->len));++exercised;
     }
 #ifdef SAMOSA_DECISION_NATIVE_REAL

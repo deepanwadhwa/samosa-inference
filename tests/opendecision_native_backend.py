@@ -44,9 +44,13 @@ def main():
     parser.add_argument("--tokenizer-library-pin")
     parser.add_argument("--initializer", type=Path)
     parser.add_argument("--initializer-pin")
+    parser.add_argument("--json-requests", action="store_true",
+                        help="Exercise strict JSON decoding and complete typed result serialization")
     args = parser.parse_args()
     names = ["runtime", "model", "reference"]
     native_text = args.tokenizer_library is not None
+    if args.json_requests and not native_text:
+        raise ValueError("JSON requests require native text qualification inputs")
     if native_text:
         if args.tokenizer_library.suffix != ".a" or not args.initializer:
             raise ValueError("Typed qualification requires a static tokenizer and initializer")
@@ -82,6 +86,9 @@ def main():
         sources += ["engines/decision/native_text.h", "engines/decision/native_text.cpp",
                     "engines/decision/text_evidence.h", "engines/decision/text_evidence.cpp",
                     "engines/decision/tokenizer/tokenizer.h", "tests/test_decision_evidence_reference.cpp"]
+    if args.json_requests:
+        sources += ["engines/decision/request.h", "engines/decision/request.cpp",
+                    "engines/decision/tokenizer/request.h"]
     source_pins = {}
     for name in sources:
         source_pins[name] = digest(repository / name)
@@ -102,6 +109,8 @@ def main():
                    str(output / "source/tests/test_decision_evidence_reference.cpp"), str(tokenizer_library)]
         common += (["-framework", "Security", "-framework", "CoreFoundation", "-liconv", "-lresolv"]
                    if platform.system() == "Darwin" else ["-ldl", "-lpthread", "-lm"])
+        if args.json_requests:
+            common += ["-DSAMOSA_DECISION_JSON_REAL", str(output / "source/engines/decision/request.cpp")]
     for suffix in ["", "-sanitize"]:
         executable = output / ("test-decision-ort-real" + suffix)
         options = ["-O2"] if not suffix else ["-O1", "-g", "-fsanitize=address,undefined",
@@ -120,7 +129,8 @@ def main():
         if digest(getattr(args, name)) != getattr(args, name + "_pin"):
             raise ValueError("Qualification input changed: " + name)
     record = dict(format="samosa.inference.nli-backend-qualification.v1",
-                  scope=("fresh native string-state typed decisions; public provider still unqualified" if native_text else
+                  scope=("fresh native JSON requests/results; public provider still unqualified" if args.json_requests else
+                         "fresh native typed decisions; public provider still unqualified" if native_text else
                          "native tensor primitive only; tokenizer/provider still unqualified"),
                   host=dict(system=platform.system(), machine=platform.machine()),
                   compiler=compiler_version, sdk=sdk, source_sha256=source_pins,
