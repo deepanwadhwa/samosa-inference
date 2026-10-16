@@ -450,6 +450,21 @@ sanitize-audio-store: | build
 test: test-audio-store
 sanitize: sanitize-audio-store
 
+# Decision postprocessing is model-free here. The separate reference executable
+# accepts a pinned actual-model capture and never downloads checkpoint assets.
+.PHONY: test-decision-evidence sanitize-decision-evidence
+build/test-decision-evidence: tests/test_decision_evidence.cpp engines/decision/text_evidence.cpp engines/decision/text_evidence.h | build
+	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines engines/decision/text_evidence.cpp tests/test_decision_evidence.cpp -o $@
+build/test-decision-evidence-reference: tests/test_decision_evidence_reference.cpp engines/decision/text_evidence.cpp engines/decision/text_evidence.h engines/json.h src/sha256.h | build
+	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -Isrc engines/decision/text_evidence.cpp tests/test_decision_evidence_reference.cpp -o $@
+test-decision-evidence: build/test-decision-evidence build/test-decision-evidence-reference
+	./build/test-decision-evidence
+sanitize-decision-evidence: | build
+	$(CXX) -O1 -g -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer engines/decision/text_evidence.cpp tests/test_decision_evidence.cpp -o build/test-decision-evidence-sanitize
+	./build/test-decision-evidence-sanitize
+test: test-decision-evidence
+sanitize: sanitize-decision-evidence
+
 .PHONY: test-speech-public sanitize-speech-public
 test-speech-public: build/samosa-inference-providers build/test-speech-worker build/speech-worker-fixture.so
 	python3 tests/test_speech_public.py $(abspath build/samosa-inference-providers) $(abspath build/test-speech-worker) $(abspath build/speech-worker-fixture.so)

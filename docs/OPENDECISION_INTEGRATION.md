@@ -138,3 +138,9 @@ Ubuntu 24.04 ARM64 replayed all 1,222 pinned corpus cases with its independently
 compiled library. The shared CI entry point builds the locked tokenizer and
 tests its C ABI. Typed scoring, provider integration and model packages remain
 open; tokenizer parity alone does not preserve complete decision results.
+
+The first [text scoring primitives](OPENDECISION_TEXT_SCORING_VERIFICATION.md)
+now preserve predicate, explicit binary and explicit-opposite relation
+postprocessing. Six actual-model captures agree within `1e-7` probability on
+macOS and Ubuntu ARM64 in normal and sanitizer builds. Choice, ordered Score,
+native model/tokenizer connection and public service integration remain open.
