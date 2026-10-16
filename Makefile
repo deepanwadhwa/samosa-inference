@@ -1,3 +1,5 @@
+DECISION_TOKENIZER_TARGET ?= $(if $(CARGO_TARGET_DIR),$(CARGO_TARGET_DIR),engines/decision/tokenizer/target)
+DECISION_TOKENIZER_ARCHIVE = $(DECISION_TOKENIZER_TARGET)/release/libsamosa_decision_tokenizer.a
 CC ?= cc
 CPPFLAGS ?=
 CFLAGS ?= -O2 -g
@@ -17,15 +19,15 @@ test-registry: build/test-registry
 sanitize-registry: | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_registry.c $(SOURCES) $(LIBS) -o build/test-registry-sanitize
 	./build/test-registry-sanitize
-REGISTRY_FLAGS = $(NATIVE_FLAGS) -DSAMOSA_WITH_SPEECH -DSAMOSA_WITH_WHISPER -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -DSAMOSA_WITH_SUMMARY
-REGISTRY_SOURCES = src/speech.c src/audio_store.c src/speech_worker.c src/speech_runtime.c src/speech_package.c src/speech_package_loader.c src/library_runtime.c src/engine_runtime.c $(SOURCES) src/llama.c src/whisper.c src/vision.c src/visual_bridge.c src/temporal.c src/temporal_input.c src/temporal_package.c src/summary.c src/summary_protocol.c src/artifact.c
-REGISTRY_HEADERS = src/speech.h src/audio_store.h $(SPEECH_WORKER_HEADERS) $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
+REGISTRY_FLAGS = -DSAMOSA_WITH_DECISION $(NATIVE_FLAGS) -DSAMOSA_WITH_SPEECH -DSAMOSA_WITH_WHISPER -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -DSAMOSA_WITH_SUMMARY
+REGISTRY_SOURCES = src/decision.c src/decision_assets.c src/speech.c src/audio_store.c src/speech_worker.c src/speech_runtime.c src/speech_package.c src/speech_package_loader.c src/library_runtime.c src/engine_runtime.c $(SOURCES) src/llama.c src/whisper.c src/vision.c src/visual_bridge.c src/temporal.c src/temporal_input.c src/temporal_package.c src/summary.c src/summary_protocol.c src/artifact.c
+REGISTRY_HEADERS = src/decision.h src/decision_assets.h engines/decision/tokenizer/request.h engines/decision/tokenizer/tokenizer.h src/speech.h src/audio_store.h $(SPEECH_WORKER_HEADERS) $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
 .PHONY: providers
 providers: build/samosa-inference-providers
-build/samosa-inference-providers: src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(REGISTRY_HEADERS) | build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(REGISTRY_FLAGS) src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
-build/samosa-inference-providers-sanitize: src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(REGISTRY_HEADERS) | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(REGISTRY_FLAGS) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
+build/samosa-inference-providers: src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(REGISTRY_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(REGISTRY_FLAGS) src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
+build/samosa-inference-providers-sanitize: src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(REGISTRY_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(REGISTRY_FLAGS) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
 .PHONY: test-registry-cli sanitize-registry-cli
 build/test-registry-cli: tests/test_registry_cli.c tests/whisper_fixture.h src/json.h src/sha256.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc tests/test_registry_cli.c -o $@
@@ -35,12 +37,12 @@ test-registry-cli: build/samosa-inference-providers build/test-registry-cli
 	$(abspath build/test-registry-cli) $(abspath build/samosa-inference-providers)
 sanitize-registry-cli: build/samosa-inference-providers-sanitize build/test-registry-cli-sanitize
 	$(abspath build/test-registry-cli-sanitize) $(abspath build/samosa-inference-providers-sanitize)
-build/test-registry-modalities: tests/test_registry.c tests/whisper_fixture.h $(REGISTRY_SOURCES) $(HEADERS) | build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(REGISTRY_FLAGS) -Isrc tests/test_registry.c $(REGISTRY_SOURCES) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
+build/test-registry-modalities: tests/test_registry.c tests/whisper_fixture.h $(REGISTRY_SOURCES) $(HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(REGISTRY_FLAGS) -Isrc tests/test_registry.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
 test-registry-modalities: build/test-registry-modalities
 	./build/test-registry-modalities
-sanitize-registry-modalities: | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(REGISTRY_FLAGS) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_registry.c $(REGISTRY_SOURCES) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o build/test-registry-modalities-sanitize
+sanitize-registry-modalities: $(DECISION_TOKENIZER_ARCHIVE) | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(REGISTRY_FLAGS) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_registry.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o build/test-registry-modalities-sanitize
 	./build/test-registry-modalities-sanitize
 test: test-registry
 sanitize: sanitize-registry
@@ -471,8 +473,6 @@ sanitize-decision-evidence: | build
 test: test-decision-evidence
 sanitize: sanitize-decision-evidence
 
-DECISION_TOKENIZER_TARGET ?= $(if $(CARGO_TARGET_DIR),$(CARGO_TARGET_DIR),engines/decision/tokenizer/target)
-DECISION_TOKENIZER_ARCHIVE = $(DECISION_TOKENIZER_TARGET)/release/libsamosa_decision_tokenizer.a
 DECISION_RUST_LIBS = $(if $(filter Darwin,$(shell uname -s)),-framework Security -framework CoreFoundation -liconv -lresolv,-ldl -lpthread -lm)
 DECISION_REQUEST_SOURCES = engines/decision/request.cpp engines/decision/text_evidence.cpp tests/test_decision_request.cpp
 DECISION_REQUEST_HEADERS = engines/decision/request.h engines/decision/text_evidence.h engines/decision/tokenizer/request.h
@@ -762,3 +762,20 @@ sanitize-molmo-engine-components: | build
 	./build/test-molmo2-processor-sanitize
 test: test-molmo-engine-components
 sanitize: sanitize-molmo-engine-components
+
+# Extend the existing decision transport fixture for public ownership/control
+# gates. Tiny fake loader dependency and dummy model bytes, never actual-model
+# evidence. Real model pins remain a separate explicit qualification runner.
+DECISION_FIXTURE_RUNTIME_NAME = $(if $(filter Darwin,$(shell uname -s)),libonnxruntime.1.27.0.dylib,libonnxruntime.so.1.27.0)
+DECISION_FIXTURE_RUNTIME = build/decision-public-loader/$(DECISION_FIXTURE_RUNTIME_NAME)
+DECISION_FIXTURE_LINK = $(if $(filter Darwin,$(shell uname -s)),-Xlinker -install_name -Xlinker @rpath/$(DECISION_FIXTURE_RUNTIME_NAME),-Xlinker -soname -Xlinker $(DECISION_FIXTURE_RUNTIME_NAME))
+$(DECISION_FIXTURE_RUNTIME): tests/decision_loader_fixture.c | build
+	mkdir -p build/decision-public-loader
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -shared -fPIC $< $(DECISION_FIXTURE_LINK) -o $@
+build/decision-public-fixture: $(DECISION_TRANSPORT_SOURCES) $(DECISION_REQUEST_HEADERS) engines/decision/transport.h $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_FIXTURE_RUNTIME) | build
+	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_DECISION_PUBLIC_FIXTURE -Iengines $(DECISION_TRANSPORT_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" $(DECISION_FIXTURE_RUNTIME) $(DECISION_RUST_LIBS) -Xlinker -rpath -Xlinker '$(DECISION_ORT_RPATH)' -o $@
+.PHONY: test-decision-public sanitize-decision-public
+test-decision-public: build/samosa-inference-providers build/decision-public-fixture
+	python3 tests/test_decision_controls.py $(abspath build/samosa-inference-providers) $(abspath build/decision-public-fixture) $(abspath $(DECISION_FIXTURE_RUNTIME))
+sanitize-decision-public: build/samosa-inference-providers-sanitize build/decision-public-fixture
+	python3 tests/test_decision_controls.py $(abspath build/samosa-inference-providers-sanitize) $(abspath build/decision-public-fixture) $(abspath $(DECISION_FIXTURE_RUNTIME))

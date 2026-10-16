@@ -10,6 +10,9 @@
 #include "temporal.h"
 #include "temporal_package.h"
 #include "speech.h"
+#ifdef SAMOSA_WITH_DECISION
+#include "decision.h"
+#endif
 #include "whisper_fixture.h"
 
 static char *call(const InferenceRegistry *r,const char *request,const char *error) {
@@ -121,6 +124,54 @@ int main(void){
     body=call(&modalities,"{\"contract_version\":1,\"op\":\"summarize\",\"provider_id\":\"summary\",\"text\":\"abc\",\"max_output_tokens\":16}","artifact_unavailable");free(body);
     char *wav=silence(100),*audio=transcribe(wav,NULL,0);char *provider=strstr(audio,"whisper-base-en-v1");CHECK(provider); /* route using its existing identity */
     mixed[2].provider_id="whisper-base-en-v1";body=call(&modalities,audio,"artifact_unavailable");free(body);free(audio);free(wav);
+#endif
+
+#ifdef SAMOSA_WITH_DECISION
+    const char *decision_pin="0000000000000000000000000000000000000000000000000000000000000000";
+    DecisionConfig dc={.self="/unused/self",.assets="/unused/assets",.pins={decision_pin,decision_pin,decision_pin,decision_pin}};
+    char decision_state[256];snprintf(decision_state,sizeof(decision_state),"%s/decision",root);
+    InferenceConfig decision_cfg={.provider_id="decision",.owner="alice",.context_tokens=512,.admission_state=decision_state,.decision=&dc};
+    InferenceRegistry decision_registry={&decision_cfg,1};CHECK(!inference_registry_validate(&decision_registry));
+    body=call(&decision_registry,"{\"contract_version\":1,\"op\":\"provider_describe\",\"provider_id\":\"decision\"}",NULL);
+    CHECK(strstr(body,"text_decisions")&&strstr(body,"relations")&&!strstr(body,"/unused"));free(body);
+    refused(&decision_registry,"{\"contract_version\":1,\"op\":\"generate\",\"provider_id\":\"decision\"}","unsupported_operation");
+    const char *decision_request="{\"contract_version\":1,\"op\":\"decide_text\",\"provider_id\":\"decision\",\"request\":{\"method\":\"relation\",\"state\":{\"z\":true,\"a\":2},\"proposition\":\"p\",\"contradiction\":\"c\"}}";
+    Json dj;CHECK(json_parse(&dj,decision_request,strlen(decision_request)));
+    char *dn=decision_normalized(&decision_cfg,&dj);CHECK(dn);
+    const char *equivalent="{\"contract_version\":1,\"op\":\"decide_text\",\"provider_id\":\"decision\",\"request\":{\"method\":\"relation\",\"state\":{\"a\":2,\"z\":true},\"proposition\":\"p\",\"contradiction\":\"c\",\"threshold\":0.5}}";
+    CHECK(json_parse(&dj,equivalent,strlen(equivalent)));char *de=decision_normalized(&decision_cfg,&dj);CHECK(de&&!strcmp(dn,de));free(de);
+    dc.pins[DECISION_RUNTIME]="1111111111111111111111111111111111111111111111111111111111111111";
+    de=decision_normalized(&decision_cfg,&dj);CHECK(de&&strcmp(dn,de));free(de);free(dn);
+    const char *invalid_decisions[]={
+        "{\"method\":\"choice\",\"state\":0,\"instructions\":\"q\",\"criteria\":{}}",
+        "{\"method\":\"relation\",\"state\":0,\"proposition\":\"p\",\"contradiction\":\"c\",\"threshold\":2}",
+        "{\"method\":\"noul\",\"state\":0,\"instructions\":\"q\",\"command\":\"private\"}"};
+    for(size_t i=0;i<sizeof(invalid_decisions)/sizeof(invalid_decisions[0]);i++){
+        char bad[1024];snprintf(bad,sizeof(bad),"{\"contract_version\":1,\"op\":\"decide_text\",\"provider_id\":\"decision\",\"request\":%s}",invalid_decisions[i]);
+        refused(&decision_registry,bad,"invalid_request");
+    }
+    /* Only the owned decision payload is opaque to the envelope parser. It
+     * still passes through the existing strict Rust decoder before admission. */
+    const char *nul_decision="{\"contract_version\":1,\"op\":\"decide_text\",\"provider_id\":\"decision\",\"request\":{\"method\":\"choice\",\"state\":\"hi\\u0000x\",\"instructions\":\"q\",\"criteria\":{\"z\\u0000x\":\"last\",\"a\":\"first\"}}}";
+    CHECK(!json_parse(&dj,nul_decision,strlen(nul_decision)));
+    CHECK(json_parse_opaque(&dj,nul_decision,strlen(nul_decision),"request"));
+    dn=decision_normalized(&decision_cfg,&dj);CHECK(dn&&strstr(dn,"\\u0000"));free(dn);
+    const char *invalid_payloads[]={
+        "{\"method\":\"noul\",\"state\":\"\\q\",\"instructions\":\"q\"}",
+        "{\"method\":\"noul\",\"state\":0,\"instructions\":\"q\",}",
+        "{\"method\":\"noul\",\"state\":0,\"instructions\":\"q\",\"instructions\":\"duplicate\"}",
+        "{\"method\":\"noul\",\"state\":0,\"instructions\":\"q\",\"\\u0000private\":1}"};
+    for(size_t i=0;i<sizeof(invalid_payloads)/sizeof(invalid_payloads[0]);i++){
+        char bad[1024];snprintf(bad,sizeof(bad),"{\"contract_version\":1,\"op\":\"decide_text\",\"provider_id\":\"decision\",\"request\":%s}",invalid_payloads[i]);
+        refused(&decision_registry,bad,"invalid_request");
+    }
+    refused(&decision_registry,"{\"contract_version\":1,\"op\":\"decide_text\",\"provider_id\":\"decision\",\"request\":{},\"request\":{}}","invalid_json");
+    refused(&decision_registry,"{\"contract_version\":1,\"op\":\"decide_text\",\"provider_id\":\"decision\",\"request\":{]}","invalid_json");
+    refused(&decision_registry,"{\"contract_version\":1,\"op\":\"decide_text\",\"provider_id\":\"decision\\u0000foreign\",\"request\":{}}","invalid_json");
+    decision_cfg.deadline_monotonic=1;
+    refused(&decision_registry,decision_request,"deadline_exceeded");
+    decision_cfg.deadline_monotonic=0;decision_cfg.platform=foreign_platform;
+    refused(&decision_registry,decision_request,"unsupported_provider_platform");decision_cfg.platform=NULL;
 #endif
     cleanup(root);printf("PASS provider registry: %u checks; routed namespaces, owner controls, strict discovery and adapter reuse\n",checks);return 0;
 }

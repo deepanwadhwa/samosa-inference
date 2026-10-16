@@ -50,11 +50,11 @@ static char *configuration(const char *path,size_t *bytes) {
 static const char *provider(InferenceRegistryHost *h,const Json *j,int object,size_t i,const char *self,const char *owner) {
     const char *common="|provider_id|kind|state|platform|context_tokens|queue_capacity|admission_wait_ms|";
     char *kind=string(h,j,object,"kind");if(!kind)return "invalid_registry_configuration";
-    int speech=!strcmp(kind,"speech_output"),fake=!strcmp(kind,"fake_text"),text=!strcmp(kind,"text"),embedding=!strcmp(kind,"embeddings"),
+    int decision=!strcmp(kind,"text_decisions"),speech=!strcmp(kind,"speech_output"),fake=!strcmp(kind,"fake_text"),text=!strcmp(kind,"text"),embedding=!strcmp(kind,"embeddings"),
         summary=!strcmp(kind,"summarization"),whisper=!strcmp(kind,"transcription"),vision=!strcmp(kind,"image_analysis"),temporal=!strcmp(kind,"video_analysis");
-    if(!fake&&!text&&!embedding&&!summary&&!whisper&&!vision&&!temporal&&!speech)return "unsupported_provider_kind";
+    if(!fake&&!text&&!embedding&&!summary&&!whisper&&!vision&&!temporal&&!speech&&!decision)return "unsupported_provider_kind";
     char allowed[512];snprintf(allowed,sizeof(allowed),"%s%s",common,
-        speech?"package|manifest_sha256|":text?"endpoint|model_alias|api_key_file|":embedding?"endpoint|model_alias|api_key_file|embedding_config_file|":
+        decision?"assets|engine_sha256|runtime_sha256|model_sha256|tokenizer_sha256|":speech?"package|manifest_sha256|":text?"endpoint|model_alias|api_key_file|":embedding?"endpoint|model_alias|api_key_file|embedding_config_file|":
         vision?"engine|model|engine_sha256|model_sha256|config_sha256|tokenizer_sha256|weights_sha256|":
         temporal?"engine|model|engine_sha256|model_sha256|manifest_sha256|":
         fake?"":"engine|model|engine_sha256|model_sha256|");
@@ -65,6 +65,13 @@ static const char *provider(InferenceRegistryHost *h,const Json *j,int object,si
     if(!number(j,object,"context_tokens",4096,128,131072,&c->context_tokens)||
        !number(j,object,"queue_capacity",4,0,8,&c->queue_capacity)||
        !number(j,object,"admission_wait_ms",10000,1,60000,&c->admission_wait_ms))return "invalid_registry_configuration";
+    if(decision){DecisionConfig *d=&h->decisions[i];d->self=self;d->assets=string(h,j,object,"assets");
+        const char *keys[]={"engine_sha256","runtime_sha256","model_sha256","tokenizer_sha256"};
+        if(!absolute(self)||!absolute(d->assets))return "invalid_registry_configuration";
+        for(unsigned k=0;k<DECISION_ASSET_COUNT;k++){d->pins[k]=string(h,j,object,keys[k]);if(!digest(d->pins[k]))return "invalid_registry_configuration";}
+        c->decision=d;c->context_tokens=512;
+        size_t declared=512;if(!number(j,object,"context_tokens",512,512,512,&declared))return "invalid_registry_configuration";
+    }
     if(speech){const char *package=string(h,j,object,"package"),*pin=string(h,j,object,"manifest_sha256");
         if(!absolute(self)||!absolute(package)||!digest(pin))return "invalid_registry_configuration";
         h->speeches[i]=(SpeechConfig){.self=self,.package=package,.manifest_sha256=pin};c->speech=&h->speeches[i];}

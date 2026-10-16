@@ -64,3 +64,26 @@ sanitized combined registry/CLI and controlled adapter gates. See
 [speech loader/platform evidence](SPEECH_LOADER_VERIFICATION.md) for precise
 commands, portability fixes and limits. This supersedes the controlled Linux
 registry gap recorded above, not the actual-model, public speech or release gaps.
+
+## Public OpenDecision text prerequisite — 2026-10-16
+
+Native text decisions now use the existing public registry, owner-scoped operation
+store, admission and guardian, with strict typed normalization/results and pinned
+closed execution assets. All ten actual macOS ARM64 model cases pass normal and
+sanitized public adapters (maximum result error0.000583839146). Independent shared
+normal/SAN checks pass on macOS and Ubuntu ARM64, including401 combined registry
+checks each and public decision owner/control/recovery gates. Exact commands,
+failures/fixes, artifact pins and terminal logs are in
+[public integration evidence](OPENDECISION_PUBLIC_INTEGRATION.md).
+
+Linux execution revealed an explicit standard ELF loader dependency from the
+Rust-linked worker; the shared OS trust resolver now recognizes the two standard
+loader basenames while retaining private-path/custom-name/shadow refusal. Its
+108 engine/4435 library/2713 speech-loader/94 decision-asset normal/SAN regression
+checks pass on both platforms. The guardian was reused unchanged; an observed
+requester-death test race was corrected by waiting for both unlink and rmdir
+within the unchanged deadline, and its broken-startup-reader regression passes.
+
+This closes only the public text prerequisite. OpenDecision image matching is
+next; area1 and areas2–7 remain open. No actual Linux model quality, persistent
+residency, complete release or legacy production switch is claimed.

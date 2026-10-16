@@ -2,6 +2,7 @@
 #define SAMOSA_DECISION_REQUEST_H
 #include <stddef.h>
 #include <stdint.h>
+#include "tokenizer.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -24,6 +25,13 @@ int sm_decision_request_load(const uint8_t *,size_t,void **handle);
 /* All view data is borrowed, read-only, valid until request_free. Text may
  * contain NUL; use lengths. Concurrent view reads are allowed. */
 int sm_decision_request_view(const void *,SmDecisionRequest *);
+/* Canonical worker JSON after validation, including rendered state and explicit
+ * defaults. Preserves candidate order. Zero-initialize output; free with
+ * sm_tokenizer_output_free. Failure leaves output unchanged. */
+int sm_decision_request_normalized(const void *,SmTokenizerOutput *);
+/* Exact typed result schema, order, finite probabilities and consistency with
+ * this admitted request. Model-free; returns tokenizer status codes. */
+int sm_decision_result_validate(const void *,const uint8_t *,size_t);
 void sm_decision_request_free(void *);
 #ifdef __cplusplus
 }

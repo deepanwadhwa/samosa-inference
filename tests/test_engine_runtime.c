@@ -37,6 +37,9 @@ int main(int argc,char **argv){
     mach(b,"/usr/lib/libc++.1.dylib");expect(fd,b,64,"invalid_engine_loader");
     elf(b,"libc.so.6");expect(fd,b,sizeof(b),NULL);
     elf(b,"libstdc++.so.6");expect(fd,b,sizeof(b),NULL);
+    elf(b,"ld-linux-aarch64.so.1");expect(fd,b,sizeof(b),NULL);
+    elf(b,"ld-linux-x86-64.so.2");expect(fd,b,sizeof(b),NULL);
+    elf(b,"/tmp/ld-linux-aarch64.so.1");expect(fd,b,sizeof(b),"unqualified_engine_dependencies");
     elf(b,"libllama.so");expect(fd,b,sizeof(b),"unqualified_engine_dependencies");
     elf(b,"/tmp/libc.so.6");expect(fd,b,sizeof(b),"unqualified_engine_dependencies");
     elf(b,"libc.so.6");w64(b+544,29);expect(fd,b,sizeof(b),"unqualified_engine_dependencies");

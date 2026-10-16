@@ -30,6 +30,7 @@ make -C "$native_check_source" CC="${CC:-clang}" CURL_LIBS=-lcurl test sanitize
 make -C "$native_check_source" CC="${CC:-clang}" CURL_LIBS=-lcurl test-registry-modalities sanitize-registry-modalities
 make -C "$native_check_source" CC="${CC:-clang}" CURL_LIBS=-lcurl test-registry-cli sanitize-registry-cli
 make -C "$native_check_source" CC="${CC:-clang}" CURL_LIBS=-lcurl test-speech-public sanitize-speech-public
+make -C "$native_check_source" CC="${CC:-clang}" CURL_LIBS=-lcurl test-decision-public sanitize-decision-public
 # Actual model execution additionally requires pinned model and Sources assets.
 make -C "$native_check_source" CC="${CC:-clang}" build/test-whisper-real build/test-whisper-real-sanitize build/test-vision-real build/test-vision-real-sanitize build/test-temporal-public-real build/test-temporal-public-real-sanitize
 make -C "$native_check_source" CC="${CC:-clang}" CURL_LIBS=-lcurl test-native sanitize-native

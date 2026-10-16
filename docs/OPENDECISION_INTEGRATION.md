@@ -6,6 +6,17 @@ upstream and the clean local checkout at revision
 `cbd0b50db42bba6975f342de1789fb3c8f2dc670`:
 [OpenDecision](https://github.com/deepanwadhwa/OpenDecision/tree/cbd0b50db42bba6975f342de1789fb3c8f2dc670).
 
+## Public text integration checkpoint — 2026-10-16
+
+The public registry now exposes the existing native text engine through
+`text_decisions` / `decide_text`, with strict typed requests/results and common
+owner/operation/admission/guardian controls. All ten pinned actual-model cases
+pass normally and with the sanitized public adapter on macOS ARM64; normal/SAN
+public control and independent shared checks pass on macOS and Ubuntu ARM64.
+See [public integration evidence](OPENDECISION_PUBLIC_INTEGRATION.md).
+This supersedes the historical public-text gap below. OpenDecision image
+matching remains the active area1 prerequisite; no full area is closed.
+
 ## Existing Chat use
 
 Chat's `tools/samosa_decision.py` imports `OpenDecisionEngine` and explicitly
@@ -53,13 +64,11 @@ does not establish OpenDecision image support.
 
 ## Qualification gap
 
-The inference provider registry currently has no OpenDecision decision provider.
-This is an uncovered integration requirement, not completed work. Before the
-extraction is qualified, preserve the existing text decisions, add the image
-scoring capability, independently pin/check its model and processor assets,
-exercise typed-result parity against the existing engine, and route callers
-through the inference service's ownership and control mechanisms. Application
-action rules remain with their consumers.
+The public text prerequisite is now qualified as recorded above. The remaining
+uncovered integration requirement is image scoring: independently pin/check its
+model and processor assets, preserve actual typed-result parity against the
+existing image engine, and route requests through the same public ownership and
+control mechanisms. Application action rules remain with their consumers.
 
 The local Hugging Face cache contains a SigLIP2 224 snapshot referenced by
 `75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2`. This is an observed asset location,

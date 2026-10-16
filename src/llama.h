@@ -7,6 +7,7 @@ typedef struct SummaryConfig SummaryConfig;
 typedef struct EmbeddingConfig EmbeddingConfig;
 typedef struct TemporalConfig TemporalConfig;
 typedef struct SpeechConfig SpeechConfig;
+typedef struct DecisionConfig DecisionConfig;
 typedef struct { const char *endpoint,*provider_id,*admission_state;size_t context_tokens;const char *model_alias,*owner;
     size_t queue_capacity,admission_wait_ms;
     int (*cancelled)(void *);void *cancellation;
@@ -20,6 +21,7 @@ typedef struct { const char *endpoint,*provider_id,*admission_state;size_t conte
     const EmbeddingConfig *embedding;
     const TemporalConfig *temporal;
     const SpeechConfig *speech;
+    const DecisionConfig *decision;
     /* Optional trusted deployment target; never selected by a public request. */
     const char *platform;
 } InferenceConfig;

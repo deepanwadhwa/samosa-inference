@@ -138,6 +138,34 @@ int main(int argc,char **argv){
         CHECK(access(workspace,F_OK)<0&&errno==ENOENT);
         free(cmd);close(in);close(result);close(directory);close(model);close(residency);CHECK(!unlink(residency_path));
     }
+    /* A requester can die after the native worker starts but before receiving
+     * the guardian's startup acknowledgment. A broken response reader must
+     * still reap the worker and remove its owned protocol workspace. */
+    char ack_workspace[512],ack_input[600],ack_result[600];
+    snprintf(ack_workspace,sizeof(ack_workspace),"%s/ack-workspace",root);
+    CHECK(!mkdir(ack_workspace,0700));
+    snprintf(ack_input,sizeof(ack_input),"%s/request.frame",ack_workspace);
+    snprintf(ack_result,sizeof(ack_result),"%s/result.frame",ack_workspace);
+    int ack_write=open(ack_input,O_WRONLY|O_CREAT|O_EXCL,0600);CHECK(ack_write>=0);CHECK(write(ack_write,"x",1)==1);CHECK(!close(ack_write));
+    int ack_in=open(ack_input,O_RDONLY),ack_out=open(ack_result,O_RDWR|O_CREAT|O_EXCL,0600);
+    int ack_dir=open(ack_workspace,O_RDONLY|O_DIRECTORY),ack_lease=lease(residency_path);
+    CHECK(ack_in>=0&&ack_out>=0&&ack_dir>=0&&ack_lease>=0);
+    int ack_control[2],ack_response[2];CHECK(!pipe(ack_control));CHECK(!pipe(ack_response));
+    CHECK(!close(ack_response[0])); /* Deliberately no reader for "started". */
+    const int sources[]={ack_control[0],ack_lease,ack_in,ack_dir,ack_in,ack_out,ack_response[1]};
+    const int targets[]={3,4,5,6,7,8,STDOUT_FILENO};int copies[7];
+    posix_spawn_file_actions_t actions;CHECK(!posix_spawn_file_actions_init(&actions));
+    for(size_t i=0;i<7;i++){copies[i]=fcntl(sources[i],F_DUPFD_CLOEXEC,20);CHECK(copies[i]>=0);CHECK(!posix_spawn_file_actions_adddup2(&actions,copies[i],targets[i]));CHECK(!posix_spawn_file_actions_addclose(&actions,copies[i]));}
+    CHECK(!posix_spawn_file_actions_addopen(&actions,STDERR_FILENO,"/dev/null",O_WRONLY,0));
+    char *ack_args[]={argv[0],"--inference-owned-engine-protocol-sized","30","65536",ack_workspace,"8196",argv[0],"--fixture","sleep",path,NULL};
+    pid_t ack_guardian;CHECK(!posix_spawn(&ack_guardian,argv[0],&actions,NULL,ack_args,environ));
+    CHECK(!posix_spawn_file_actions_destroy(&actions));
+    for(size_t i=0;i<7;i++)CHECK(!close(copies[i]));
+    CHECK(!close(ack_control[0]));CHECK(!close(ack_control[1]));CHECK(!close(ack_response[1]));
+    CHECK(waitpid(ack_guardian,&status,0)==ack_guardian);CHECK(WIFEXITED(status)&&WEXITSTATUS(status)==2);
+    CHECK(access(ack_workspace,F_OK)<0&&errno==ENOENT);
+    close(ack_in);close(ack_out);close(ack_dir);close(ack_lease);
+    CHECK(!unlink(residency_path));if(!access(path,F_OK))CHECK(!unlink(path));
     CHECK(!rmdir(root));
 
     printf("PASS engine process ownership: %u checks; bounded logs/lifetime, owned stop/group/parent-death, foreign survivor\n",checks);return 0;

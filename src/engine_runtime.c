@@ -46,8 +46,11 @@ static const char *mach(int fd,const unsigned char *h,uint64_t size){
     if(!e&&offset!=length)e="invalid_engine_loader";
     free(commands);return e;
 }
+/* The ELF interpreter is already an explicit OS dependency via PT_INTERP.
+ * Rust-linked executables may also name that same loader in DT_NEEDED for
+ * versioned TLS/runtime symbols. Only the standard bare names are trusted. */
 static int os_elf_library(const char *name){
-    static const char *const allowed[]={"libc.so.6","libm.so.6","libstdc++.so.6","libgcc_s.so.1","libgomp.so.1","libpthread.so.0","libdl.so.2","librt.so.1",NULL};
+    static const char *const allowed[]={"libc.so.6","libm.so.6","libstdc++.so.6","libgcc_s.so.1","libgomp.so.1","libpthread.so.0","libdl.so.2","librt.so.1","ld-linux-aarch64.so.1","ld-linux-x86-64.so.2",NULL};
     for(size_t i=0;allowed[i];i++)if(!strcmp(name,allowed[i]))return 1;
     return 0;
 }

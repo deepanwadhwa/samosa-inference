@@ -13,7 +13,7 @@ typedef struct { JsonType type; size_t begin, end; int next, count; } JsonToken;
 #ifndef JSON_TOKENS_MAX
 #define JSON_TOKENS_MAX 256
 #endif
-typedef struct { const char *text; size_t length, offset; int used; JsonToken tokens[JSON_TOKENS_MAX]; } Json;
+typedef struct { const char *text; size_t length, offset; int used; const char *opaque; JsonToken tokens[JSON_TOKENS_MAX]; } Json;
 static inline int utf8_valid(const unsigned char *s, size_t n) {
     for (size_t i=0;i<n;) {
         unsigned c=s[i++], cp, need;
@@ -73,6 +73,22 @@ static inline char *json_string(const Json *j, int t) {
     }
     out[w]=0; return out;
 }
+/* Optional root object member owned by a stricter component decoder. Only its
+ * balanced byte range is tokenized here; the consumer MUST validate its complete
+ * syntax/schema before using it. Normal json_parse keeps its original behavior. */
+static inline int json_opaque_value(Json *j) {
+    json_space(j);
+    if(j->used==JSON_TOKENS_MAX||j->offset==j->length||(j->text[j->offset]!='{'&&j->text[j->offset]!='['))return -1;
+    int t=j->used++;JsonToken *v=&j->tokens[t];v->begin=j->offset;v->type=j->text[j->offset]=='{'?JT_OBJECT:JT_ARRAY;
+    char stack[64];size_t depth=0;int quoted=0,escaped=0;
+    while(j->offset<j->length){unsigned char c=(unsigned char)j->text[j->offset++];
+        if(quoted){if(c<32)return -1;if(escaped){escaped=0;continue;}if(c=='\\'){escaped=1;continue;}if(c=='"')quoted=0;continue;}
+        if(c=='"'){quoted=1;continue;}
+        if(c=='{'||c=='['){if(depth==sizeof(stack))return -1;stack[depth++]=c=='{'?'}':']';}
+        else if(c=='}'||c==']'){if(!depth||stack[--depth]!=(char)c)return -1;if(!depth){v->end=j->offset;v->next=j->used;return t;}}
+    }
+    return -1;
+}
 static inline int json_value(Json *j, int depth) {
     json_space(j);
     if(depth>16 || j->used==JSON_TOKENS_MAX || j->offset==j->length) return -1;
@@ -83,6 +99,7 @@ static inline int json_value(Json *j, int depth) {
         json_space(j);
         if(j->offset<j->length && j->text[j->offset]==close) j->offset++;
         else for(;;) {
+            int opaque=0;
             if(c=='{') {
                 json_space(j);
                 if(j->offset==j->length || j->text[j->offset]!='"') return -1;
@@ -94,10 +111,11 @@ static inline int json_value(Json *j, int depth) {
                     if(duplicate) { free(name); return -1; }
                     prior=j->tokens[j->tokens[prior].next].next;
                 }
+                opaque=depth==0&&j->opaque&&!strcmp(name,j->opaque);
                 free(name); json_space(j);
                 if(j->offset==j->length || j->text[j->offset++]!=':') return -1;
             }
-            if(json_value(j,depth+1)<0) return -1;
+            if((opaque?json_opaque_value(j):json_value(j,depth+1))<0) return -1;
             v->count++; json_space(j);
             if(j->offset==j->length) return -1;
             char sep=j->text[j->offset++]; if(sep==close) break;
@@ -148,6 +166,11 @@ static inline int json_parse(Json *j, const char *text, size_t length) {
     memset(j,0,sizeof(*j)); j->text=text; j->length=length;
     if(!utf8_valid((const unsigned char*)text,length) || json_value(j,0)!=0) return 0;
     json_space(j); return j->offset==length;
+}
+static inline int json_parse_opaque(Json *j,const char *text,size_t length,const char *member) {
+    memset(j,0,sizeof(*j));j->text=text;j->length=length;j->opaque=member;
+    if(!utf8_valid((const unsigned char *)text,length)||json_value(j,0)!=0)return 0;
+    json_space(j);return j->offset==length;
 }
 static inline int json_get(const Json *j, int object, const char *name) {
     if(object<0 || j->tokens[object].type!=JT_OBJECT) return -1;

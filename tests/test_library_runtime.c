@@ -105,6 +105,8 @@ int main(void) {
     lib_elf(b,183,"libc.so.6",1);lib_elf_version(b,"GLIBC_2.17");lib_w32(b+1628,16);expect(fd,b,4096,&elf,"invalid_library_loader");
     CHECK(engine_trusted_system_library(1,"/usr/lib/libc++.1.dylib"));CHECK(!engine_trusted_system_library(1,"/usr/lib/.."));CHECK(!engine_trusted_system_library(1,"/System/Library/../evil"));
     CHECK(engine_trusted_system_library(0,"libc.so.6"));CHECK(!engine_trusted_system_library(0,"/tmp/libc.so.6"));
+    CHECK(engine_trusted_system_library(0,"ld-linux-aarch64.so.1"));CHECK(engine_trusted_system_library(0,"ld-linux-x86-64.so.2"));
+    CHECK(!engine_trusted_system_library(0,"/tmp/ld-linux-aarch64.so.1"));CHECK(!engine_trusted_system_library(0,"ld-linux-custom.so.1"));
     /* Bounded mutation/truncation corpus covers parser tables on both formats.
      * Any typed refusal or structurally valid image is permitted; sanitizers
      * must catch memory/overflow errors in these untrusted byte paths. */

@@ -7,6 +7,7 @@
 #include "vision.h"
 #include "temporal.h"
 #include "speech.h"
+#include "decision.h"
 typedef struct {
     InferenceRegistry registry;
     InferenceConfig providers[INFERENCE_PROVIDERS_MAX];
@@ -15,6 +16,7 @@ typedef struct {
     WhisperConfig transcriptions[INFERENCE_PROVIDERS_MAX];
     VisionConfig images[INFERENCE_PROVIDERS_MAX];
     TemporalConfig videos[INFERENCE_PROVIDERS_MAX];
+    DecisionConfig decisions[INFERENCE_PROVIDERS_MAX];
     SpeechConfig speeches[INFERENCE_PROVIDERS_MAX];
     char *strings[256];size_t string_count;
     char keys[INFERENCE_PROVIDERS_MAX][130];

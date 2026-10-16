@@ -2,6 +2,11 @@
 #define _DARWIN_C_SOURCE
 #include "registry.h"
 #include "json.h"
+#ifdef SAMOSA_WITH_DECISION
+#define parse_request(j,s,n) json_parse_opaque(j,s,n,"request")
+#else
+#define parse_request(j,s,n) json_parse(j,s,n)
+#endif
 #include "platform.h"
 #include <sys/stat.h>
 
@@ -25,6 +30,7 @@ static int path(const char *s) {
     return s[strlen(s)-1]!='/';
 }
 static const char *kind(const InferenceConfig *c) {
+    if(c->decision)return "text_decisions";
     if(c->speech)return "speech_output";
     if(c->whisper)return "transcription";
     if(c->vision)return "image_analysis";
@@ -35,6 +41,9 @@ static const char *kind(const InferenceConfig *c) {
 }
 static int compiled(const InferenceConfig *c) {
     (void)c;
+#ifndef SAMOSA_WITH_DECISION
+    if(c->decision)return 0;
+#endif
 #ifndef SAMOSA_WITH_SPEECH
     if(c->speech)return 0;
 #endif
@@ -59,7 +68,7 @@ const char *inference_registry_validate(const InferenceRegistry *r) {
     if(!r||!r->providers||!r->count||r->count>INFERENCE_PROVIDERS_MAX)return "invalid_registry_configuration";
     for(size_t i=0;i<r->count;i++){
         const InferenceConfig *c=&r->providers[i];
-        unsigned modalities=!!c->whisper+!!c->vision+!!c->temporal+!!c->summary+!!c->embedding+!!c->speech;
+        unsigned modalities=!!c->whisper+!!c->vision+!!c->temporal+!!c->summary+!!c->embedding+!!c->speech+!!c->decision;
         if(!identity(c->provider_id,128)||!identity(c->owner,64)||!path(c->admission_state)||
            c->context_tokens<128||c->context_tokens>131072||c->queue_capacity>8||
            c->admission_wait_ms>60000||!inference_platform_valid(c->platform)||modalities>1||
@@ -78,6 +87,7 @@ const char *inference_registry_validate(const InferenceRegistry *r) {
     return NULL;
 }
 static int work(const InferenceConfig *c,const char *op) {
+    if(c->decision)return !strcmp(op,"decide_text");
     if(c->speech)return !strcmp(op,"speech_generate")||!strcmp(op,"audio_read")||!strcmp(op,"audio_delete");
     if(c->whisper)return !strcmp(op,"transcribe");
     if(c->vision)return !strcmp(op,"analyze_image");
@@ -88,6 +98,7 @@ static int work(const InferenceConfig *c,const char *op) {
            !strcmp(op,"provider_status")||!strcmp(op,"session_create")||!strcmp(op,"session_get");
 }
 static const char *operations(const InferenceConfig *c) {
+    if(c->decision)return "\"decide_text\"";
     if(c->speech)return "\"speech_generate\",\"audio_read\",\"audio_delete\"";
     if(c->whisper)return "\"transcribe\"";
     if(c->vision)return "\"analyze_image\"";
@@ -135,7 +146,7 @@ int inference_registry_dispatch(const InferenceRegistry *r,const char *input,siz
     const char *error=inference_registry_validate(r);if(error)return fail(out,error);
     if(length>INFERENCE_REQUEST_MAX)return fail(out,"request_too_large");
     Json j;size_t version;
-    if(!input||!json_parse(&j,input,length)||j.tokens[0].type!=JT_OBJECT)return fail(out,"invalid_json");
+    if(!input||!parse_request(&j,input,length)||j.tokens[0].type!=JT_OBJECT)return fail(out,"invalid_json");
     if(!json_uint(&j,json_get(&j,0,"contract_version"),&version)||version!=1)return fail(out,"unsupported_contract");
     char *op=json_string(&j,json_get(&j,0,"op"));if(!op)return fail(out,"invalid_request");
     if(!strcmp(op,"describe")){free(op);return j.tokens[0].count==2?describe(r,out):fail(out,"unknown_field");}

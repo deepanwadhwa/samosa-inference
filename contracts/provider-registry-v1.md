@@ -56,6 +56,7 @@ a remote endpoint. It is never accepted as a public request override.
 | --- | --- | --- |
 | `text` | `endpoint`, `model_alias`, required `context_tokens`, optional `api_key_file` | `count_tokens`, `generate`, `provider_status`, `session_create`, `session_get` |
 | `embeddings` | Text endpoint fields plus private `embedding_config_file` | `embed_text` |
+| `text_decisions` | `assets`, `engine_sha256`, `runtime_sha256`, `model_sha256`, `tokenizer_sha256`; fixed context512 | `decide_text` |
 | `summarization` | `engine`, `model`, `engine_sha256`, `model_sha256` | `summarize`, `summarize_opening` |
 | `transcription` | Same engine/model pins | `transcribe` |
 | `image_analysis` | Engine/model pins plus `config_sha256`, `tokenizer_sha256`, `weights_sha256` | `analyze_image` |

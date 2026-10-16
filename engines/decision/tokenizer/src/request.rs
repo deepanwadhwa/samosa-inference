@@ -253,6 +253,280 @@ fn decode(bytes: &[u8]) -> Result<Owned, i32> {
         .collect();
     Ok(request)
 }
+// Normalize only after strict decoding. Criteria order remains part of request
+// identity; state objects have already been rendered with Python semantics.
+fn normalized(request: &Owned) -> Result<Vec<u8>, i32> {
+    use serde::ser::{SerializeMap, Serializer};
+    struct Criteria<'a>(&'a [(String, String)]);
+    impl serde::Serialize for Criteria<'_> {
+        fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            let mut map = serializer.serialize_map(Some(self.0.len()))?;
+            for (name, description) in self.0 {
+                map.serialize_entry(name, description)?;
+            }
+            map.end()
+        }
+    }
+    #[derive(serde::Serialize)]
+    struct Item<'a> {
+        state: &'a str,
+        proposition: &'a str,
+        contradiction: &'a str,
+    }
+    let mut bytes = Vec::new();
+    let mut serializer = serde_json::Serializer::new(&mut bytes);
+    let mut map = serializer.serialize_map(None).map_err(|_| INVALID)?;
+    let method = match request.kind {
+        1 => "choice",
+        2 => "score",
+        3 | 4 => "noul",
+        5 => "relation",
+        6 => "relations",
+        _ => return Err(INVALID),
+    };
+    map.serialize_entry("method", method).map_err(|_| INVALID)?;
+    if request.kind <= 4 {
+        map.serialize_entry("state", &request.state)
+            .map_err(|_| INVALID)?;
+        map.serialize_entry("instructions", &request.instructions)
+            .map_err(|_| INVALID)?;
+        match request.kind {
+            1 => map.serialize_entry("criteria", &Criteria(&request.candidates)),
+            2 => map.serialize_entry("criteria", &request.levels),
+            4 => map.serialize_entry(
+                "criteria",
+                &Criteria(&[
+                    ("true".into(), request.levels[0].clone()),
+                    ("false".into(), request.levels[1].clone()),
+                ]),
+            ),
+            _ => Ok(()),
+        }
+        .map_err(|_| INVALID)?;
+    } else {
+        if request.kind == 5 {
+            let (state, proposition, contradiction) = &request.relations[0];
+            map.serialize_entry("state", state).map_err(|_| INVALID)?;
+            map.serialize_entry("proposition", proposition)
+                .map_err(|_| INVALID)?;
+            map.serialize_entry("contradiction", contradiction)
+                .map_err(|_| INVALID)?;
+        } else {
+            let items: Vec<_> = request
+                .relations
+                .iter()
+                .map(|(state, proposition, contradiction)| Item {
+                    state,
+                    proposition,
+                    contradiction,
+                })
+                .collect();
+            map.serialize_entry("items", &items).map_err(|_| INVALID)?;
+        }
+        map.serialize_entry("threshold", &request.threshold)
+            .map_err(|_| INVALID)?;
+    }
+    map.end().map_err(|_| INVALID)?;
+    if bytes.len() > MAX_REQUEST {
+        return Err(CONTEXT);
+    }
+    Ok(bytes)
+}
+/// Owned worker payload for host admission and operation identity. No model or
+/// tokenizer is loaded. Output ownership matches sm_tokenizer_output_free.
+#[no_mangle]
+pub unsafe extern "C" fn sm_decision_request_normalized(
+    handle: *const c_void,
+    output: *mut crate::Output,
+) -> i32 {
+    if handle.is_null() || output.is_null() {
+        return INVALID;
+    }
+    if !(*output).data.is_null() || (*output).length != 0 || !(*output).owner.is_null() {
+        return INVALID;
+    }
+    match catch_unwind(AssertUnwindSafe(|| normalized(&*handle.cast::<Owned>()))) {
+        Ok(Ok(bytes)) => {
+            let owned = Box::new(bytes);
+            *output = crate::Output {
+                data: owned.as_ptr(),
+                length: owned.len(),
+                owner: Box::into_raw(owned).cast(),
+            };
+            0
+        }
+        Ok(Err(code)) => code,
+        Err(_) => PANIC,
+    }
+}
+// Validate typed results against the exact admitted request before publishing.
+// This is model-free shape/range/consistency validation, not model qualification.
+fn result_number(raw: &RawValue) -> Result<f64, i32> {
+    let value: f64 = serde_json::from_str(raw.get()).map_err(|_| INVALID)?;
+    if value.is_finite() {
+        Ok(value)
+    } else {
+        Err(INVALID)
+    }
+}
+fn probability(raw: &RawValue) -> Result<f64, i32> {
+    let value = result_number(raw)?;
+    if (0.0..=1.0).contains(&value) {
+        Ok(value)
+    } else {
+        Err(INVALID)
+    }
+}
+fn exact_fields<'a>(raw: &'a RawValue, names: &[&str]) -> Result<Fields<'a>, i32> {
+    let values = fields(raw)?;
+    allowed(&values, names)?;
+    if values.len() != names.len() {
+        return Err(INVALID);
+    }
+    Ok(values)
+}
+fn text_is(values: &Fields<'_>, name: &str, expected: &str) -> Result<(), i32> {
+    if string(field(values, name)?)? == expected {
+        Ok(())
+    } else {
+        Err(INVALID)
+    }
+}
+fn result_relation(raw: &RawValue, threshold: f64) -> Result<(), i32> {
+    let values = exact_fields(raw, &["type", "relation", "scores", "threshold", "backend"])?;
+    text_is(&values, "type", "relation")?;
+    text_is(&values, "backend", "explicit_opposite")?;
+    if result_number(field(&values, "threshold")?)? != threshold {
+        return Err(INVALID);
+    }
+    let scores = exact_fields(field(&values, "scores")?, &["supports", "contradicts"])?;
+    let support = probability(field(&scores, "supports")?)? >= threshold;
+    let contradict = probability(field(&scores, "contradicts")?)? >= threshold;
+    let expected = match (support, contradict) {
+        (true, true) => "conflicted",
+        (true, false) => "supports",
+        (false, true) => "contradicts",
+        (false, false) => "unknown",
+    };
+    text_is(&values, "relation", expected)
+}
+fn validate_result(request: &Owned, bytes: &[u8]) -> Result<(), i32> {
+    let raw: &RawValue = serde_json::from_slice(bytes).map_err(|_| INVALID)?;
+    match request.kind {
+        1 | 2 => {
+            let names: &[&str] = if request.kind == 1 {
+                &["type", "choice", "probabilities", "confidence"]
+            } else {
+                &["type", "score", "legend", "probabilities", "confidence"]
+            };
+            let values = exact_fields(raw, names)?;
+            text_is(
+                &values,
+                "type",
+                if request.kind == 1 { "choice" } else { "score" },
+            )?;
+            let distribution = fields(field(&values, "probabilities")?)?;
+            let expected: Vec<String> = if request.kind == 1 {
+                request
+                    .candidates
+                    .iter()
+                    .map(|(name, _)| name.clone())
+                    .collect()
+            } else {
+                (0..request.levels.len())
+                    .map(|index| index.to_string())
+                    .collect()
+            };
+            if distribution.len() != expected.len() {
+                return Err(INVALID);
+            }
+            let mut probabilities = Vec::new();
+            for ((name, value), expected) in distribution.iter().zip(&expected) {
+                if name != expected {
+                    return Err(INVALID);
+                }
+                probabilities.push(probability(value)?);
+            }
+            if (probabilities.iter().sum::<f64>() - 1.0).abs() > 1e-5 {
+                return Err(INVALID);
+            }
+            let entropy: f64 = probabilities
+                .iter()
+                .filter(|p| **p > 0.0)
+                .map(|p| -p * p.ln())
+                .sum();
+            let confidence = (1.0 - entropy / (probabilities.len() as f64).ln()).clamp(0.0, 1.0);
+            if (probability(field(&values, "confidence")?)? - confidence).abs() > 1e-5 {
+                return Err(INVALID);
+            }
+            if request.kind == 1 {
+                let mut selected = 0;
+                for i in 1..probabilities.len() {
+                    if probabilities[i] > probabilities[selected] {
+                        selected = i;
+                    }
+                }
+                text_is(&values, "choice", &expected[selected])?;
+            } else {
+                let legend = fields(field(&values, "legend")?)?;
+                if legend.len() != expected.len() {
+                    return Err(INVALID);
+                }
+                for (i, (name, description)) in legend.iter().enumerate() {
+                    if name != &expected[i] || string(description)? != request.levels[i] {
+                        return Err(INVALID);
+                    }
+                }
+                let score: f64 = probabilities
+                    .iter()
+                    .enumerate()
+                    .map(|(i, p)| i as f64 * p)
+                    .sum();
+                if (result_number(field(&values, "score")?)? - score).abs() > 1e-5 {
+                    return Err(INVALID);
+                }
+            }
+            Ok(())
+        }
+        3 | 4 => {
+            let values = exact_fields(raw, &["type", "noul"])?;
+            text_is(&values, "type", "noul")?;
+            probability(field(&values, "noul")?).map(|_| ())
+        }
+        5 => result_relation(raw, request.threshold),
+        6 => {
+            let results: Vec<&RawValue> = serde_json::from_str(raw.get()).map_err(|_| INVALID)?;
+            if results.len() != request.relations.len() {
+                return Err(INVALID);
+            }
+            for result in results {
+                result_relation(result, request.threshold)?;
+            }
+            Ok(())
+        }
+        _ => Err(INVALID),
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn sm_decision_result_validate(
+    handle: *const c_void,
+    data: *const u8,
+    length: usize,
+) -> i32 {
+    if handle.is_null() || data.is_null() || length == 0 || length > MAX_REQUEST {
+        return INVALID;
+    }
+    match catch_unwind(AssertUnwindSafe(|| {
+        validate_result(
+            &*handle.cast::<Owned>(),
+            std::slice::from_raw_parts(data, length),
+        )
+    })) {
+        Ok(Ok(())) => 0,
+        Ok(Err(code)) => code,
+        Err(_) => PANIC,
+    }
+}
 #[no_mangle]
 pub unsafe extern "C" fn sm_decision_request_load(
     data: *const u8,
@@ -345,6 +619,121 @@ mod tests {
             );
             sm_decision_request_free(handle);
             sm_decision_request_free(std::ptr::null_mut());
+        }
+    }
+    #[test]
+    fn normalized_worker_payload_is_stable_and_order_sensitive() {
+        for input in [
+            r#"{"method":"choice","state":{"z":1,"a":true},"instructions":"q\u0000x","criteria":{"z":null,"a":"first"}}"#,
+            r#"{"method":"score","state":[1,true],"instructions":"q","criteria":["low","high"]}"#,
+            r#"{"method":"noul","state":null,"instructions":"q","criteria":null}"#,
+            r#"{"method":"noul","state":0,"instructions":"q","criteria":{"false":"no","true":"yes"}}"#,
+            r#"{"method":"relation","state":{"x":2},"proposition":"p","contradiction":"c"}"#,
+            r#"{"method":"relations","items":[{"state":[0],"proposition":"p","contradiction":"c"}],"threshold":0.75}"#,
+            r#"{"method":"relations","items":[]}"#,
+        ] {
+            let first = normalized(&decode(input.as_bytes()).unwrap()).unwrap();
+            let second = normalized(&decode(&first).unwrap()).unwrap();
+            assert_eq!(first, second, "{input}");
+        }
+        let a = decode(
+            br#"{"method":"choice","state":0,"instructions":"q","criteria":{"z":"z","a":"a"}}"#,
+        )
+        .unwrap();
+        let b = decode(
+            br#"{"method":"choice","state":0,"instructions":"q","criteria":{"a":"a","z":"z"}}"#,
+        )
+        .unwrap();
+        assert_ne!(normalized(&a).unwrap(), normalized(&b).unwrap());
+        unsafe {
+            let handle = Box::into_raw(Box::new(a)).cast();
+            let mut output: crate::Output = std::mem::zeroed();
+            assert_eq!(
+                sm_decision_request_normalized(std::ptr::null(), &mut output),
+                INVALID
+            );
+            assert!(output.owner.is_null());
+            assert_eq!(sm_decision_request_normalized(handle, &mut output), 0);
+            let before = (output.data, output.length, output.owner);
+            assert_eq!(sm_decision_request_normalized(handle, &mut output), INVALID);
+            assert_eq!(before, (output.data, output.length, output.owner));
+            // The normalized payload owns its bytes independently of the handle.
+            sm_decision_request_free(handle);
+            let decoded = decode(std::slice::from_raw_parts(output.data, output.length)).unwrap();
+            assert_eq!(decoded.candidates[0].0, "z");
+            crate::sm_tokenizer_output_free(&mut output);
+            crate::sm_tokenizer_output_free(&mut output);
+        }
+    }
+    #[test]
+    fn typed_results_match_the_admitted_request() {
+        let choice = decode(br#"{"method":"choice","state":0,"instructions":"q","criteria":{"z":"last","a":"first"}}"#).unwrap();
+        let valid =
+            br#"{"type":"choice","choice":"z","probabilities":{"z":0.5,"a":0.5},"confidence":0}"#;
+        assert!(validate_result(&choice, valid).is_ok());
+        for invalid in [
+            r#"{"type":"choice","choice":"a","probabilities":{"z":0.5,"a":0.5},"confidence":0}"#,
+            r#"{"type":"choice","choice":"z","probabilities":{"a":0.5,"z":0.5},"confidence":0}"#,
+            r#"{"type":"choice","choice":"z","probabilities":{"z":0.9,"a":0.5},"confidence":0}"#,
+            r#"{"type":"choice","choice":"z","probabilities":{"z":1,"a":0},"confidence":0}"#,
+            r#"{"type":"choice","choice":"z","probabilities":{"z":0.5,"z":0.5},"confidence":0}"#,
+            r#"{"type":"choice","choice":"z","probabilities":{"z":0.5,"a":0.5},"confidence":0,"extra":1}"#,
+            r#"{"type":"noul","noul":0.5}"#,
+        ] {
+            assert!(
+                validate_result(&choice, invalid.as_bytes()).is_err(),
+                "{invalid}"
+            );
+        }
+        let score =
+            decode(br#"{"method":"score","state":0,"instructions":"q","criteria":["low","high"]}"#)
+                .unwrap();
+        let valid = br#"{"type":"score","score":0.5,"legend":{"0":"low","1":"high"},"probabilities":{"0":0.5,"1":0.5},"confidence":0}"#;
+        assert!(validate_result(&score, valid).is_ok());
+        let wrong_score = String::from_utf8(valid.to_vec())
+            .unwrap()
+            .replace("\"score\":0.5", "\"score\":0.8");
+        assert!(validate_result(&score, wrong_score.as_bytes()).is_err());
+        let wrong_legend = String::from_utf8(valid.to_vec())
+            .unwrap()
+            .replace("low", "changed");
+        assert!(validate_result(&score, wrong_legend.as_bytes()).is_err());
+        let noul = decode(br#"{"method":"noul","state":0,"instructions":"q"}"#).unwrap();
+        assert!(validate_result(&noul, br#"{"type":"noul","noul":0.5}"#).is_ok());
+        for invalid in [
+            r#"{"type":"noul","noul":-0.1}"#,
+            r#"{"type":"noul","noul":1e999}"#,
+            r#"{"type":"noul","noul":"0.5"}"#,
+        ] {
+            assert!(validate_result(&noul, invalid.as_bytes()).is_err());
+        }
+        let relation =
+            decode(br#"{"method":"relation","state":0,"proposition":"p","contradiction":"c"}"#)
+                .unwrap();
+        let valid = br#"{"type":"relation","relation":"supports","scores":{"supports":0.7,"contradicts":0.2},"threshold":0.5,"backend":"explicit_opposite"}"#;
+        assert!(validate_result(&relation, valid).is_ok());
+        let wrong_relation = String::from_utf8(valid.to_vec())
+            .unwrap()
+            .replace("\"supports\",", "\"conflicted\",");
+        assert!(validate_result(&relation, wrong_relation.as_bytes()).is_err());
+        let relations = decode(br#"{"method":"relations","items":[]}"#).unwrap();
+        assert!(validate_result(&relations, b"[]").is_ok());
+        assert!(validate_result(&relations, valid).is_err());
+        unsafe {
+            let handle = Box::into_raw(Box::new(relation)).cast();
+            assert_eq!(
+                sm_decision_result_validate(handle, valid.as_ptr(), valid.len()),
+                0
+            );
+            assert_eq!(
+                sm_decision_result_validate(std::ptr::null(), valid.as_ptr(), valid.len()),
+                INVALID
+            );
+            assert_eq!(
+                sm_decision_result_validate(handle, std::ptr::null(), 0),
+                INVALID
+            );
+            sm_decision_request_free(handle);
         }
     }
     #[test]

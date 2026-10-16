@@ -5,10 +5,13 @@ Independent-module completion is tracked in
 with [the existing implementation reuse audit](docs/REUSE_AUDIT.md).
 
 `make providers` builds the unified native provider registry over the existing
-text, embedding, summary, transcription, image and video adapters. Requests
+text, embedding, summary, transcription, image/video, speech output and native
+text-decision adapters. Requests
 select a configured provider ID; discovery and controls use one public interface.
 See [provider-registry-v1](contracts/provider-registry-v1.md) for private host
 configuration, limits, qualification and remaining lifecycle/service work.
+[Native text decisions](contracts/decision-v1.md) reuse the existing OpenDecision
+backend; image decisions remain an open integration requirement.
 
 Independent native C11 Inference boundary, libc and system SQLite. `make test`,
 `make sanitize`, `make release`. One JSON body on stdin, one result on stdout.

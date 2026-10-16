@@ -1,12 +1,20 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
 #include "inference.h"
+#ifdef SAMOSA_WITH_DECISION
+#include "decision.h"
+#endif
 #include "embedding.h"
 #include "sessions.h"
 #include "admission.h"
 #include "operations.h"
 #include "platform.h"
 #include "json.h"
+#ifdef SAMOSA_WITH_DECISION
+#define parse_request(j,s,n) json_parse_opaque(j,s,n,"request")
+#else
+#define parse_request(j,s,n) json_parse(j,s,n)
+#endif
 #include "sha256.h"
 #include "budget.h"
 #ifdef SAMOSA_WITH_SPEECH
@@ -54,18 +62,21 @@ static int dispatch_core(const InferenceConfig *cfg,const char *input,size_t len
 #endif
     if(length>INFERENCE_REQUEST_MAX)return fail(out,"request_too_large");
     Json request;size_t contract;
-    if(!json_parse(&request,input,length)||request.tokens[0].type!=JT_OBJECT)return fail(out,"invalid_json");
+    if(!parse_request(&request,input,length)||request.tokens[0].type!=JT_OBJECT)return fail(out,"invalid_json");
     if(!json_uint(&request,json_get(&request,0,"contract_version"),&contract)||contract!=1)return fail(out,"unsupported_contract");
     if(cfg&&!inference_platform_allowed(cfg->platform)){
         char *work=json_string(&request,json_get(&request,0,"op"));
         int executes=work&&(!strcmp(work,"generate")||!strcmp(work,"count_tokens")||!strcmp(work,"provider_status")||
             !strcmp(work,"embed_text")||!strcmp(work,"summarize")||!strcmp(work,"summarize_opening")||
-            !strcmp(work,"transcribe")||!strcmp(work,"analyze_image")||!strcmp(work,"analyze_video_frames")||!strcmp(work,"speech_generate"));
+            !strcmp(work,"transcribe")||!strcmp(work,"analyze_image")||!strcmp(work,"analyze_video_frames")||!strcmp(work,"speech_generate")||!strcmp(work,"decide_text"));
         free(work);
         /* Tracked replay happens before dispatch_core. Foreign deployment
          * targets refuse new model work while preserving retained data access. */
         if(executes)return fail(out,"unsupported_provider_platform");
     }
+#ifdef SAMOSA_WITH_DECISION
+    if(cfg&&cfg->decision)return decision_dispatch(cfg,&request,out);
+#endif
 #ifdef SAMOSA_WITH_WHISPER
     if(cfg&&cfg->whisper)return whisper_dispatch(cfg,&request,out);
 #endif
@@ -155,6 +166,9 @@ static int dispatch_core(const InferenceConfig *cfg,const char *input,size_t len
     free(provider);free(prompt);free(op);free(session);free(answer);return error?fail(out,error):0;
 }
 static char *normalized(const InferenceConfig *cfg,const Json *j,const char *op){
+#ifdef SAMOSA_WITH_DECISION
+    if(!strcmp(op,"decide_text")&&cfg&&cfg->decision)return decision_normalized(cfg,j);
+#endif
 #ifdef SAMOSA_WITH_SPEECH
     if(!strcmp(op,"speech_generate")&&cfg&&cfg->speech)return speech_normalized(cfg,j);
 #endif
@@ -195,10 +209,14 @@ int inference_dispatch_config(const InferenceConfig *cfg,const char *input,size_
     double received=inference_now();
     if(length>INFERENCE_REQUEST_MAX)return fail(out,"request_too_large");
     Json j;size_t version;
-    if(!json_parse(&j,input,length)||j.tokens[0].type!=JT_OBJECT||!json_uint(&j,json_get(&j,0,"contract_version"),&version)||version!=1)return dispatch_core(cfg,input,length,out);
+    if(!parse_request(&j,input,length)||j.tokens[0].type!=JT_OBJECT||!json_uint(&j,json_get(&j,0,"contract_version"),&version)||version!=1)return dispatch_core(cfg,input,length,out);
     char *op=json_string(&j,json_get(&j,0,"op")),*id=json_string(&j,json_get(&j,0,"operation_id"));
     size_t budget=0;int budget_token=json_get(&j,0,"timeout_ms");InferenceConfig scoped={.provider_id=PROVIDER,.context_tokens=CONTEXT,.owner="local"};if(cfg)scoped=*cfg;
-    int transcription=0,visual=0,summarization=0,temporal=0,speech=0;
+    int transcription=0,visual=0,summarization=0,temporal=0,speech=0,decision=0;
+#ifdef SAMOSA_WITH_DECISION
+    decision=cfg&&cfg->decision&&op&&!strcmp(op,"decide_text");
+    if(decision&&budget_token<0){if(received<0){free(op);free(id);return fail(out,"state_unavailable");}double deadline=received+60;if(!scoped.deadline_monotonic||deadline<scoped.deadline_monotonic)scoped.deadline_monotonic=deadline;cfg=&scoped;}
+#endif
 #ifdef SAMOSA_WITH_SPEECH
     speech=cfg&&cfg->speech&&op&&!strcmp(op,"speech_generate");
     if(speech&&budget_token<0){if(received<0){free(op);free(id);return fail(out,"state_unavailable");}double deadline=received+60;if(!scoped.deadline_monotonic||deadline<scoped.deadline_monotonic)scoped.deadline_monotonic=deadline;cfg=&scoped;}
@@ -221,14 +239,14 @@ int inference_dispatch_config(const InferenceConfig *cfg,const char *input,size_
     temporal=cfg&&cfg->temporal&&op&&!strcmp(op,"analyze_video_frames");
     if(temporal&&budget_token<0){if(received<0){free(op);free(id);return fail(out,"state_unavailable");}double deadline=received+120;if(!scoped.deadline_monotonic||deadline<scoped.deadline_monotonic)scoped.deadline_monotonic=deadline;cfg=&scoped;}
 #endif
-    if(budget_token>=0){if(!op||(strcmp(op,"generate")&&strcmp(op,"count_tokens")&&!transcription&&!visual&&!summarization&&!embedding&&!temporal&&!speech)||!json_uint(&j,budget_token,&budget)||!budget||budget>(temporal?120000u:60000u)){free(op);free(id);return fail(out,"invalid_request");}if(received<0){free(op);free(id);return fail(out,"state_unavailable");}double deadline=received+(double)budget/1000;if(!scoped.deadline_monotonic||deadline<scoped.deadline_monotonic)scoped.deadline_monotonic=deadline;cfg=&scoped;}
+    if(budget_token>=0){if(!op||(strcmp(op,"generate")&&strcmp(op,"count_tokens")&&!transcription&&!visual&&!summarization&&!embedding&&!temporal&&!speech&&!decision)||!json_uint(&j,budget_token,&budget)||!budget||budget>((temporal||decision)?120000u:60000u)){free(op);free(id);return fail(out,"invalid_request");}if(received<0){free(op);free(id);return fail(out,"state_unavailable");}double deadline=received+(double)budget/1000;if(!scoped.deadline_monotonic||deadline<scoped.deadline_monotonic)scoped.deadline_monotonic=deadline;cfg=&scoped;}
     if(op&&(!strcmp(op,"operation_get")||!strcmp(op,"operation_cancel"))){
         int valid=j.tokens[0].count==3&&id;
         int rc=valid?operation_public(cfg,op,id,out):fail(out,"invalid_request");free(op);free(id);return rc;
     }
     if(json_get(&j,0,"parent_operation_id")>=0&&json_get(&j,0,"operation_id")<0){free(op);free(id);return fail(out,"invalid_request");}
     if(!op||json_get(&j,0,"operation_id")<0){free(op);free(id);return dispatch_core(cfg,input,length,out);}
-    if(!id||(strcmp(op,"generate")&&strcmp(op,"count_tokens")&&!transcription&&!visual&&!summarization&&!embedding&&!temporal&&!speech)){free(op);free(id);return fail(out,"invalid_request");}
+    if(!id||(strcmp(op,"generate")&&strcmp(op,"count_tokens")&&!transcription&&!visual&&!summarization&&!embedding&&!temporal&&!speech&&!decision)){free(op);free(id);return fail(out,"invalid_request");}
     char *request=normalized(cfg,&j,op);free(op);
     if(!request){free(id);return fail(out,"invalid_request");}
     char digest[65];hash_bytes(request,strlen(request),digest);free(request);
@@ -239,7 +257,7 @@ int inference_dispatch_config(const InferenceConfig *cfg,const char *input,size_
     if(error){operation_close(&operation);int rc=fail_tracked(out,error,id,parent);free(id);free(parent);return rc;}
     free(id);free(parent);
     if(saved){
-        Json response;size_t contract;int valid=json_parse(&response,saved,strlen(saved))&&
+        Json response;size_t contract;int valid=(decision?json_parse_opaque(&response,saved,strlen(saved),"result"):json_parse(&response,saved,strlen(saved)))&&
             json_uint(&response,json_get(&response,0,"contract_version"),&contract)&&contract==1;
         char *saved_id=valid?json_string(&response,json_get(&response,0,"operation_id")):NULL;
         /* A cached operation has no active lease/id allocation; compare request ID. */

@@ -71,3 +71,29 @@ not require Metal shaders or a media projector.
 Apple clang15/Xcode15.4 and Ubuntu24.04 x86-64 with clang18.1.3, system SQLite and
 libcurl. Exact source/run scope and remaining actual-model platform requirements
 are recorded in [native qualification](docs/SPEECH_LOADER_VERIFICATION.md).
+
+## Optional native text decisions
+
+The combined `make providers` registry now includes the existing OpenDecision
+text adapter. Building this target requires the pinned Rust1.90.0 toolchain and
+locked `engines/decision/tokenizer/Cargo.lock` dependencies, in addition to its
+existing C11/SQLite/libcurl dependencies. The tokenizer/request implementation
+links statically; Rust is a build dependency, not an installed interpreter.
+Minimal/default builds without the combined registry keep their existing deps.
+
+Decision execution uses an explicitly configured private four-file native asset
+root: worker executable, ORT1.27.0 runtime, ONNX model and effective tokenizer.
+The host pins all four files and checks the existing native loader graph before
+execution and artifact identity after execution. Assets are supplied separately;
+registry builds and controlled tests download no model. Production native worker
+builds additionally require the pinned ORT SDK/runtime described in
+`engines/decision/ort_sdk_pins.json`. Python is used only for developer/CI parity
+and control harnesses, never installed as a decision runtime or model server.
+
+`test-decision-public` and `sanitize-decision-public` reuse the existing transport
+fixture with tiny synthetic loader/model files. The sanitizer target instruments
+the public adapter/guardian; its external worker and Rust dependencies retain
+their separately declared instrumentation. A sanitizer-linked external worker
+imports a compiler runtime outside the closed asset root and is correctly refused
+by this production loader policy. Raw worker/scoring sanitizer gates remain
+separate. Fixtures do not establish model quality or actual-model availability.

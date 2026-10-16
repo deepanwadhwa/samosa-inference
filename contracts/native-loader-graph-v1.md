@@ -13,6 +13,11 @@ profile, and checks dependency compatibility versions against the inspected
 library's current version. ELF private names require qualified `$ORIGIN` search.
 Escapes, missing files, executable/data targets and unqualified search paths
 refuse. Trusted ELF system libraries cannot be shadowed by any sibling payload.
+The standard `ld-linux-aarch64.so.1` and `ld-linux-x86-64.so.2` names are also
+trusted OS runtime dependencies: Rust-linked binaries may name the interpreter
+in `DT_NEEDED` for versioned runtime/TLS symbols. The exact interpreter path is
+still checked independently, and neither arbitrary loader names/paths nor
+package-local shadows are admitted.
 Request controls are checked before resolution and between nodes/dependencies.
 
 Speech package verification now uses this resolver after inspecting every native
