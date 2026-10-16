@@ -1,0 +1,17 @@
+[package]
+name = "samosa-decision-tokenizer"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.90"
+publish = false
+
+[lib]
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+tokenizers = { version = "=0.23.2", default-features = false, features = ["onig"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+panic = "unwind"
