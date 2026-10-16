@@ -191,6 +191,17 @@ int main(void){
     refused(&paired,image_request,"deadline_exceeded");decision_pair[1].deadline_monotonic=0;
     decision_pair[1].platform=foreign_platform;
     refused(&paired,image_request,"unsupported_provider_platform");decision_pair[1].platform=NULL;
+#if defined(SAMOSA_WITH_SUMMARY) && defined(SAMOSA_WITH_SPEECH)
+    InferenceConfig unified[9];
+    for(size_t i=0;i<7;i++)unified[i]=mixed[i];
+    unified[7]=decision_pair[0];unified[8]=decision_pair[1];
+    InferenceRegistry all_modalities={unified,9};CHECK(!inference_registry_validate(&all_modalities));
+    body=call(&all_modalities,"{\"contract_version\":1,\"op\":\"describe\"}",NULL);
+    const char *all_kinds[]={"text","summarization","transcription","image_analysis","video_analysis","embeddings","speech_output","text_decisions","image_decisions"};
+    for(size_t i=0;i<9;i++){char expected[96];snprintf(expected,sizeof(expected),"\"kind\":\"%s\"",all_kinds[i]);CHECK(strstr(body,expected));}
+    CHECK(strstr(body,"decide_text")&&strstr(body,"decide_image")&&!strstr(body,"/unused"));free(body);
+    refused(&all_modalities,"{\"contract_version\":1,\"op\":\"decide_image\",\"provider_id\":\"text\"}","unsupported_operation");
+#endif
 #endif
     cleanup(root);printf("PASS provider registry: %u checks; routed namespaces, owner controls, strict discovery and adapter reuse\n",checks);return 0;
 }

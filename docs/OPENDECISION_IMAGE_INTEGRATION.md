@@ -269,6 +269,54 @@ retain their independent downstream acceptance requirements. Area1 closure
 requires its complete integration audit; this record does not close all seven
 Inference areas.
 
+## Expanded boundary qualification
+
+The final requirement audit identified that the original eleven cases did not
+exercise the public128-candidate limit or cross the native8-item batch boundary.
+`opendecision_image_reference.py --extended` captures twenty actual original-engine
+cases in `/private/tmp/samosa-decision-image-reference-v2/reference.json`, SHA256
+`ca1a8222ba9eb10b33648f5f1cca18b1aa61e0d493daf006dca530603fdc2ee6`.
+The original eleven captured cases and model/version/initializer identities are
+unchanged. Nine additions cover name fallback,9- and128-candidate Choice,
+128-level Score, the three non-unknown relation outcomes,512x512 and1x512 frames.
+Both capacity Choices select the final candidate, exercising a winner beyond
+the first native batch. Score preserves a complete128-position distribution;
+it does not assume all probability lies at the final level.
+
+The twenty-case private native pipeline passes normally and under ASan/UBSan,
+maximum typed error `0.0000595896`. Its expanded sanitizer harness additionally
+checks exact processor tensor bytes for every frame, including both new pixel
+bounds. Logs: `/private/tmp/samosa-image-native-extended.log` and
+`/private/tmp/samosa-image-native-extended-sanitize.log`.
+
+The nine additions pass through normal and sanitized public adapters, maximum
+typed error `0.0000595896272`, with complete result comparison, retry/status and
+pixel identity conflicts. The existing eleven-case public proof remains valid:
+the first eleven extended captures are identical, and the executed normal/SAN
+public binary hashes above are unchanged. Thus the public evidence covers all
+twenty cases, rather than treating a selected subset as the full corpus.
+Logs: `/private/tmp/samosa-image-public-extended.log` and
+`/private/tmp/samosa-image-public-extended-sanitize.log`. Reproduce additions with
+`test_decision_public.py --image` and repeated `--case NAME` selections; omitting
+selectors runs the complete pinned report and unknown/duplicate selectors refuse.
+
+The existing tokenizer corpus/replay now splits original HF matrices into the
+native8-row batches. All51 complete matrices match exactly on macOS and Linux.
+Extended corpus SHA256:
+`23c700545b49e83afc824fedc70c82836f881f737a76a88c670e7afabab3f248`.
+The model-free processor gate now checks twelve reference-pinned RGB/RGBA
+tensors, including512x512 and1x512, normally and under sanitizers on both hosts.
+The combined registry additionally configures all nine provider kinds in one
+instance; its normal/SAN gates pass459 checks on both platforms. Logs:
+`/private/tmp/samosa-image-pixels-extended-linux.log`,
+`/private/tmp/samosa-image-nine-provider-registry.log` and
+`/private/tmp/samosa-image-nine-provider-registry-linux.log`.
+
+No production computation changed for these additional cases, and no weights
+were downloaded, copied or re-exported. The extra18MiB reference directory holds
+only tokenizer and captured inputs/results. Hosted qualification of the final
+source revision remains a separate gate before area1 closes.
+
 ## Acceptance and scope
 
 OD-I01 captures all original methods, candidate order/collisions, instructions

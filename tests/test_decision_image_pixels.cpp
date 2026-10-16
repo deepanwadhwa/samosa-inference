@@ -7,6 +7,8 @@
 #define CHECK(value) do { if (!(value)) throw std::runtime_error(#value); } while (0)
 // Expected tensor hashes are from the pinned original-engine reference report
 // 228d574b40c0a5634bd5b937f9e5f637deea749718bc81674f1a2be36ed3c3a5.
+// Boundary tensors come from extended report
+// ca1a8222ba9eb10b33648f5f1cca18b1aa61e0d493daf006dca530603fdc2ee6.
 // This lightweight gate keeps external processor parity in model-free CI.
 static void verify(int width, int height, int mode, const char* expected) {
   std::vector<uint8_t> rgb, rgba;
@@ -52,7 +54,9 @@ int main() {
     verify(224, 224, 1, "7e57208539d6e369afd96a624b4407f79be1e5530574815457556b3c35892d6c");
     verify(37, 19, 1, "7e57208539d6e369afd96a624b4407f79be1e5530574815457556b3c35892d6c");
     verify(451, 173, 2, "2add203569cc423c912b476c9c0ae129d4729210a65e302471bdbec7695b30be");
-    std::cout << "PASS native image pixels: 8 pinned original processor tensors; refusal/output preservation\n";
+    verify(512, 512, 2, "c68b0088ab79dcb64f2bec08901c7ad784ce7f4d8ec3eb7c1e69d832bb9ccca7");
+    verify(1, 512, 2, "af87af1d0c23f61fa6c41e7eb0647b797ddf297ea48770f41daa767c19f88609");
+    std::cout << "PASS native image pixels: 12 pinned original processor tensors; refusal/output preservation\n";
     return 0;
   } catch (const std::exception& exception) {
     std::cerr << "FAIL native image pixels: " << exception.what() << '\n'; return 1;

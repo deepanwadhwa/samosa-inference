@@ -19,6 +19,7 @@ def main():
     parser.add_argument('repository', type=Path)
     parser.add_argument('model', type=Path)
     parser.add_argument('output', type=Path)
+    parser.add_argument('--extended', action='store_true', help='Qualify batch boundaries, capacity, relation categories and pixel bounds')
     args = parser.parse_args()
     repository, model, output = args.repository.resolve(), args.model.resolve(), args.output.absolute()
     assets = json.loads(Path(__file__).with_name('opendecision_image_assets.json').read_bytes())
@@ -98,6 +99,26 @@ def main():
             ('upscale','choice','small',dict(instructions='Which color?',criteria=colors)),
             ('unicode_truncation','noul','red',dict(instructions=('Café 猫 invoice € ')*100)),
         ]
+        if args.extended:
+            for name, width, height in [('full',512,512),('narrow',1,512)]:
+                image = Image.frombytes('RGB',(width,height),bytes(
+                    channel for y in range(height) for x in range(width)
+                    for channel in ((x*13+y*3)%256,(x*5+y*17)%256,(x*7+y*11)%256)))
+                images[name] = (image, dict(width=width,height=height,format='rgb8',**blob(image.tobytes(),'.rgb')))
+            def many(count):
+                return {**{f'blue_{i}':f'An entirely blue square, example {i}.' for i in range(count-1)},
+                        'tail_red':colors['red']}
+            cases += [
+                ('fallback_choice','choice','red',dict(instructions='unused',criteria={'An_entirely_red_square.':None,'blue':colors['blue']})),
+                ('cross_batch_choice','choice','red',dict(instructions='unused',criteria=many(9))),
+                ('capacity_choice','choice','red',dict(instructions='unused',criteria=many(128))),
+                ('capacity_score','score','red',dict(instructions='unused',criteria=list(many(128).values()))),
+                ('relation_supports','relation','red',dict(proposition=colors['red'],contradiction=colors['blue'],threshold=0.2)),
+                ('relation_contradicts','relation','red',dict(proposition=colors['blue'],contradiction=colors['red'],threshold=0.2)),
+                ('relation_conflicted','relation','red',dict(proposition=colors['red'],contradiction=colors['blue'],threshold=0.0005)),
+                ('full_frame','choice','full',dict(instructions='unused',criteria={'pattern':'A colorful geometric pattern.','sky':'A clear blue sky.'})),
+                ('narrow_frame','choice','narrow',dict(instructions='unused',criteria=colors)),
+            ]
         captured = []
         try:
             for name,method,key,arguments in cases:
@@ -113,6 +134,12 @@ def main():
                     assert result['choice']=='blue'
                 if name=='unused_choice_instructions':
                     assert result==captured[0]['result'] and batches==captured[0]['batches']
+                if name in {'cross_batch_choice','capacity_choice'}:
+                    assert result['choice']=='tail_red'
+                if name=='fallback_choice':
+                    assert result['choice']=='An_entirely_red_square.'
+                if name in {'relation_supports','relation_contradicts','relation_conflicted'}:
+                    assert result['relation']==name.removeprefix('relation_')
                 captured.append(dict(name=name,method=method,state=images[key][1],arguments=arguments,result=result,batches=list(batches)))
                 print('PASS image reference '+name,flush=True)
         finally:

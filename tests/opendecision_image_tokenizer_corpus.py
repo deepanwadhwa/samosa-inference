@@ -49,10 +49,13 @@ def main():
         expected = dict(tokenizer(texts,padding='max_length',max_length=64,truncation=True,
                                   return_attention_mask=True,return_token_type_ids=True))
         assert expected['input_ids'] == case['batches'][0]['inputs']['input_ids']
-        request = dict(texts=[[text] for text in texts],max_length=64,padding='max_length',
-                       truncation='longest_first',padding_side='right',truncation_side='right',
-                       pad_token='<pad>',pad_id=0,pad_type_id=0)
-        cases.append(dict(name=case['name'],request_hex=json.dumps(request,ensure_ascii=False).encode().hex(),status=0,result=expected))
+        for start in range(0,len(texts),8):
+            request = dict(texts=[[text] for text in texts[start:start+8]],max_length=64,padding='max_length',
+                           truncation='longest_first',padding_side='right',truncation_side='right',
+                           pad_token='<pad>',pad_id=0,pad_type_id=0)
+            observed = {key:value[start:start+8] for key,value in expected.items()}
+            name = case['name'] if len(texts)<=8 else case['name']+f'/batch-{start//8}'
+            cases.append(dict(name=name,request_hex=json.dumps(request,ensure_ascii=False).encode().hex(),status=0,result=observed))
     inventory(args.model,assets['files'])
     corpus = dict(format='samosa.tokenizer-parity.v1',scope='SigLIP image-description matrices; all three fields compared',
                   reference_sha256=args.reference_sha256,initializer_sha256=report['tokenizer']['sha256'],cases=cases)

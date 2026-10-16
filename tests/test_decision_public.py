@@ -31,6 +31,7 @@ def main():
     parser.add_argument('--inventory-pin', required=True)
     parser.add_argument('--reference-pin', required=True)
     parser.add_argument('--image', action='store_true')
+    parser.add_argument('--case', action='append', help='Run named cases from the pinned report; default is all cases')
     args = parser.parse_args()
     kind = 'image_decisions' if args.image else 'text_decisions'
     operation = 'decide_image' if args.image else 'decide_text'
@@ -45,6 +46,12 @@ def main():
             assert digest(root / f['name']) == f['sha256']
     verify()
     reference = json.loads(args.reference.read_bytes())
+    cases = reference['cases']
+    if args.case:
+        selected = set(args.case)
+        if len(selected) != len(args.case) or not selected.issubset({case['name'] for case in cases}):
+            raise ValueError('Duplicate or unknown selected reference case')
+        cases = [case for case in cases if case['name'] in selected]
     maximum = 0.0
     def compare(actual, expected):
         nonlocal maximum
@@ -90,7 +97,7 @@ def main():
         assert 'assets' not in json.dumps(descriptor)
         d = run(dict(contract_version=1, op='provider_describe', provider_id='decision'))
         assert d['context_tokens'] == (64 if args.image else 512) and kind in d['capabilities']
-        for i, case in enumerate(reference['cases']):
+        for i, case in enumerate(cases):
             print('BEGIN public ' + case['name'], flush=True)
             request = dict(contract_version=1, op=operation, provider_id='decision',
                            operation_id=f'case-{i}', timeout_ms=120000, request=dict(method=case['method'], **case['arguments']))
@@ -127,7 +134,7 @@ def main():
         run(dict(contract_version=1, op='generate', provider_id='decision', prompt='x', max_output_tokens=1), 'unsupported_operation')
         run(dict(contract_version=1, op=operation, provider_id='fake', request=dict(method='relations', items=[])), 'unsupported_operation')
     verify()
-    print(f'PASS public native decision actual-model cases/replay/routing/refusal; max result error {maximum:.9g}')
+    print(f'PASS public native decision: {len(cases)} actual-model cases/replay/routing/refusal; max result error {maximum:.9g}')
 
 
 if __name__ == '__main__':

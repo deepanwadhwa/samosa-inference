@@ -49,7 +49,7 @@ int main(int argc,char** argv) {
     CHECK(model.load(argv[1],tokenizer,&error));
     CHECK(!model.load(argv[1],"{}",&error));
     CHECK(!model.load("/missing/samosa-image-model.onnx",tokenizer,&error));
-    auto* cases=json_get(report,"cases");CHECK(cases&&cases->t==J_ARR&&cases->len==11);
+    auto* cases=json_get(report,"cases");CHECK(cases&&cases->t==J_ARR&&cases->len>=11&&cases->len<=32);
     for(int index=0;index<cases->len;++index) {
       auto* item=cases->kids[index];auto* state=json_get(item,"state");
       auto* file=json_get(state,"file");auto* pin=json_get(state,"sha256");
@@ -60,6 +60,16 @@ int main(int argc,char** argv) {
       auto raw=read(path,512*512*3);std::vector<uint8_t> rgb(raw.begin(),raw.end());
       std::vector<float> pixels;
       CHECK(samosa::decision::image_pixels(rgb,width->num,height->num,3,&pixels,&error));
+      auto* batches=json_get(item,"batches");CHECK(batches&&batches->t==J_ARR&&batches->len==1);
+      auto* recorded=json_get(json_get(batches->kids[0],"inputs"),"pixel_values");
+      auto* tensor_file=json_get(recorded,"file");auto* tensor_pin=json_get(recorded,"sha256");
+      CHECK(tensor_file&&tensor_file->t==J_STR&&tensor_pin&&tensor_pin->t==J_STR);
+      std::filesystem::path tensor_relative(tensor_file->str);
+      CHECK(tensor_relative.filename()==tensor_relative&&!tensor_relative.is_absolute());
+      auto tensor_path=std::filesystem::path(argv[3]).parent_path()/tensor_relative;
+      verify(tensor_path,tensor_pin->str);
+      auto expected_pixels=read(tensor_path,3*224*224*sizeof(float));
+      CHECK(expected_pixels==std::string(reinterpret_cast<const char*>(pixels.data()),pixels.size()*sizeof(float)));
       auto backend=samosa::decision::image_backend(model,pixels);
       auto* method=json_get(item,"method");auto* arguments=json_get(item,"arguments");
       CHECK(method&&method->t==J_STR&&arguments&&arguments->t==J_OBJ);
@@ -83,6 +93,6 @@ int main(int argc,char** argv) {
       CHECK(!samosa::decision::execute_request(backend,"{}",&result,&error)&&result==retained);
       std::cout<<json_get(item,"name")->str<<" typed result matches"<<std::endl;
     }
-    std::cout<<"PASS native typed image: 11 cases; max_result_error="<<maximum<<'\n';return 0;
+    std::cout<<"PASS native typed image: "<<cases->len<<" cases; max_result_error="<<maximum<<'\n';return 0;
   } catch(const std::exception& exception){std::cerr<<"FAIL native typed image: "<<exception.what()<<'\n';return 1;}
 }

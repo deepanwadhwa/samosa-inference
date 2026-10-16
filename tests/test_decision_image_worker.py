@@ -82,7 +82,7 @@ def main():
             assert subprocess.run(command, input=b'', capture_output=True, timeout=10).returncode == 3
     for name in ['model', 'tokenizer', 'reference']:
         assert digest(getattr(args, name)) == getattr(args, name + '_pin')
-    print(f'PASS image worker: 11 actual-model cases, repeated framing, EOF and raw-input refusals; max_result_error={maximum:.9g}')
+    print(f'PASS image worker: {len(reference["cases"])} actual-model cases, repeated framing, EOF and raw-input refusals; max_result_error={maximum:.9g}')
 
 
 if __name__ == '__main__':
