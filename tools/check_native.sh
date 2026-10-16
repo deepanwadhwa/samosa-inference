@@ -14,6 +14,11 @@ fi
 uname -a
 "${CC:-clang}" --version
 "${CXX:-c++}" --version
+# The private decision tokenizer is built even before provider registration so
+# its C ABI and locked dependencies cannot silently break on either platform.
+cargo +1.90.0 fmt --manifest-path "$native_check_source/engines/decision/tokenizer/Cargo.toml" -- --check
+cargo +1.90.0 test --locked --manifest-path "$native_check_source/engines/decision/tokenizer/Cargo.toml"
+cargo +1.90.0 build --locked --release --manifest-path "$native_check_source/engines/decision/tokenizer/Cargo.toml"
 make -C "$native_check_source" CC="${CC:-clang}" CURL_LIBS=-lcurl test sanitize
 make -C "$native_check_source" CC="${CC:-clang}" CURL_LIBS=-lcurl test-registry-modalities sanitize-registry-modalities
 make -C "$native_check_source" CC="${CC:-clang}" CURL_LIBS=-lcurl test-registry-cli sanitize-registry-cli

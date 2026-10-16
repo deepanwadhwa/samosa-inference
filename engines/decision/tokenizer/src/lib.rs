@@ -266,6 +266,66 @@ pub unsafe extern "C" fn sm_tokenizer_output_free(output: *mut Output) {
 mod tests {
     use super::*;
 
+    #[test]
+    fn owned_encoding_and_settings_reset_through_c_abi() {
+        // This deliberately tiny WordLevel fixture verifies transport and state;
+        // it does not claim DeBERTa model or Unigram tokenizer qualification.
+        let vocab = [("[UNK]", 0), ("[PAD]", 1), ("hello", 2), ("world", 3)]
+            .into_iter()
+            .map(|(name, id)| (name.to_owned(), id))
+            .collect();
+        let model = tokenizers::models::wordlevel::WordLevel::builder()
+            .vocab(vocab)
+            .unk_token("[UNK]".into())
+            .build()
+            .unwrap();
+        let mut tokenizer = Tokenizer::new(model);
+        tokenizer.with_pre_tokenizer(Some(
+            tokenizers::pre_tokenizers::whitespace::Whitespace::default(),
+        ));
+        let bytes = tokenizer.to_string(false).unwrap();
+        unsafe {
+            let mut handle = ptr::null_mut();
+            assert_eq!(
+                sm_tokenizer_load(bytes.as_ptr(), bytes.len(), &mut handle),
+                0
+            );
+            for padding in ["max_length", "none", "longest"] {
+                let request = serde_json::json!({"texts": [["hello world"], ["hello"]],
+                    "max_length": 4, "padding": padding, "truncation": "none", "pad_id": 1});
+                let data = serde_json::to_vec(&request).unwrap();
+                let mut output = Output {
+                    data: ptr::null(),
+                    length: 0,
+                    owner: ptr::null_mut(),
+                };
+                assert_eq!(
+                    sm_tokenizer_encode(handle, data.as_ptr(), data.len(), &mut output),
+                    0
+                );
+                let actual: serde_json::Value =
+                    serde_json::from_slice(std::slice::from_raw_parts(output.data, output.length))
+                        .unwrap();
+                let expected = match padding {
+                    "max_length" => serde_json::json!([[2, 3, 1, 1], [2, 1, 1, 1]]),
+                    "longest" => serde_json::json!([[2, 3], [2, 1]]),
+                    _ => serde_json::json!([[2, 3], [2]]),
+                };
+                assert_eq!(actual["input_ids"], expected);
+                let original = (output.data, output.length, output.owner);
+                assert_eq!(
+                    sm_tokenizer_encode(handle, data.as_ptr(), data.len(), &mut output),
+                    INVALID
+                );
+                assert_eq!((output.data, output.length, output.owner), original);
+                sm_tokenizer_output_free(&mut output);
+                sm_tokenizer_output_free(&mut output);
+                assert!(output.data.is_null() && output.owner.is_null() && output.length == 0);
+            }
+            sm_tokenizer_free(handle);
+        }
+    }
+
     // These tests exercise ABI refusal without inventing a replacement model.
     // Actual tokenizer behavior is qualified against the pinned HF wrapper.
     #[test]

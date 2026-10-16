@@ -127,5 +127,14 @@ normal and sanitizer builds using the existing ORT runtime, including eight
 512-position inputs in one batch. See [backend evidence](OPENDECISION_BACKEND_VERIFICATION.md)
 for artifact pins, numerical tolerance, independent build inputs and platform
 limits. This closes the raw model execution prerequisite. Native tokenizer
-parity and the typed public provider are next; no public OpenDecision provider
-is advertised yet.
+parity and the typed public provider are separate prerequisites; no public
+OpenDecision provider is advertised yet.
+
+The private [native tokenizer](../engines/decision/tokenizer/README.md) now
+preserves the effective Hugging Face Unigram initializer through the exact
+Tokenizers 0.23.2 Rust implementation. macOS ARM64 passed 1,187 successful exact
+three-matrix comparisons plus expected refusals against the original HF wrapper.
+Ubuntu 24.04 ARM64 replayed all 1,222 pinned corpus cases with its independently
+compiled library. The shared CI entry point builds the locked tokenizer and
+tests its C ABI. Typed scoring, provider integration and model packages remain
+open; tokenizer parity alone does not preserve complete decision results.

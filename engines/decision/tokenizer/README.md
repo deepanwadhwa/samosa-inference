@@ -36,6 +36,19 @@ initializer pins before comparing all three matrices with `AutoTokenizer`.
 Python is only a reference tool, not a shipped dependency. On macOS ARM64 the
 initial run passed 1,187 successful encodings plus expected refusals, covering
 Unicode, sentence pairs, both padding/truncation directions, all supported
-strategies, long context and post-error recovery. Linux execution and inclusion
-in the shared local CI entry point remain pending; this result does not qualify
-the public OpenDecision provider.
+strategies, long context and post-error recovery. The shared local/hosted CI
+entry point now builds this library and runs its ABI tests, including owned
+successful encoding and padding-state reset with a small WordLevel fixture.
+That fixture does not qualify DeBERTa tokenization. A corpus exported only after
+the macOS HF comparisons passed was replayed with the independently compiled
+Ubuntu 24.04 ARM64 library: all 1,222 cases passed (including refusals).
+The corpus SHA-256 is
+`c13aab5084baebea59b6d37f44a761c37f225fa9fe054c0e6517965275e816c9`.
+These results do not qualify the public OpenDecision provider or other hosts.
+
+To reproduce cross-platform comparison, generate a new corpus using
+`opendecision_tokenizer_parity.py ... --corpus-output NEW_FILE`, record its hash,
+then run `python3 tests/opendecision_tokenizer_replay.py LIBRARY INITIALIZER
+CORPUS --corpus-sha256 EXPECTED_HASH`. The replay tool requires only Python's
+standard library; the initial reference comparison requires the pinned HF
+environment. Corpus generation refuses replacement of an existing file.

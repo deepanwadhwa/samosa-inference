@@ -21,6 +21,8 @@ def main():
     parser.add_argument("library", type=Path)
     parser.add_argument("model", type=Path)
     parser.add_argument("initializer", type=Path)
+    parser.add_argument("--corpus-output", type=Path,
+                        help="Exclusively write checked requests/results for cross-platform replay")
     args = parser.parse_args()
     if importlib.metadata.version("tokenizers") != "0.23.2":
         raise ValueError("Reference requires tokenizers 0.23.2")
@@ -48,6 +50,7 @@ def main():
     handle = c.c_void_p()
     assert lib.sm_tokenizer_load(initializer, len(initializer), c.byref(handle)) == 0
     checks = 0
+    corpus = []
 
     def native(request):
         nonlocal checks
@@ -56,6 +59,7 @@ def main():
         status = lib.sm_tokenizer_encode(handle, data, len(data), c.byref(output))
         if status:
             assert not output.data and not output.length and not output.owner
+            corpus.append(dict(request_hex=data.hex(), status=status, result=None))
             return status, None
         result = json.loads(c.string_at(output.data, output.length))
         # Refuse overwriting a live allocation, preserving all ownership fields.
@@ -66,6 +70,7 @@ def main():
         lib.sm_tokenizer_output_free(c.byref(output))
         assert not output.data and not output.length and not output.owner
         checks += 1
+        corpus.append(dict(request_hex=data.hex(), status=status, result=result))
         return status, result
 
     rng = random.Random(841)
@@ -111,6 +116,12 @@ def main():
             assert native(request)[0] == 1
             assert native(valid)[0] == 0  # Every rejected request leaves the handle usable.
         print(f"PASS native tokenizer: {checks} successful encodings; exact three-matrix HF parity and ABI recovery")
+        # Publish only after every comparison passes. The corpus uses synthetic
+        # QA text and lets Linux replay the reference without a Python ML stack.
+        if args.corpus_output:
+            with args.corpus_output.open("x") as output:
+                json.dump(dict(format="samosa.tokenizer-parity.v1", cases=corpus), output)
+                output.write("\n")
     finally:
         lib.sm_tokenizer_free(handle)
 

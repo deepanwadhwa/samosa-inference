@@ -33,6 +33,8 @@ jobs:
           mkdir "$RUNNER_TEMP/inference"
           git archive HEAD | tar -x -C "$RUNNER_TEMP/inference"
           echo "INFERENCE_SOURCE=$RUNNER_TEMP/inference" >> "$GITHUB_ENV"
+      - name: Install pinned native tokenizer toolchain
+        run: rustup toolchain install 1.90.0 --profile minimal --component rustfmt
       - name: Shared local and hosted native checks
         shell: bash
         run: sh "$INFERENCE_SOURCE/tools/check_native.sh"

@@ -113,7 +113,10 @@ owner-gated operations/cancellation. Describe reports configuration; it does not
 prove engine readiness or artifact integrity.
 
 Before pushing inference changes, run `sh tools/check_native.sh` in clean macOS
-and Ubuntu source exports. An optional source-directory argument selects the
+and Ubuntu source exports. Install the tokenizer toolchain first with
+`rustup toolchain install 1.90.0 --profile minimal --component rustfmt`.
+The shared script checks tokenizer formatting, executes its ABI tests and builds
+its release library using the committed Cargo lockfile. An optional source-directory argument selects the
 export to test. GitHub Actions invokes this same script, including the GCC C++
 engine tests on Ubuntu. Record the actual host architecture and compiler with
 the results; hosted runners additionally qualify their configured matrix hosts.
