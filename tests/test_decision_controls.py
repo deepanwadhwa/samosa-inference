@@ -149,7 +149,8 @@ def main():
         owner = 'alice'
         run(control('operation_cancel', 'nul-choice', 'peer'), 'unknown_operation')
         for mode, error in [('invalid','invalid_provider_response'), ('wrong-type','invalid_provider_response'),
-                            ('malformed','invalid_provider_response'), ('die','provider_process_failed')]:
+                            ('malformed','invalid_provider_response'), ('die','provider_process_failed'),
+                            ('input-limit','context_limit')]:
             configure(mode)
             run(work(mode), error)
         configure('wait')

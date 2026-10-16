@@ -67,6 +67,11 @@ Do not introduce a shipped Python runtime.
 ## 5. Generation, streaming and sessions — pending
 
 - Preserve native template/token counting and exact context/output reservations.
+- Qualify aggregate decision input limits as well as per-field/token bounds.
+  Preserve semantic refusal codes through worker framing and the public adapter;
+  large valid typed requests must not be reported as crashes. The decision
+  transport now forwards `decision_input_limit` to the existing public
+  `context_limit` mapping; generation/session context acceptance remains open.
 - Add real incremental generation events; the existing correlated managed
   request/response stream is not token streaming.
 - Bound events/backpressure; qualify disconnect, partial output, cancellation,

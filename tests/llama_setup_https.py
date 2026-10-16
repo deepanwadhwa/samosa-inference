@@ -9,6 +9,7 @@ from pathlib import Path
 import shutil
 import ssl
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -33,6 +34,12 @@ parser.add_argument("pin")
 parser.add_argument("--revision")
 parser.add_argument("--decision-profile", choices=["text", "image"])
 parser.add_argument("--runtime-pin")
+parser.add_argument("--workspace", type=Path, help="Create an exclusive QA workspace; never adopts an existing directory")
+parser.add_argument("--source-map", type=Path, help="Pinned QA-only name-to-source mapping; avoids copying weights into a staging layout")
+parser.add_argument("--source-map-pin")
+parser.add_argument("--decision-cli")
+parser.add_argument("--decision-reference")
+parser.add_argument("--decision-reference-pin")
 parser.add_argument("--kind")
 parser.add_argument("--architecture")
 parser.add_argument("--engine-pin", required=True)
@@ -78,9 +85,24 @@ assert not any(vision_test_args) or (is_vision and all(vision_test_args))
 whisper_test_args = (args.whisper_cli, args.whisper_test, args.sources_cli, args.audio)
 assert not any(whisper_test_args) or (is_whisper and all(whisper_test_args))
 root = Path(args.root)
-payloads = {f["sha256"]: root / f["name"] for f in index["files"]}
+assert bool(args.source_map) == bool(args.source_map_pin)
+if args.source_map:
+    mapped = args.source_map.read_bytes()
+    assert hashlib.sha256(mapped).hexdigest() == args.source_map_pin
+    sources = {name: Path(path) for name,path in json.loads(mapped).items()}
+    assert set(sources) == {file['name'] for file in index['files']}
+    assert all(path.is_absolute() for path in sources.values())
+else:
+    sources = {file['name']:root/file['name'] for file in index['files']}
+payloads = {file['sha256']:sources[file['name']] for file in index['files']}
+decision_actual = (args.decision_cli,args.decision_reference,args.decision_reference_pin)
+assert not any(decision_actual) or (is_decision and all(decision_actual))
 payloads[args.pin] = Path(args.index)
-base = Path(tempfile.mkdtemp(prefix="samosa-llama-https-", dir="/private/tmp" if Path("/private/tmp").exists() else None)).resolve()
+if args.workspace:
+    args.workspace.mkdir(mode=0o700,parents=False,exist_ok=False)
+    base = args.workspace.resolve()
+else:
+    base = Path(tempfile.mkdtemp(prefix="samosa-llama-https-", dir="/private/tmp" if Path("/private/tmp").exists() else None)).resolve()
 server = thread = None
 requests = []
 try:
@@ -275,6 +297,26 @@ try:
     call("provider_remove", reservations, expected_status="removed")
     call("provider_install", reservations + policy)
     assert (package / "complete").is_file() and sorted(requests) == sorted(payloads)
+    if args.decision_cli:
+        public = base / 'decision-public'
+        shutil.copyfile(os.path.abspath(args.decision_cli),public)
+        public.chmod(0o500)
+        names = ['decision-engine','libonnxruntime.1.27.0.dylib' if index['platform'].startswith('macos-') else 'libonnxruntime.so.1.27.0','model.onnx','tokenizer.json']
+        entries = {file['name']:file for file in index['files']}
+        installed = dict(root=str(package/'payload'/'assets'),files=[])
+        for name in names:
+            file = entries['assets/'+name]
+            original = sources[file['name']].stat()
+            fresh = (package/'payload'/file['name']).stat()
+            assert (original.st_dev,original.st_ino)!=(fresh.st_dev,fresh.st_ino) and fresh.st_nlink==1
+            installed['files'].append(dict(name=name,bytes=file['bytes'],sha256=file['sha256']))
+        inventory = base/'installed-decision.json'
+        inventory.write_text(json.dumps(installed,indent=2)+'\n')
+        command = [sys.executable,str(Path(__file__).with_name('test_decision_public.py')),str(public),str(inventory),
+                   os.path.abspath(args.decision_reference),'--inventory-pin',hashlib.sha256(inventory.read_bytes()).hexdigest(),
+                   '--reference-pin',args.decision_reference_pin]
+        if args.decision_profile=='image':command.append('--image')
+        run_stage('actual installed '+args.decision_profile+' decisions',command,check=True,timeout=1800)
     if args.summary_cli:
         # Qualify fresh installed inodes, including the complete private library
         # package, rather than the candidate binaries edited by the QA packager.

@@ -68,6 +68,10 @@ int main(int argc, char **argv) {
         }
         if (mode == "die")
           std::_Exit(17);
+        if (mode == "input-limit") {
+          *error = "decision_input_limit";
+          return false;
+        }
         if (mode == "invalid") {
           *reply = R"({"type":"noul","noul":2})";
           return true;
@@ -83,6 +87,10 @@ int main(int argc, char **argv) {
 #endif
         if (request == "throw")
           throw std::runtime_error("/private/model/location");
+        if (request == "input-limit") {
+          *error = "decision_input_limit";
+          return false;
+        }
         if (request == "oversize") {
           reply->assign(1048577, 'x');
           return true;

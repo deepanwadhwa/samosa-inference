@@ -51,6 +51,7 @@ def main():
         checks += 1
         cases = [(b"{", "invalid_decision_request"), (b"\xff", "invalid_decision_request"),
                  (b"throw", "engine_failed"), (b"empty", "engine_failed"),
+                 (b"input-limit", "decision_input_limit"),
                  (b"oversize", "decision_result_limit")]
         for request, error in cases:
             process.stdin.write(frame(request))

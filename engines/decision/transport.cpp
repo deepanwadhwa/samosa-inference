@@ -31,7 +31,7 @@ std::string error_reply(const std::string& error) {
   // Never forward native exceptions or asset paths to the wire. Only fixed
   // semantic codes may leave the engine; details belong in the owner's logs.
   for(const char* code:{"invalid_decision_request","decision_request_limit","decision_result_limit",
-      "invalid_question_template","ambiguous_candidate_labels","context_limit"})
+      "decision_input_limit","invalid_question_template","ambiguous_candidate_labels","context_limit"})
     if(error==code)return "{\"error\":\""+error+"\"}";
   return "{\"error\":\"engine_failed\"}";
 }

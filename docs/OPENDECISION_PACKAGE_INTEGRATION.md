@@ -115,3 +115,49 @@ catalog entry, model download or retained weight copy was added for these
 controlled fixtures. Next qualify actual fresh installed text/image inodes and
 their public inference, then finish the remaining production catalog and original
 area2 acceptance requirements. Installation remains readiness `unqualified`.
+
+## Actual installation harness and first normal proofs
+
+`decision_actual_setup.py` now drives the existing HTTPS setup gate with a
+hash-pinned QA source map. Models are streamed directly from the retained flat
+assets; a second source layout is not created. Only the cold installer's cache
+and fresh payload copies are made. Exclusive workspaces and executable snapshots
+keep the gate independent of later development rebuilds; completion/failure
+removes those temporary copies without modifying source assets.
+
+The shared harness constructs an inventory from the fresh installed package,
+asserts all four execution files have different device/inode identities from
+their sources and single-link ownership, then invokes the existing public
+actual-model gate. Catalog discovery, TLS refusal, pin/profile mismatch and
+last-good preservation, offline status/resume, removal and cache-only reinstall
+remain the same required stages before inference.
+
+Initial normal qualification passes actual text (ten cases, including8x512,
+maximum typed error0.000583839146) and actual image (all twenty cases, including
+128-candidate capacity, maximum typed error0.0000595896272). Both use the
+qualified combined worker at327d691 with SHA256
+`2f23559a4d4feac0d1856788b28036b9eb62b027c0dde6fc96a77ebf0ec1f694`.
+Text package: five files,913287471 bytes, index
+`89f1f0d56528fc198791eb53f1584998c54dfd42c7c51b020c9390bda8fdbd44`.
+Image package: five files,1551839816 bytes, index
+`ab630828435d6cfb9a75eba5f91633d4328f3e15db3487f7ed6d93cbd403db50`.
+Logs/reports are `/private/tmp/samosa-decision-installed-text-normal-v2.{log,json}`
+and `/private/tmp/samosa-decision-installed-image-normal.{log,json}`.
+
+The first text attempt reached installed inference but the QA extension lacked
+its `sys` import. That harness error was fixed; the original failed report/log
+remain, and cleanup of its exclusive installation directory was checked. No
+model/runtime failure or successful model qualification was inferred from that
+attempt.
+
+Limit review also found that the existing native bridge's aggregate/template
+`decision_input_limit` was not in the framed semantic error allowlist, despite
+the parent's existing `context_limit` mapping. The transport now preserves it,
+with normal/SAN pipe and public controls, and the actual public gate now includes
+large accepted typed payloads that must return `context_limit`. Final actual
+normal/SAN installation qualification must use the worker rebuilt with that fix;
+the initial normal proofs above do not substitute for that final candidate.
+
+Hosted recipe integration run38975464089 passed atf24cce5 on macOS/Linux. Actual
+model execution here remains macOS ARM64 evidence. Production distribution
+catalogs and all original remaining area2 criteria are still open.

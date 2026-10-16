@@ -133,6 +133,13 @@ def main():
         run(bad, 'invalid_request')
         run(dict(contract_version=1, op='generate', provider_id='decision', prompt='x', max_output_tokens=1), 'unsupported_operation')
         run(dict(contract_version=1, op=operation, provider_id='fake', request=dict(method='relations', items=[])), 'unsupported_operation')
+        limited = dict(contract_version=1, op=operation, provider_id='decision', timeout_ms=120000,
+                       request=dict(method='choice',state='frame',instructions='q'*65536,criteria={'a':'A','b':'B'}))
+        if args.image:
+            limited.update(width=1,height=1,image_rgba_base64=base64.b64encode(bytes([255,0,0,255])).decode())
+            limited['request']['instructions'] = 'unused'
+            limited['request']['criteria'] = {str(i):str(i)+'x'*60000 for i in range(9)}
+        run(limited, 'context_limit')
     verify()
     print(f'PASS public native decision: {len(cases)} actual-model cases/replay/routing/refusal; max result error {maximum:.9g}')
 
