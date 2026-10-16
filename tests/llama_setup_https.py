@@ -11,6 +11,19 @@ import ssl
 import subprocess
 import tempfile
 import threading
+import time
+
+
+def run_stage(label, command, **kwargs):
+    # Report long model hashing/execution without logging private flags or credentials.
+    print(f"BEGIN {label}", flush=True)
+    started = time.monotonic()
+    try:
+        return subprocess.run(command, **kwargs)
+    finally:
+        # END reports timing only; assertions below determine qualification.
+        print(f"END {label}: {time.monotonic() - started:.3f}s", flush=True)
+
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("setup")
@@ -144,7 +157,8 @@ try:
         request = dict(contract_version=1, op=op, provider_id="llama-setup-qa")
         if extra:
             request.update(extra)
-        result = subprocess.run(config + flags, input=json.dumps(request), text=True, capture_output=True, timeout=900)
+        result = run_stage(f"{op} expects {error or expected_status}", config + flags,
+                           input=json.dumps(request), text=True, capture_output=True, timeout=900)
         assert "AddressSanitizer" not in result.stderr and "runtime error:" not in result.stderr, result.stderr
         receipt = json.loads(result.stdout)
         if error:
@@ -239,20 +253,20 @@ try:
         # Qualify fresh installed inodes, including the complete private library
         # package, rather than the candidate binaries edited by the QA packager.
         model = next(file for file in index["files"] if file["role"] == "model")
-        subprocess.run([os.path.abspath(args.summary_test), os.path.abspath(args.summary_cli),
+        run_stage("actual summary inference", [os.path.abspath(args.summary_test), os.path.abspath(args.summary_cli),
                         str(installed_engine), str(package / "payload" / model["name"])],
                        check=True, timeout=600)
     if args.temporal_cli:
-        subprocess.run([os.path.abspath(args.temporal_test), os.path.abspath(args.temporal_cli),
+        run_stage("actual temporal inference", [os.path.abspath(args.temporal_test), os.path.abspath(args.temporal_cli),
                         str(installed_engine), str(package / "payload" / "model"), str(base / "actual-temporal")],
                        check=True, timeout=600)
     if args.vision_cli:
-        subprocess.run([os.path.abspath(args.vision_test), os.path.abspath(args.vision_cli),
+        run_stage("actual vision inference", [os.path.abspath(args.vision_test), os.path.abspath(args.vision_cli),
                         str(installed_engine), str(package / "payload" / "model"), os.path.abspath(args.image)],
                        check=True, timeout=600)
     if args.whisper_cli:
         model = next(file for file in index["files"] if file["role"] == "model")
-        subprocess.run([os.path.abspath(args.whisper_test), os.path.abspath(args.whisper_cli),
+        run_stage("actual whisper inference", [os.path.abspath(args.whisper_test), os.path.abspath(args.whisper_cli),
                         os.path.abspath(args.sources_cli), str(installed_engine), str(package / "payload" / model["name"]),
                         os.path.abspath(args.audio)], check=True, timeout=600)
     print(f"PASS {'Molmo' if is_molmo else ('VisionPsy' if is_vision else ('Whisper' if is_whisper else 'llama'))} setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
