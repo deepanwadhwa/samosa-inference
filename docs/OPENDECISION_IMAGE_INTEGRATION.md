@@ -116,7 +116,43 @@ not the native algorithm. This gate runs without weights, ORT, Pillow or Python
 model dependencies. Native macOS and Linux ARM64 tests pass in both
 configurations; Linux checks use the same independent source container.
 
-Full typed native image decisions and public image operations remain unfinished.
+## Typed native image decisions
+
+`NativeImage` reuses the locked Rust tokenizer and the text bridge's JSON quoting
+and tensor decoder (now shared in `token_json.h`). It submits bounded batches of
+eight descriptions at 64 positions to `OrtImage`, then preserves order while
+collecting logits. Full candidate distributions span all admitted descriptions;
+batch boundaries do not independently normalize scores.
+
+The existing `execute_request` decoder and serializer now accept an internal
+`DecisionBackend`; the original `PairInference` entry remains the text adapter.
+Image matching supplies only its modality-specific computation: candidate-wise
+softmax, single-statement sigmoid, binary softmax, expected ordinal score and
+independent relation sigmoids. Entropy confidence is shared with existing text
+scoring in `evidence_math.h`. Image choice/score instructions remain unused;
+duplicate descriptions retain first-winner ties. Image relations report
+`siglip_image_text`; the unimplemented image batch-relations method is refused.
+
+`test_decision_image_native_real.cpp` verifies pinned weights, initializer,
+reference and RGB blobs, runs native preprocessing, tokenization, model execution
+and shared typed request/result serialization, and compares complete ordered
+results against the original engine. All eleven cases pass with maximum typed
+numeric error `0.00000314415` (gate `0.005`). Failed model/tokenizer replacements
+leave the prior engine usable and malformed requests preserve prior output.
+The normal/SAN targets are `build/test-decision-image-native-real` and its
+`-sanitize` variant, using the same explicit local SDK/runtime Make variables.
+Arguments are model, tokenizer, report, then their three SHA256 pins. No models
+are downloaded or copied by these targets.
+
+Typed actual-model logs are `/private/tmp/samosa-image-typed-native.log` and
+`/private/tmp/samosa-image-typed-native-sanitize.log`. The original text scoring
+and shared request checks pass normal/SAN on macOS and independent Linux ARM64.
+Standard model-free CI also compiles the image bridge without linking ORT.
+Actual typed image execution on Linux is not established by these checks.
+
+Public image registry/configuration, asset profile admission and worker transport
+remain unfinished. This private proof does not close area1 or any downstream
+Inference area.
 
 ## Acceptance and scope
 

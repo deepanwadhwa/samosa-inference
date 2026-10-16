@@ -455,17 +455,19 @@ sanitize: sanitize-audio-store
 # Decision postprocessing is model-free here. The separate reference executable
 # accepts a pinned actual-model capture and never downloads checkpoint assets.
 .PHONY: test-decision-evidence sanitize-decision-evidence
-build/test-decision-evidence: tests/test_decision_evidence.cpp engines/decision/text_evidence.cpp engines/decision/text_evidence.h | build
+build/test-decision-evidence: tests/test_decision_evidence.cpp engines/decision/text_evidence.cpp engines/decision/text_evidence.h engines/decision/evidence_math.h | build
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines engines/decision/text_evidence.cpp tests/test_decision_evidence.cpp -o $@
-build/test-decision-evidence-reference: tests/test_decision_evidence_reference.cpp engines/decision/text_evidence.cpp engines/decision/text_evidence.h engines/json.h src/sha256.h | build
+build/test-decision-evidence-reference: tests/test_decision_evidence_reference.cpp engines/decision/text_evidence.cpp engines/decision/text_evidence.h engines/decision/evidence_math.h tests/decision_reference_fixture.h engines/json.h src/sha256.h | build
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -Isrc engines/decision/text_evidence.cpp tests/test_decision_evidence_reference.cpp -o $@
-build/decision-native-text.o: engines/decision/native_text.cpp engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/text_evidence.h engines/decision/tokenizer/tokenizer.h engines/json.h | build
+build/decision-native-image.o: engines/decision/native_image.cpp engines/decision/native_image.h engines/decision/ort_image.h engines/decision/token_json.h engines/decision/evidence_math.h engines/decision/request.h engines/decision/text_evidence.h engines/decision/tokenizer/tokenizer.h engines/json.h | build
+	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -c engines/decision/native_image.cpp -o $@
+build/decision-native-text.o: engines/decision/native_text.cpp engines/decision/token_json.h engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/text_evidence.h engines/decision/tokenizer/tokenizer.h engines/json.h | build
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -c engines/decision/native_text.cpp -o $@
-build/decision-native-text-real-harness.o: tests/test_decision_evidence_reference.cpp engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/text_evidence.h engines/json.h src/sha256.h | build
+build/decision-native-text-real-harness.o: tests/test_decision_evidence_reference.cpp engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/text_evidence.h engines/decision/evidence_math.h tests/decision_reference_fixture.h engines/json.h src/sha256.h | build
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_DECISION_NATIVE_REAL -Iengines -Isrc -c tests/test_decision_evidence_reference.cpp -o $@
-build/decision-native-json-real-harness.o: tests/test_decision_evidence_reference.cpp engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/text_evidence.h engines/decision/request.h engines/json.h src/sha256.h | build
+build/decision-native-json-real-harness.o: tests/test_decision_evidence_reference.cpp engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/text_evidence.h engines/decision/request.h tests/decision_reference_fixture.h engines/json.h src/sha256.h | build
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_DECISION_NATIVE_REAL -DSAMOSA_DECISION_JSON_REAL -Iengines -Isrc -c tests/test_decision_evidence_reference.cpp -o $@
-test-decision-evidence: build/test-decision-evidence build/test-decision-evidence-reference build/decision-native-text.o build/decision-native-text-real-harness.o build/decision-native-json-real-harness.o
+test-decision-evidence: build/test-decision-evidence build/test-decision-evidence-reference build/decision-native-text.o build/decision-native-text-real-harness.o build/decision-native-json-real-harness.o build/decision-native-image.o
 	./build/test-decision-evidence
 sanitize-decision-evidence: | build
 	$(CXX) -O1 -g -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer engines/decision/text_evidence.cpp tests/test_decision_evidence.cpp -o build/test-decision-evidence-sanitize
@@ -475,7 +477,7 @@ sanitize: sanitize-decision-evidence
 
 DECISION_RUST_LIBS = $(if $(filter Darwin,$(shell uname -s)),-framework Security -framework CoreFoundation -liconv -lresolv,-ldl -lpthread -lm)
 DECISION_REQUEST_SOURCES = engines/decision/request.cpp engines/decision/text_evidence.cpp tests/test_decision_request.cpp
-DECISION_REQUEST_HEADERS = engines/decision/request.h engines/decision/text_evidence.h engines/decision/tokenizer/request.h
+DECISION_REQUEST_HEADERS = engines/decision/evidence_math.h engines/decision/request.h engines/decision/text_evidence.h engines/decision/tokenizer/request.h
 $(DECISION_TOKENIZER_ARCHIVE): engines/decision/tokenizer/Cargo.toml engines/decision/tokenizer/Cargo.lock $(wildcard engines/decision/tokenizer/src/*.rs)
 	cargo +1.90.0 build --locked --release --manifest-path engines/decision/tokenizer/Cargo.toml --target-dir "$(DECISION_TOKENIZER_TARGET)"
 .PHONY: test-decision-request sanitize-decision-request
@@ -519,10 +521,16 @@ sanitize: sanitize-decision-assets
 
 # Explicit pinned SDK/runtime inputs; neither CI nor this rule downloads a model.
 DECISION_WORKER_SOURCES = engines/decision/main.cpp engines/decision/transport.cpp engines/decision/request.cpp engines/decision/text_evidence.cpp engines/decision/native_text.cpp engines/decision/ort_nli.cpp
-DECISION_WORKER_HEADERS = $(DECISION_REQUEST_HEADERS) engines/decision/transport.h engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/ort_runtime.h engines/decision/tokenizer/tokenizer.h engines/json.h
+DECISION_WORKER_HEADERS = $(DECISION_REQUEST_HEADERS) engines/decision/transport.h engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/ort_runtime.h engines/decision/token_json.h engines/decision/tokenizer/tokenizer.h engines/json.h
 DECISION_ORT_RPATH ?= $(if $(filter Darwin,$(shell uname -s)),@loader_path,$$ORIGIN)
 DECISION_IMAGE_ORT_SOURCES = tests/test_decision_image_ort_real.cpp engines/decision/ort_image.cpp engines/decision/image_pixels.cpp
 DECISION_IMAGE_ORT_HEADERS = engines/decision/ort_image.h engines/decision/ort_runtime.h engines/decision/image_pixels.h engines/json.h src/sha256.h
+DECISION_IMAGE_NATIVE_SOURCES = tests/test_decision_image_native_real.cpp engines/decision/native_image.cpp engines/decision/ort_image.cpp engines/decision/image_pixels.cpp engines/decision/request.cpp engines/decision/text_evidence.cpp
+DECISION_IMAGE_NATIVE_HEADERS = $(DECISION_IMAGE_ORT_HEADERS) engines/decision/native_image.h engines/decision/token_json.h $(DECISION_REQUEST_HEADERS) tests/decision_reference_fixture.h
+build/test-decision-image-native-real: Makefile $(DECISION_IMAGE_NATIVE_SOURCES) $(DECISION_IMAGE_NATIVE_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
+	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -Isrc -I"$(DECISION_ORT_INCLUDE)" $(DECISION_IMAGE_NATIVE_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" "$(DECISION_ORT_LIBRARY)" $(DECISION_RUST_LIBS) -Xlinker -rpath -Xlinker '$(DECISION_ORT_RPATH)' -o $@
+build/test-decision-image-native-real-sanitize: Makefile $(DECISION_IMAGE_NATIVE_SOURCES) $(DECISION_IMAGE_NATIVE_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
+	$(CXX) -O1 -g -std=c++20 -Wall -Wextra -Werror -Wpedantic -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iengines -Isrc -I"$(DECISION_ORT_INCLUDE)" $(DECISION_IMAGE_NATIVE_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" "$(DECISION_ORT_LIBRARY)" $(DECISION_RUST_LIBS) -Xlinker -rpath -Xlinker '$(DECISION_ORT_RPATH)' -o $@
 .PHONY: test-decision-image-pixels sanitize-decision-image-pixels
 build/test-decision-image-pixels: tests/test_decision_image_pixels.cpp engines/decision/image_pixels.cpp engines/decision/image_pixels.h src/sha256.h | build
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -Isrc tests/test_decision_image_pixels.cpp engines/decision/image_pixels.cpp -o $@

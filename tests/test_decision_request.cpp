@@ -40,5 +40,18 @@ int main() {
   PairInference failed=[](const auto&,auto,auto*,auto*){return false;};
   CHECK(!execute_request(failed,R"({"method":"noul","state":0,"instructions":"q"})",&output,&error)&&output=="sentinel");
   CHECK(!execute_request(infer,"{}",nullptr,&error));
+  DecisionBackend image;
+  CHECK(!execute_request(image,R"({"method":"noul","state":0,"instructions":"q"})",&output,&error)&&output=="sentinel");
+  image.choose=[](const auto&,const auto&,const auto&,auto*,auto*){return false;};
+  image.scale=[](const auto&,const auto&,const auto&,auto*,auto*){return false;};
+  image.predicate=[](const auto&,const auto&,auto*,auto*){return false;};
+  image.binary=[](const auto&,const auto&,const auto&,auto*,auto*){return false;};
+  image.relate=[](const auto&,double threshold,auto* result,auto*) {
+    *result={{"unknown",0.2,0.1,threshold}};return true;
+  };
+  image.relation_backend="siglip_image_text";
+  CHECK(!execute_request(image,R"({"method":"relations","items":[]})",&output,&error)&&output=="sentinel"&&error=="unsupported_image_method");
+  CHECK(execute_request(image,R"({"method":"relation","state":"frame","proposition":"p","contradiction":"c"})",&output,&error));
+  CHECK(output==R"({"type":"relation","relation":"unknown","scores":{"supports":0.2,"contradicts":0.1},"threshold":0.5,"backend":"siglip_image_text"})");
   std::printf("PASS typed native requests: %u checks; ordered JSON, every operation, structured/NUL state and atomic refusal\n",checks);
 }

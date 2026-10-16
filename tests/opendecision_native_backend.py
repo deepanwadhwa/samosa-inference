@@ -83,8 +83,8 @@ def main():
     sources = ["engines/decision/ort_nli.h", "engines/decision/ort_nli.cpp", "engines/decision/ort_runtime.h",
                "tests/test_decision_ort_real.cpp", "engines/json.h", "src/sha256.h"]
     if native_text:
-        sources += ["engines/decision/native_text.h", "engines/decision/native_text.cpp",
-                    "engines/decision/text_evidence.h", "engines/decision/text_evidence.cpp",
+        sources += ["engines/decision/native_text.h", "engines/decision/native_text.cpp", "engines/decision/token_json.h", "tests/decision_reference_fixture.h",
+                    "engines/decision/text_evidence.h", "engines/decision/text_evidence.cpp", "engines/decision/evidence_math.h",
                     "engines/decision/tokenizer/tokenizer.h", "tests/test_decision_evidence_reference.cpp"]
     if args.json_requests:
         sources += ["engines/decision/request.h", "engines/decision/request.cpp",

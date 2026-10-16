@@ -1,4 +1,5 @@
 #include "text_evidence.h"
+#include "evidence_math.h"
 #include <algorithm>
 #include <cmath>
 #include <unordered_set>
@@ -38,12 +39,6 @@ bool run(const PairInference& infer, const std::vector<TextPair>& pairs,
   return true;
 }
 
-double confidence(const std::vector<double>& probabilities) {
-  if (probabilities.size() <= 1) return 1;
-  double entropy = 0;
-  for (double p : probabilities) if (p > 0) entropy -= p * std::log(p);
-  return std::clamp(1 - entropy / std::log(probabilities.size()), 0.0, 1.0);
-}
 size_t winner(const std::vector<double>& probabilities) {
   // Python max(dict, key=dict.get) selects the first candidate on equality.
   return static_cast<size_t>(std::max_element(probabilities.begin(), probabilities.end()) - probabilities.begin());
@@ -136,7 +131,7 @@ bool choice(const PairInference& infer, const std::string& state,
     selected=adjudicated;
   }
   result.choice=candidates[selected].name;
-  result.confidence=confidence(result.probabilities);
+  result.confidence=distribution_confidence(result.probabilities);
   *output=std::move(result);return true;
 }
 
@@ -157,7 +152,7 @@ bool score(const PairInference& infer, const std::string& state,
   ScoreResult result;
   if (!distribution(infer,pairs,&result.probabilities,error)) return false;
   for (size_t i=0;i<levels.size();++i) result.score+=i*result.probabilities[i];
-  result.confidence=confidence(result.probabilities);
+  result.confidence=distribution_confidence(result.probabilities);
   *output=std::move(result);return true;
 }
 
