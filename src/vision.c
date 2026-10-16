@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #define IMAGE_MAX (512u * 512u * 4u)
-#define RESULT_MAX 32768u
+#define RESULT_MAX ENGINE_VISUAL_RESULT_MAX
 static const char *allowed =
     "|contract_version|op|provider_id|image_rgba_base64|width|height|prompt|max_output_tokens|"
     "operation_id|parent_operation_id|timeout_ms|";
@@ -331,7 +331,7 @@ static const char *run(const InferenceConfig *cfg, const unsigned char *rgba, si
         if (!f)
             error = "resource_limit";
         else {
-            const char *args[] = {v->self,       "--vision-engine-bridge",
+            const char *args[] = {v->self,       "--vision-engine-bounded-bridge",
                                   v->executable, v->executable_sha256,
                                   command,       result};
             fputc('[', f);
@@ -352,8 +352,8 @@ static const char *run(const InferenceConfig *cfg, const unsigned char *rgba, si
             error = "deadline_exceeded";
         else
             error =
-                engine_process_start_bound_workspace(v->self, arguments, remaining, 262144, lease,
-                                                     model, workspace, directory, &process);
+                engine_process_start_bound_workspace_captured(v->self, arguments, remaining, 262144, lease,
+                                                     model, workspace, directory, result_fd, &process);
     }
     while (!error && process.guardian > 0) {
         error = inference_interrupted(cfg);
@@ -374,6 +374,7 @@ static const char *run(const InferenceConfig *cfg, const unsigned char *rgba, si
             const char *terminal = engine_process_stop(&process);
             if (terminal)
                 error = !strcmp(terminal, "lifetime_exceeded") ? "deadline_exceeded"
+                            : !strcmp(terminal, "protocol_limit") ? "invalid_provider_response"
                                                                : "provider_process_failed";
             else if (strcmp(process.reason, "completed"))
                 error = "provider_process_failed";

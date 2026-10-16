@@ -43,13 +43,16 @@ static void clean_workspace(const char *path){
     (void)rmdir(path);
 }
 int engine_guardian_dispatch(int argc,char **argv) {
+    int captured=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace-captured");
     int sized=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-protocol-sized");
     int protocol=sized||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-protocol"));
-    int workspace=protocol||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace"));
+    int workspace=captured||protocol||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace"));
     int bound=workspace||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-bound"));
     int leased=bound||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-leased"));
     if(argc<2 || (!leased&&strcmp(argv[1],"--inference-owned-engine")))return -1;
     if(argc<(sized?7:workspace?6:5) || argc>(sized?38:workspace?37:36) || fcntl(3,F_GETFD)<0)return 2;
+    /* Only our bounded bridge may opt out of the process-wide file cap. */
+    if(captured&&(argc!=11||strcmp(argv[5],argv[0])||strcmp(argv[6],"--vision-engine-bounded-bridge")))return 2;
     char *end;errno=0;double lifetime=strtod(argv[2],&end);
     if(errno||*end||end==argv[2]||!(lifetime>0)||lifetime>86400)return 2;
     errno=0;unsigned long limit=strtoul(argv[3],&end,10);
@@ -61,61 +64,89 @@ int engine_guardian_dispatch(int argc,char **argv) {
     if(leased&&!cloexec(4))return 2;
     if(bound&&(fcntl(5,F_GETFL)<0||(fcntl(5,F_GETFL)&O_ACCMODE)!=O_RDONLY||fcntl(5,F_SETFD,0)))return 2;
     if(workspace&&!cloexec(6))return 2;
+    if(captured){struct stat result;
+        if(!cloexec(8)||fstat(8,&result)||!S_ISREG(result.st_mode)||result.st_uid!=geteuid()||
+           result.st_nlink!=1||(result.st_mode&077)||result.st_size||
+           (fcntl(8,F_GETFL)&O_ACCMODE)!=O_RDWR)return 2;}
     if(protocol&&(!cloexec(7)||!cloexec(8)||(fcntl(7,F_GETFL)&O_ACCMODE)!=O_RDONLY||(fcntl(8,F_GETFL)&O_ACCMODE)!=O_RDWR))return 2;
-    /* Metal initialization also writes a temporary compiled library. Keep that
-     * existing engine behavior while bounding individual child-created files. */
+    /* The guardian captures GPU stdout into a bounded result. A process-wide file
+     * cap would also reject growth of Metal's existing shared shader cache. */
     /* Sized protocols additionally get an exact kernel-enforced file cap.
      * Legacy workspace/summary limits remain unchanged. */
-    if(workspace){rlim_t cap=sized?(rlim_t)result_limit:67108864;
+    if(workspace&&!captured){rlim_t cap=sized?(rlim_t)result_limit:67108864;
         struct rlimit size={cap,cap};if(setrlimit(RLIMIT_FSIZE,&size))return 2;}
-    if(sized){struct rlimit core={0,0};if(setrlimit(RLIMIT_CORE,&core))return 2;}
+    if(sized||captured){struct rlimit core={0,0};if(setrlimit(RLIMIT_CORE,&core))return 2;}
     signal(SIGPIPE,SIG_IGN);
-    int output[2];if(pipe(output))return 2;
+    int output[2],capture[2]={-1,-1};if(pipe(output))return 2;
+    if(captured&&(pipe(capture)||!cloexec(capture[0])||!cloexec(capture[1]))){
+        close(output[0]);close(output[1]);if(capture[0]>=0)close(capture[0]);if(capture[1]>=0)close(capture[1]);return 2;}
     if(!cloexec(output[0])||!cloexec(output[1])){close(output[0]);close(output[1]);return 2;}
     posix_spawn_file_actions_t actions;posix_spawnattr_t attributes;
     int ar=posix_spawn_file_actions_init(&actions)==0,at=posix_spawnattr_init(&attributes)==0;
     int ok=ar&&at;pid_t child=-1;
     if(ok)ok=spawn_attributes(&attributes) &&
         !(protocol?posix_spawn_file_actions_adddup2(&actions,7,STDIN_FILENO):posix_spawn_file_actions_addopen(&actions,STDIN_FILENO,"/dev/null",O_RDONLY,0)) &&
-        !posix_spawn_file_actions_adddup2(&actions,protocol?8:output[1],STDOUT_FILENO) &&
+        !posix_spawn_file_actions_adddup2(&actions,captured?capture[1]:protocol?8:output[1],STDOUT_FILENO) &&
         !posix_spawn_file_actions_adddup2(&actions,output[1],STDERR_FILENO) &&
         !posix_spawn_file_actions_addclose(&actions,3);
     if(ok && output[0]>3)ok=!posix_spawn_file_actions_addclose(&actions,output[0]);
     if(ok && output[1]>3)ok=!posix_spawn_file_actions_addclose(&actions,output[1]);
+    if(ok&&captured)ok=!posix_spawn_file_actions_addclose(&actions,capture[0])&&
+        !posix_spawn_file_actions_addclose(&actions,capture[1]);
     int command=sized?6:workspace?5:4;
     if(ok)ok=posix_spawn(&child,argv[command],&actions,&attributes,argv+command,environ)==0;
     if(ar)posix_spawn_file_actions_destroy(&actions);
     if(at)posix_spawnattr_destroy(&attributes);
-    close(output[1]);
-    if(!ok){close(output[0]);if(workspace)clean_workspace(argv[4]);fputs("exec_failed\n",stdout);fflush(stdout);return 2;}
-    if(fputs("started\n",stdout)<0 || fflush(stdout)){finish_child(child);close(output[0]);if(workspace)clean_workspace(argv[4]);return 2;}
+    close(output[1]);if(capture[1]>=0)close(capture[1]);
+    if(!ok){close(output[0]);if(capture[0]>=0)close(capture[0]);if(workspace)clean_workspace(argv[4]);fputs("exec_failed\n",stdout);fflush(stdout);return 2;}
+    if(fputs("started\n",stdout)<0 || fflush(stdout)){finish_child(child);close(output[0]);if(capture[0]>=0)close(capture[0]);if(workspace)clean_workspace(argv[4]);return 2;}
     double start=monotonic(),deadline=start+lifetime;const char *reason="stopped";
     if(start<0)reason="clock_failed";
-    size_t logged=0;int exited=0;
+    size_t logged=0,captured_bytes=0;int exited=0;
     while(start>=0) {
         if(protocol){struct stat result;if(fstat(8,&result)||(result.st_size<0||(uint64_t)result.st_size>result_limit)){reason="protocol_limit";break;}}
         siginfo_t info;memset(&info,0,sizeof(info));
         if(waitid(P_PID,(id_t)child,&info,WEXITED|WNOHANG|WNOWAIT)<0){
             if(errno==EINTR)continue;
             reason="wait_failed";break;}
-        if(info.si_pid==child){reason=info.si_code==CLD_EXITED && !info.si_status?"completed":
+        if(info.si_pid==child&&!exited){reason=info.si_code==CLD_EXITED && !info.si_status?"completed":
             sized&&info.si_status==SIGXFSZ&&(info.si_code==CLD_KILLED||info.si_code==CLD_DUMPED)?"protocol_limit":"engine_failed";
-            exited=1;break;}
+            exited=1;
+            if(!captured)break;
+            /* Stop descendants holding a writer before draining the remaining
+             * result. Keep the direct child unreaped until group cleanup. */
+            (void)kill(-child,SIGKILL);}
+        if(exited&&captured&&capture[0]<0)break;
         double now=monotonic();if(now<0){reason="clock_failed";break;}
         if(now>=deadline){reason="lifetime_exceeded";break;}
-        struct pollfd fds[2]={{3,POLLIN|POLLHUP,0},{output[0],POLLIN|POLLHUP,0}};
-        int rc=poll(fds,2,10);
+        struct pollfd fds[3]={{3,POLLIN|POLLHUP,0},{output[0],POLLIN|POLLHUP,0},{capture[0],POLLIN|POLLHUP,0}};
+        int rc=poll(fds,captured?3:2,10);
         if(rc<0){if(errno==EINTR)continue;reason="poll_failed";break;}
         if(fds[0].revents&(POLLIN|POLLHUP|POLLERR|POLLNVAL))break;
         if(fds[1].revents&POLLIN){char bytes[4096];ssize_t n=read(output[0],bytes,sizeof(bytes));
             if(n<0 && errno==EINTR)continue;
             if(n<0){reason="log_failed";break;}
             if((size_t)n>limit-logged){reason="log_limit";break;}logged+=(size_t)n;}
+        if(captured&&(fds[2].revents&(POLLIN|POLLHUP|POLLERR|POLLNVAL))){
+            unsigned char bytes[4096];ssize_t n=read(capture[0],bytes,sizeof(bytes));
+            if(n<0&&errno==EINTR)continue;
+            if(n<0){reason="protocol_limit";break;}
+            if(!n){close(capture[0]);capture[0]=-1;}
+            else{
+                if((size_t)n>ENGINE_VISUAL_RESULT_MAX-captured_bytes){reason="protocol_limit";break;}
+                size_t done=0;
+                while(done<(size_t)n){ssize_t wrote=pwrite(8,bytes+done,(size_t)n-done,(off_t)(captured_bytes+done));
+                    if(wrote<0&&errno==EINTR)continue;
+                    if(wrote<=0){reason="protocol_limit";break;}done+=(size_t)wrote;}
+                if(done!=(size_t)n)break;
+                captured_bytes+=(size_t)n;
+            }
+        }
         if((fds[1].revents&POLLHUP) && !(fds[1].revents&POLLIN)){
             close(output[0]);output[0]=-1;
         }
     }
-    finish_child(child);close(output[0]);close(3);
+    finish_child(child);close(output[0]);if(capture[0]>=0)close(capture[0]);if(captured)close(8);close(3);
     if(workspace){clean_workspace(argv[4]);close(6);}
     if(leased)close(4);
     if(bound)close(5);
@@ -136,18 +167,18 @@ static int line(int fd,char buffer[64],double deadline) {
     return 0;
 }
 static const char *start(const char *self,const char *argv_json,double lifetime,
-                        size_t limit,int residency,int model,const char *workspace,int directory,int input,int result,size_t result_limit,EngineProcess *p) {
+                        size_t limit,int residency,int model,const char *workspace,int directory,int input,int result,size_t result_limit,int captured,EngineProcess *p) {
     *p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};
     if(!self || self[0]!='/' || !argv_json || strlen(argv_json)>16384 ||
        !(lifetime>0)||lifetime>86400||!limit||limit>1048576)return "invalid_engine_configuration";
     Json j;if(!json_parse(&j,argv_json,strlen(argv_json))||j.tokens[0].type!=JT_ARRAY||
         j.tokens[0].count<1||j.tokens[0].count>32)return "invalid_engine_configuration";
     int sized=result_limit!=0;
-    if(sized&&(input<0||result_limit>16777216))return "invalid_engine_configuration";
+    if((captured&&(result<0||input>=0))||(sized&&(input<0||result_limit>16777216)))return "invalid_engine_configuration";
     char *args[39]={0};int first=sized?6:workspace?5:4,count=first;char seconds[32],bytes[32],result_bytes[32];
     snprintf(result_bytes,sizeof(result_bytes),"%zu",result_limit);
     snprintf(seconds,sizeof(seconds),"%.6f",lifetime);snprintf(bytes,sizeof(bytes),"%zu",limit);
-    args[0]=(char*)self;args[1]=sized?"--inference-owned-engine-protocol-sized":input>=0?"--inference-owned-engine-protocol":workspace?"--inference-owned-engine-workspace":model>=0?"--inference-owned-engine-bound":residency>=0?"--inference-owned-engine-leased":"--inference-owned-engine";args[2]=seconds;args[3]=bytes;if(workspace)args[4]=(char*)workspace;if(sized)args[5]=result_bytes;
+    args[0]=(char*)self;args[1]=captured?"--inference-owned-engine-workspace-captured":sized?"--inference-owned-engine-protocol-sized":input>=0?"--inference-owned-engine-protocol":workspace?"--inference-owned-engine-workspace":model>=0?"--inference-owned-engine-bound":residency>=0?"--inference-owned-engine-leased":"--inference-owned-engine";args[2]=seconds;args[3]=bytes;if(workspace)args[4]=(char*)workspace;if(sized)args[5]=result_bytes;
     const char *error=NULL;
     for(int t=1;t<j.tokens[0].next;t=j.tokens[t].next){args[count]=json_string(&j,t);
         if(!args[count]||strlen(args[count])>4096){error="invalid_engine_configuration";break;}count++;}
@@ -213,29 +244,33 @@ static const char *start(const char *self,const char *argv_json,double lifetime,
     return error;
 }
 const char *engine_process_start(const char *self,const char *argv,double lifetime,size_t limit,EngineProcess *p){
-    return start(self,argv,lifetime,limit,-1,-1,NULL,-1,-1,-1,0,p);
+    return start(self,argv,lifetime,limit,-1,-1,NULL,-1,-1,-1,0,0,p);
 }
 const char *engine_process_start_leased(const char *self,const char *argv,double lifetime,size_t limit,int residency,EngineProcess *p){
     if(residency<0){*p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};return "invalid_engine_configuration";}
-    return start(self,argv,lifetime,limit,residency,-1,NULL,-1,-1,-1,0,p);
+    return start(self,argv,lifetime,limit,residency,-1,NULL,-1,-1,-1,0,0,p);
 }
 const char *engine_process_start_bound(const char *self,const char *argv,double lifetime,size_t limit,int residency,int model,EngineProcess *p){
     if(residency<0||model<0){*p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};return "invalid_engine_configuration";}
-    return start(self,argv,lifetime,limit,residency,model,NULL,-1,-1,-1,0,p);
+    return start(self,argv,lifetime,limit,residency,model,NULL,-1,-1,-1,0,0,p);
 }
 const char *engine_process_start_bound_workspace(const char *self,const char *argv,double lifetime,size_t limit,int residency,int model,const char *workspace,int directory,EngineProcess *p){
     if(!workspace||workspace[0]!='/'||directory<0||residency<0||model<0){*p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};return "invalid_engine_configuration";}
-    return start(self,argv,lifetime,limit,residency,model,workspace,directory,-1,-1,0,p);
+    return start(self,argv,lifetime,limit,residency,model,workspace,directory,-1,-1,0,0,p);
+}
+const char *engine_process_start_bound_workspace_captured(const char *self,const char *argv,double lifetime,size_t limit,int residency,int model,const char *workspace,int directory,int result,EngineProcess *p){
+    if(!workspace||workspace[0]!='/'||directory<0||residency<0||model<0){*p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};return "invalid_engine_configuration";}
+    return start(self,argv,lifetime,limit,residency,model,workspace,directory,-1,result,0,1,p);
 }
 const char *engine_process_start_bound_protocol(const char *self,const char *argv,double lifetime,size_t limit,int residency,int model,const char *workspace,int directory,int input,int result,EngineProcess *p){
     if(!workspace||workspace[0]!='/'||directory<0||residency<0||model<0||input<0||result<0){*p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};return "invalid_engine_configuration";}
-    return start(self,argv,lifetime,limit,residency,model,workspace,directory,input,result,0,p);
+    return start(self,argv,lifetime,limit,residency,model,workspace,directory,input,result,0,0,p);
 }
 const char *engine_process_start_bound_protocol_sized(const char *self,const char *argv,double lifetime,size_t limit,int residency,int model,const char *workspace,int directory,int input,int result,size_t result_limit,EngineProcess *p){
     if(!p)return "invalid_engine_configuration";
     *p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};
     if(!workspace||workspace[0]!='/'||directory<0||residency<0||model<0||input<0||result<0||!result_limit||result_limit>16777216)return "invalid_engine_configuration";
-    return start(self,argv,lifetime,limit,residency,model,workspace,directory,input,result,result_limit,p);
+    return start(self,argv,lifetime,limit,residency,model,workspace,directory,input,result,result_limit,0,p);
 }
 /* Returned terminal errors outlive the caller-owned process record. The
  * guardian protocol is closed; unknown terminal words refuse generically. */

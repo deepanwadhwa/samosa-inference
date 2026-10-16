@@ -11,7 +11,7 @@
 #include <math.h>
 #include <poll.h>
 #include <unistd.h>
-#define RESULT_MAX 32768u
+#define RESULT_MAX ENGINE_VISUAL_RESULT_MAX
 static int fail(FILE *out, const char *error) {
     fprintf(out, "{\"contract_version\":1,\"error\":{\"code\":\"%s\"}}\n",
             error);
@@ -249,7 +249,7 @@ static const char *run(const InferenceConfig *cfg, const TemporalInput *input,
         if (!out)
             error = "resource_limit";
         else {
-            const char *args[] = {v->self,       "--vision-engine-bridge",
+            const char *args[] = {v->self,       "--vision-engine-bounded-bridge",
                                   v->executable, v->executable_sha256,
                                   command_path,  result_path};
             fputc('[', out);
@@ -271,9 +271,9 @@ static const char *run(const InferenceConfig *cfg, const TemporalInput *input,
         if (remaining <= 0)
             error = "deadline_exceeded";
         else
-            error = engine_process_start_bound_workspace(
+            error = engine_process_start_bound_workspace_captured(
                 v->self, arguments, remaining, 262144, lease, model, workspace,
-                directory, &process);
+                directory, result_fd, &process);
     }
     while (!error && process.guardian > 0) {
         error = inference_interrupted(cfg);
@@ -296,6 +296,7 @@ static const char *run(const InferenceConfig *cfg, const TemporalInput *input,
             if (terminal)
                 error = !strcmp(terminal, "lifetime_exceeded")
                             ? "deadline_exceeded"
+                            : !strcmp(terminal, "protocol_limit") ? "invalid_provider_response"
                             : "provider_process_failed";
             else if (strcmp(process.reason, "completed"))
                 error = "provider_process_failed";

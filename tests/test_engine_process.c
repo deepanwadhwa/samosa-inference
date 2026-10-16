@@ -23,6 +23,12 @@ static int released(const char *path){int fd=open(path,O_RDWR);if(fd<0)return 0;
 static void observe(const char *path,int wanted){int seen=0;for(int i=0;i<300;i++){if(!access(path,F_OK)&&released(path)==wanted){seen=1;break;}pause_ms();}if(!seen)fprintf(stderr,"lease observation timed out: %s, released=%d\n",path,wanted);CHECK(seen);}
 static char *command(const char *self,const char *mode,const char *path){char *out=NULL;size_t n;FILE *f=open_memstream(&out,&n);CHECK(f);
     fputc('[',f);json_quote(f,self,strlen(self));fputs(",\"--fixture\",",f);json_quote(f,mode,strlen(mode));fputc(',',f);json_quote(f,path,strlen(path));fputc(']',f);CHECK(!fclose(f));return out;}
+static char *captured_command(const char *self,const char *mode,const char *path,const char *input,const char *result){
+    const char *args[]={self,"--vision-engine-bounded-bridge",mode,path,input,result};
+    char *body=NULL;size_t bytes=0;FILE *out=open_memstream(&body,&bytes);CHECK(out);
+    fputc('[',out);for(size_t k=0;k<6;k++){if(k)fputc(',',out);json_quote(out,args[k],strlen(args[k]));}
+    fputc(']',out);CHECK(!fclose(out));return body;
+}
 static int fixture(const char *mode,const char *path){
     if(!strcmp(mode,"fail"))return 9;
     if(!strcmp(mode,"protocol")||!strcmp(mode,"protocol-flood")||!strcmp(mode,"protocol-large")){
@@ -46,6 +52,10 @@ static int fixture(const char *mode,const char *path){
 int main(int argc,char **argv){
     int guardian=engine_guardian_dispatch(argc,argv);if(guardian>=0)return guardian;
     if(argc==4&&!strcmp(argv[1],"--fixture"))return fixture(argv[2],argv[3]);
+    if(argc==6&&!strcmp(argv[1],"--vision-engine-bounded-bridge")){
+        int input=open(argv[4],O_RDONLY);if(input<0||dup2(input,0)<0)return 4;close(input);
+        return fixture(argv[2],argv[3]);
+    }
     if((argc==4||argc==5)&&!strcmp(argv[1],"--parent-worker")){
         char *cmd=command(argv[0],"grandchild",argv[2]);EngineProcess p;
         int residency=argc==5?lease(argv[4]):-1;
@@ -99,7 +109,7 @@ int main(int argc,char **argv){
     observe(path,0);observe(descendant,0);observe(residency_path,0);CHECK(!kill(parent,SIGKILL));int status;CHECK(waitpid(parent,&status,0)==parent);
     observe(path,1);observe(descendant,1);observe(residency_path,1);CHECK(!released(foreign));CHECK(!kill(external,SIGKILL));CHECK(waitpid(external,&status,0)==external);observe(foreign,1);
     CHECK(!unlink(path));CHECK(!unlink(descendant));CHECK(!unlink(ready));CHECK(!unlink(foreign));CHECK(!unlink(residency_path));/* The actual monolith protocol needs stdin and stdout separate from logs. */
-    for(int flood=0;flood<4;flood++){
+    for(int flood=0;flood<6;flood++){
         char workspace[512],input_path[600],result_path[600];
         snprintf(workspace,sizeof(workspace),"%s/protocol",root);CHECK(!mkdir(workspace,0700));
         snprintf(input_path,sizeof(input_path),"%s/request.frame",workspace);
@@ -110,10 +120,19 @@ int main(int argc,char **argv){
         int directory=open(workspace,O_RDONLY|O_DIRECTORY);int model=open(input_path,O_RDONLY);
         residency=lease(residency_path);CHECK(in>=0&&result>=0&&directory>=0&&model>=0&&residency>=0);
         cmd=command(argv[0],flood>=2?"protocol-large":flood?"protocol-flood":"protocol",path);
-        if(flood<2)CHECK(!engine_process_start_bound_protocol(argv[0],cmd,30,65536,residency,model,workspace,directory,in,result,&p));
+        if(!flood){
+            /* Cache-compatible execution requires our capture bridge; arbitrary
+             * host commands cannot accidentally bypass the legacy file cap. */
+            const char *refused=engine_process_start_bound_workspace_captured(argv[0],cmd,30,65536,residency,model,workspace,directory,result,&p);
+            CHECK(refused&&!strcmp(refused,"engine_exec_failed")&&p.guardian<0);
+            struct stat untouched;CHECK(!fstat(result,&untouched)&&!untouched.st_size);
+        }
+        if(flood>=4){free(cmd);cmd=captured_command(argv[0],flood==4?"protocol-large":"protocol",path,input_path,result_path);
+            CHECK(!engine_process_start_bound_workspace_captured(argv[0],cmd,30,65536,residency,model,workspace,directory,result,&p));}
+        else if(flood<2)CHECK(!engine_process_start_bound_protocol(argv[0],cmd,30,65536,residency,model,workspace,directory,in,result,&p));
         else CHECK(!engine_process_start_bound_protocol_sized(argv[0],cmd,30,65536,residency,model,workspace,directory,in,result,flood==2?200000:65536,&p));
         terminal(&p);
-        if(flood==1||flood==3){expect_stop(&p,"protocol_limit");if(flood==3){struct stat size;CHECK(!fstat(result,&size));CHECK(size.st_size<=65536);}}
+        if(flood==1||flood==3||flood==4){expect_stop(&p,"protocol_limit");if(flood==3||flood==4){struct stat size;CHECK(!fstat(result,&size));CHECK(size.st_size<=(flood==4?ENGINE_VISUAL_RESULT_MAX:65536));}}
         else if(flood==2){CHECK(!engine_process_stop(&p));struct stat size;CHECK(!fstat(result,&size));CHECK(size.st_size==131072);}
         else{CHECK(!engine_process_stop(&p));CHECK(!strcmp(p.reason,"completed"));char actual[128];CHECK(pread(result,actual,sizeof(actual),0)==(ssize_t)sizeof(frame));CHECK(!memcmp(actual,frame,sizeof(frame)));}
         CHECK(access(workspace,F_OK)<0&&errno==ENOENT);

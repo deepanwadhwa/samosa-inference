@@ -147,3 +147,50 @@ complete local macOS arm64 and Ubuntu arm64 runs before push, then passed both
 hosted matrix jobs in run `38802304062`. These controlled checks compile the
 actual-model harnesses; actual model execution requires the additional pinned
 artifacts described above.
+
+## Independent installed failure and identified write
+
+The corrected independent engine (`9a6a718e...`, index `4e243148...`) also
+completed the full normal HTTPS installation, offline/last-good and removal/
+reinstall sequence, then failed actual installed temporal inference with
+`provider_process_failed`. The sanitizer execution loop did not start after
+this failure. Successful static compatibility does not establish execution.
+
+The QA guardian with unchanged limits and a smoke-tested temporary write tracer
+reproduced `SIGXFSZ` and captured the triggering operation: `ftruncate` of the
+macOS shared Metal cache `com.apple.metal/32024/libraries.data` to 211812352
+bytes. The file was already 211746816 bytes, above the guardian's 67108864-byte
+limit, before the attempted growth. The checked original and independent builds
+use the same pinned MLX revision and identical kernel bytes. This is not evidence
+of an engine/kernel mismatch.
+
+The required correction is to bound inference output independently from Metal's
+shared cache files; a larger blanket limit would remain sensitive to unrelated
+cache growth. Production correction, controlled output/cleanup regression tests,
+and complete installed normal/sanitizer execution remain open. No OS cache was
+manually cleared or edited.
+
+## Guardian output capture correction
+
+Image and temporal adapters now use a dedicated stdout pipe. The existing
+process guardian copies at most 32768 bytes into the retained private result
+file and reports `protocol_limit` on overflow; adapters preserve their public
+`invalid_provider_response` refusal. Stderr has its existing separate log cap.
+The bridge still execs the native engine, preserving direct-child reaping,
+process-group ownership, deadlines, cancellation and requester-death cleanup.
+The captured mode only accepts the private bounded bridge command and closes
+the result descriptor across engine exec. Core dumps are disabled. Legacy
+workspace, summary and sized-protocol file limits remain unchanged. The GPU
+mode permits normal OS-managed Metal cache writes independently of output.
+
+Normal and ASan/UBSan controlled image tests passed 661/671 checks, temporal
+checks passed 1052/1058 checks, and direct guardian tests passed 187 checks per
+mode. Both adapter fixtures grow an existing sparse 128 MiB cache file by 64 KiB
+while producing a valid response. Existing oversized-result, model mutation,
+cancellation, deadline and requester-death cleanup cases remain covered.
+Direct guardian tests also check exact result-file bounds during a 128 KiB
+stdout flood, draining buffered output after child exit, and refusal of an
+arbitrary command attempting captured mode. Temporal checks use the original
+pinned model metadata with explicitly synthetic weights and engine; these are
+control tests, not model execution qualification. Full local CI and the actual
+installed independent-engine run remain required for this correction.

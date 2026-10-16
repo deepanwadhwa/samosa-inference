@@ -81,7 +81,14 @@ static int fixture(const char *model) {
     CHECK(!fclose(f));
     CHECK(!rename(temporary, marker));
     free(workspace);
-    free(marker);
+    if (!strcmp(prompt, "cache-growth")) {
+        char cache[4096];
+        CHECK(snprintf(cache, sizeof(cache), "%s.cache", marker) < (int)sizeof(cache));
+        int fd = open(cache, O_RDWR | O_NOFOLLOW);
+        struct stat before;
+        CHECK(fd >= 0 && !fstat(fd, &before) && before.st_size == 134217728);
+        CHECK(!ftruncate(fd, 134283264) && !close(fd));
+    }
     if (!strcmp(prompt, "stall")) {
         signal(SIGTERM, SIG_IGN);
         for (;;)
@@ -128,6 +135,7 @@ static int fixture(const char *model) {
                                      : "{\"status\":\"ok\",\"message\":\"bye\"}");
     free(quit);
 fixture_done:
+    free(marker);
     free(line);
     free(command);
     free(id);
@@ -221,6 +229,21 @@ int main(int argc, char **argv) {
     free(body);
     memcpy(cfg.weights, pin, 65);
     free(req);
+    /* Metal grows a shared cache that may already exceed 64 MiB. Result
+     * flooding must still refuse independently of this legitimate file write. */
+    char cache[4096];
+    CHECK(snprintf(cache, sizeof(cache), "%s.cache", marker) < (int)sizeof(cache));
+    int cache_fd = open(cache, O_RDWR | O_CREAT | O_EXCL, 0600);
+    CHECK(cache_fd >= 0 && !ftruncate(cache_fd, 134217728) && !close(cache_fd));
+    req = request(pixels, 2, 1, "cache-growth", NULL, 10000);
+    body = vinvoke(&cfg, req, NULL);
+    free(body);free(req);
+    struct stat cache_stat;
+    CHECK(!stat(cache, &cache_stat) && cache_stat.st_size == 134283264);
+    CHECK(!unlink(cache));
+    workspace = ready(marker, &child);
+    absent(workspace);
+    free(workspace);
     const char *modes[] = {"malformed",   "big",  "wrong-id", "empty",
                            "over-budget", "fail", "bad-quit", "nul"};
     for (size_t i = 0; i < sizeof(modes) / sizeof(*modes); i++) {

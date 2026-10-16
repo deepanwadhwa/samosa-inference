@@ -24,10 +24,12 @@ static int same(const struct stat *a, const struct stat *b) {
            a->st_ctim.tv_nsec == b->st_ctim.tv_nsec;
 #endif
 }
-/* The existing bridge belongs to the guardian's process group. Input/output
- * are bound owned files; fd5 is the already verified model directory. */
+/* Input/output are bound owned files; fd5 is the verified model directory.
+ * Captured engines keep the guardian's stdout pipe instead of a result file.
+ * The bridge execs the engine so it remains the guardian's direct child. */
 int vision_bridge_dispatch(int argc, char **argv) {
-    if (argc < 2 || strcmp(argv[1], "--vision-engine-bridge"))
+    int captured = argc >= 2 && !strcmp(argv[1], "--vision-engine-bounded-bridge");
+    if (argc < 2 || (!captured && strcmp(argv[1], "--vision-engine-bridge")))
         return -1;
     if (argc != 6 || strlen(argv[3]) != 64 ||
         strspn(argv[3], "0123456789abcdef") != 64 || argv[2][0] != '/' ||
@@ -48,7 +50,8 @@ int vision_bridge_dispatch(int argc, char **argv) {
         fstat(input, &a) || fstat(output, &b) || !S_ISREG(a.st_mode) ||
         !S_ISREG(b.st_mode) || a.st_uid != geteuid() || b.st_uid != geteuid() ||
         a.st_nlink != 1 || b.st_nlink != 1 || (a.st_mode & 077) ||
-        (b.st_mode & 077) || dup2(input, 0) < 0 || dup2(output, 1) < 0)
+        (b.st_mode & 077) || b.st_size || dup2(input, 0) < 0 ||
+        (!captured && dup2(output, 1) < 0))
         return 2;
     if (input > 2)
         close(input);

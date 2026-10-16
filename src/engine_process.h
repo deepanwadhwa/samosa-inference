@@ -16,6 +16,10 @@ const char *engine_process_start_bound(const char *,const char *,double,size_t,i
 /* Owned transcription workspace: guardian removes input.wav/result.srt after
  * reaping the engine, including when the requesting process dies. */
 const char *engine_process_start_bound_workspace(const char *,const char *,double,size_t,int,int,const char *,int,EngineProcess *);
+#define ENGINE_VISUAL_RESULT_MAX 32768u
+/* GPU output is copied by the guardian from a dedicated bounded pipe. Preserve OS-managed
+ * Metal cache writes while retaining guardian lifetime/log/group ownership. */
+const char *engine_process_start_bound_workspace_captured(const char *,const char *,double,size_t,int,int,const char *,int,int,EngineProcess *);
 /* Framed native summarizer transport: input read-only fd and output read/write
  * fd, separate from bounded stderr logs. Guardian enforces 8196 output bytes
  * and removes request.frame/result.frame from its retained private workspace. */

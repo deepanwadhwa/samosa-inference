@@ -80,6 +80,14 @@ static int engine_fixture(const char *model) {
     CHECK(!fclose(mark));
     CHECK(!rename(temporary, marker));
     free(workspace);
+    if (!strcmp(prompt, "cache-growth")) {
+        char cache[4096];
+        CHECK(snprintf(cache, sizeof(cache), "%s.cache", marker) < (int)sizeof(cache));
+        int fd = open(cache, O_RDWR | O_NOFOLLOW);
+        struct stat before;
+        CHECK(fd >= 0 && !fstat(fd, &before) && before.st_size == 134217728);
+        CHECK(!ftruncate(fd, 134283264) && !close(fd));
+    }
     if (!strcmp(prompt, "stall")) {
         signal(SIGTERM, SIG_IGN);
         for (;;)
@@ -303,6 +311,22 @@ int main(int argc, char **argv) {
                    "\"operation_id\":\"temporal-first\"}",
                    "unknown_operation");
     free(body);
+    /* Metal grows a shared cache that may already exceed 64 MiB. Result
+     * flooding must still refuse independently of this legitimate file write. */
+    char cache[4096];
+    CHECK(snprintf(cache, sizeof(cache), "%s.cache", marker) < (int)sizeof(cache));
+    int cache_fd = open(cache, O_RDWR | O_CREAT | O_EXCL, 0600);
+    CHECK(cache_fd >= 0 && !ftruncate(cache_fd, 134217728) && !close(cache_fd));
+    req = request("cache-growth", NULL, 10000);
+    body = tinvoke(&cfg, req, NULL);
+    free(body);free(req);
+    struct stat cache_stat;
+    CHECK(!stat(cache, &cache_stat) && cache_stat.st_size == 134283264);
+    CHECK(!unlink(cache));
+    workspace = ready(marker, &child);
+    absent(workspace, child);
+    free(workspace);
+    CHECK(!unlink(marker));
     const char *modes[] = {"wrong-id", "wrong-time", "empty", "over-budget",
                            "bad-quit", "malformed",  "big",   "fail"};
     for (size_t k = 0; k < 8; k++) {
