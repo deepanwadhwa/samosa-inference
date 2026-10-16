@@ -125,3 +125,17 @@ qualifying a correction remain required. Diagnostic executables are temporary
 QA tools and are not package artifacts or evidence of successful inference.
 The independently built corrected engine also still needs its own complete
 installed execution qualification.
+
+## Corrected independent package
+
+The separately packaged `9a6a718e...` engine passed normal and
+sanitizer-equipped actual static admission (11 checks each). Its 29-file index
+is `4e2431487e934bd9c124cff3e3c018b335011fd18472ad9463e62f3dbaa0b520`;
+the manifest and colocated kernel pins are unchanged. Installed execution of
+this package remains a separate required check.
+
+The shared local/hosted check entry point introduced in `55ba1b0` passed its
+complete local macOS arm64 and Ubuntu arm64 runs before push, then passed both
+hosted matrix jobs in run `38802304062`. These controlled checks compile the
+actual-model harnesses; actual model execution requires the additional pinned
+artifacts described above.
