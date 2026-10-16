@@ -281,7 +281,8 @@ static int graph_sibling(const LibraryRuntimeFile *files,size_t count,size_t sou
     const char *slash=strrchr(files[source].name,'/');size_t prefix=slash?(size_t)(slash-files[source].name)+1:0;
     char name[256];if(prefix+strlen(base)>=sizeof(name))return -1;
     memcpy(name,files[source].name,prefix);strcpy(name+prefix,base);
-    for(size_t i=0;i<count;i++)if(!strcmp(name,files[i].name))return (int)i;return -1;
+    for(size_t i=0;i<count;i++)if(!strcmp(name,files[i].name))return (int)i;
+    return -1;
 }
 const char *library_runtime_graph(const LibraryRuntimePolicy *policy,const LibraryRuntimeFile *files,const LibraryRuntimeImage *images,size_t count,const char *(*control)(void *),void *context){
     if(!policy||!files||!images||!count||count>512||(policy->mach_o!=0&&policy->mach_o!=1))return "invalid_configuration";

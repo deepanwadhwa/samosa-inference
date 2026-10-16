@@ -503,15 +503,30 @@ sanitize-decision-transport: $(DECISION_TOKENIZER_ARCHIVE) | build
 test: test-decision-transport
 sanitize: sanitize-decision-transport
 
+DECISION_ASSET_SOURCES = src/decision_assets.c src/artifact.c src/library_runtime.c src/engine_runtime.c
+.PHONY: test-decision-assets sanitize-decision-assets
+build/test-decision-assets: tests/test_decision_assets.c tests/library_fixture.h $(DECISION_ASSET_SOURCES) src/decision_assets.h src/artifact.h src/library_runtime.h src/engine_runtime.h src/sha256.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc -Itests tests/test_decision_assets.c $(DECISION_ASSET_SOURCES) -o $@
+build/test-decision-assets-real: tests/test_decision_assets_real.c $(DECISION_ASSET_SOURCES) src/decision_assets.h src/artifact.h src/library_runtime.h src/engine_runtime.h src/sha256.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc tests/test_decision_assets_real.c $(DECISION_ASSET_SOURCES) -o $@
+test-decision-assets: build/test-decision-assets build/test-decision-assets-real
+	./build/test-decision-assets
+sanitize-decision-assets: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Isrc -Itests tests/test_decision_assets.c $(DECISION_ASSET_SOURCES) -o build/test-decision-assets-sanitize
+	./build/test-decision-assets-sanitize
+test: test-decision-assets
+sanitize: sanitize-decision-assets
+
 # Explicit pinned SDK/runtime inputs; neither CI nor this rule downloads a model.
 DECISION_WORKER_SOURCES = engines/decision/main.cpp engines/decision/transport.cpp engines/decision/request.cpp engines/decision/text_evidence.cpp engines/decision/native_text.cpp engines/decision/ort_nli.cpp
 DECISION_WORKER_HEADERS = $(DECISION_REQUEST_HEADERS) engines/decision/transport.h engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/tokenizer/tokenizer.h engines/json.h
-build/samosa-decision-engine: $(DECISION_WORKER_SOURCES) $(DECISION_WORKER_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
+DECISION_ORT_RPATH ?= $(if $(filter Darwin,$(shell uname -s)),@loader_path,$$ORIGIN)
+build/samosa-decision-engine: Makefile $(DECISION_WORKER_SOURCES) $(DECISION_WORKER_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
 	test -d "$(DECISION_ORT_INCLUDE)" && test -f "$(DECISION_ORT_LIBRARY)"
-	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -I"$(DECISION_ORT_INCLUDE)" $(DECISION_WORKER_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" "$(DECISION_ORT_LIBRARY)" $(DECISION_RUST_LIBS) -Xlinker -rpath -Xlinker "$(dir $(DECISION_ORT_LIBRARY))" -o $@
-build/samosa-decision-engine-sanitize: $(DECISION_WORKER_SOURCES) $(DECISION_WORKER_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
+	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -I"$(DECISION_ORT_INCLUDE)" $(DECISION_WORKER_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" "$(DECISION_ORT_LIBRARY)" $(DECISION_RUST_LIBS) -Xlinker -rpath -Xlinker '$(DECISION_ORT_RPATH)' -o $@
+build/samosa-decision-engine-sanitize: Makefile $(DECISION_WORKER_SOURCES) $(DECISION_WORKER_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
 	test -d "$(DECISION_ORT_INCLUDE)" && test -f "$(DECISION_ORT_LIBRARY)"
-	$(CXX) -O1 -g -std=c++20 -Wall -Wextra -Werror -Wpedantic -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iengines -I"$(DECISION_ORT_INCLUDE)" $(DECISION_WORKER_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" "$(DECISION_ORT_LIBRARY)" $(DECISION_RUST_LIBS) -Xlinker -rpath -Xlinker "$(dir $(DECISION_ORT_LIBRARY))" -o $@
+	$(CXX) -O1 -g -std=c++20 -Wall -Wextra -Werror -Wpedantic -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iengines -I"$(DECISION_ORT_INCLUDE)" $(DECISION_WORKER_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" "$(DECISION_ORT_LIBRARY)" $(DECISION_RUST_LIBS) -Xlinker -rpath -Xlinker '$(DECISION_ORT_RPATH)' -o $@
 
 .PHONY: test-speech-public sanitize-speech-public
 test-speech-public: build/samosa-inference-providers build/test-speech-worker build/speech-worker-fixture.so

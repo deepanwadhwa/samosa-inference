@@ -44,6 +44,12 @@ The committed Rust lockfile builds the static tokenizer/request library.
 build directory. SDK/runtime pins remain in the existing backend qualification;
 these optional targets do not download them.
 
+ORT is now resolved beside the executable through `@loader_path` / `$ORIGIN`;
+copy the pinned runtime there before launching. The earlier absolute-rpath
+prototype pins below are historical worker evidence. The
+[asset-binding gate](OPENDECISION_ASSET_BINDING.md) records verification of the
+new closed-layout worker and its actual model results.
+
 `make test-decision-transport sanitize-decision-transport` uses a separate fixture
 with controlled logits and the actual Rust request decoder. Normal and
 ASan/UBSan runs on macOS ARM64 passed 25 pipe checks: fragmented headers/body and
