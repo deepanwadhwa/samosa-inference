@@ -140,7 +140,8 @@ tests its C ABI. Typed scoring, provider integration and model packages remain
 open; tokenizer parity alone does not preserve complete decision results.
 
 The first [text scoring primitives](OPENDECISION_TEXT_SCORING_VERIFICATION.md)
-now preserve predicate, explicit binary and explicit-opposite relation
-postprocessing. Six actual-model captures agree within `1e-7` probability on
-macOS and Ubuntu ARM64 in normal and sanitizer builds. Choice, ordered Score,
-native model/tokenizer connection and public service integration remain open.
+now preserve predicate, explicit binary, explicit-opposite relation, multi-profile
+Choice and ordered Score postprocessing. Nine actual-model captures agree within
+`1e-7` probability on macOS and Ubuntu ARM64 in normal and sanitizer builds;
+102 branch checks additionally cover ordering, rendering and refusal. Native
+model/tokenizer connection and public service integration remain open.

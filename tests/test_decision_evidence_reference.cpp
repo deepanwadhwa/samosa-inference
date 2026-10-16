@@ -29,7 +29,7 @@ int main(int argc,char** argv) {
     jval* cases=get(report,"cases",J_ARR);unsigned exercised=0;
     for(int i=0;i<cases->len;++i) {
       jval* test=cases->kids[i];const std::string method=text(test,"method");
-      if(method!="noul"&&method!="relation"&&method!="relations") continue;
+      if(method!="noul"&&method!="relation"&&method!="relations"&&method!="choice"&&method!="score") continue;
       jval* args=get(test,"arguments",J_OBJ);jval* state=json_get(args,"state");
       if(method!="relations"&&(!state||state->t!=J_STR)) continue;
       jval* batches=get(test,"batches",J_ARR);size_t next=0;
@@ -46,7 +46,34 @@ int main(int argc,char** argv) {
         return true;
       };
       std::string error;jval* expected=json_get(test,"result");CHECK(expected);
-      if(method=="noul") {
+      if(method=="choice"||method=="score") {
+        std::vector<double> probabilities;double certainty;
+        if(method=="choice") {
+          jval* criteria=get(args,"criteria",J_OBJ);std::vector<Candidate> candidates;
+          for(int index=0;index<criteria->len;++index) {
+            jval* description=criteria->kids[index];CHECK(description->t==J_STR||description->t==J_NULL);
+            candidates.push_back({criteria->keys[index],description->t==J_STR?description->str:""});
+          }
+          ChoiceResult result;
+          CHECK(choice(infer,state->str,text(args,"instructions"),candidates,&result,&error));
+          CHECK(result.choice==text(expected,"choice"));
+          probabilities=result.probabilities;certainty=result.confidence;
+          jval* expected_probabilities=get(expected,"probabilities",J_OBJ);
+          for(size_t index=0;index<candidates.size();++index)
+            CHECK(std::abs(probabilities[index]-get(expected_probabilities,candidates[index].name.c_str(),J_NUM)->num)<1e-7);
+        } else {
+          jval* criteria=get(args,"criteria",J_ARR);std::vector<std::string> levels;
+          for(int index=0;index<criteria->len;++index) { CHECK(criteria->kids[index]->t==J_STR);levels.push_back(criteria->kids[index]->str); }
+          ScoreResult result;
+          CHECK(score(infer,state->str,text(args,"instructions"),levels,&result,&error));
+          CHECK(std::abs(result.score-get(expected,"score",J_NUM)->num)<1e-7);
+          probabilities=result.probabilities;certainty=result.confidence;
+          jval* expected_probabilities=get(expected,"probabilities",J_OBJ);
+          for(size_t index=0;index<levels.size();++index)
+            CHECK(std::abs(probabilities[index]-get(expected_probabilities,std::to_string(index).c_str(),J_NUM)->num)<1e-7);
+        }
+        CHECK(std::abs(certainty-get(expected,"confidence",J_NUM)->num)<1e-7);
+      } else if(method=="noul") {
         double value=-1;jval* criteria=json_get(args,"criteria");
         if(criteria&&criteria->t==J_OBJ)
           CHECK(binary_predicate(infer,state->str,text(criteria,"true"),text(criteria,"false"),&value,&error));
@@ -75,7 +102,7 @@ int main(int argc,char** argv) {
       }
       CHECK(next==static_cast<size_t>(batches->len));++exercised;
     }
-    CHECK(exercised==6);
+    CHECK(exercised==9);
     std::cout<<"PASS native text evidence reference: "<<checks<<" checks; "<<exercised<<" actual-model captures, absolute probability tolerance 1e-7\n";
   } catch(const std::exception& error) {std::cerr<<"FAIL "<<error.what()<<'\n';return 1;}
 }

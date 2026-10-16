@@ -17,6 +17,16 @@ struct RelationResult {
   std::string relation;
   double supports = 0, contradicts = 0, threshold = 0.5;
 };
+struct Candidate { std::string name, description; };
+struct ChoiceResult {
+  std::string choice;
+  std::vector<double> probabilities; // Same order as the caller's candidates.
+  double confidence = 0;
+};
+struct ScoreResult {
+  double score = 0, confidence = 0;
+  std::vector<double> probabilities; // Zero-based ordered scale positions.
+};
 
 // Private typed scoring for the existing two-label DeBERTa checkpoint. States
 // are already serialized by the caller; structured-state rendering belongs to
@@ -29,5 +39,11 @@ bool binary_predicate(const PairInference&, const std::string& state,
                       const std::string& false_statement, double*, std::string*);
 bool relations(const PairInference&, const std::vector<RelationInput>&,
                double threshold, std::vector<RelationResult>*, std::string*);
+bool choice(const PairInference&, const std::string& state,
+            const std::string& instructions, const std::vector<Candidate>&,
+            ChoiceResult*, std::string*);
+bool score(const PairInference&, const std::string& state,
+           const std::string& instructions, const std::vector<std::string>& levels,
+           ScoreResult*, std::string*);
 }  // namespace samosa::decision
 #endif

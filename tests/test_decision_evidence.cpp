@@ -57,5 +57,62 @@ int main() {
   }
   CHECK(!predicate(single,"state","true",nullptr,&error));
   CHECK(!relations(batch,items,0.5,nullptr,&error));
-  std::printf("PASS native text evidence: %u checks; predicate semantics, batch order, four relations and atomic refusal\n",checks);
+  const std::vector<Candidate> candidates={{"alpha_one","Same"},{"beta_two","Same"},{"gamma",""}};
+  calls=0;
+  PairInference disputed=[&](const auto& pairs,auto truncation,auto* logits,auto*) {
+    CHECK(truncation==PairTruncation::OnlyFirst);
+    if(calls==0) {
+      CHECK(pairs.size()==3 && pairs[0].premise=="state");
+      CHECK(pairs[0].hypothesis=="The answer to the question \"Question\" is Same.");
+      CHECK(pairs[1].hypothesis=="The answer to the question \"Question\" is beta two: Same.");
+      *logits={{0,0},{-1,0},{3,0}};
+    } else if(calls==1) {
+      CHECK(pairs.size()==3 && pairs[0].premise=="state");
+      CHECK(pairs[0].hypothesis=="This example is alpha one: Same.");
+      *logits={{4,0},{0,0},{0,0}};
+    } else {
+      CHECK(calls==2 && pairs.size()==2);
+      CHECK(pairs[0].premise=="state\n\nQuestion: Question");
+      CHECK(pairs[0].hypothesis=="This example is alpha one.");
+      CHECK(pairs[1].hypothesis=="This example is gamma.");
+      *logits={{2,0},{1,0}};
+    }
+    ++calls;return true;
+  };
+  ChoiceResult selected;
+  CHECK(choice(disputed,"state","Question",candidates,&selected,&error));
+  CHECK(calls==3 && selected.choice=="alpha_one" && selected.probabilities.size()==3);
+  // Return the winning original profile, not the adjudicator's two-way scores.
+  CHECK(selected.probabilities[0]>0.96 && selected.probabilities[1]<0.02);
+  calls=0;
+  PairInference uniform=[&](const auto& pairs,auto,auto* logits,auto*) {
+    logits->assign(pairs.size(),{0,0});++calls;return true;
+  };
+  CHECK(choice(uniform,"state","Question",candidates,&selected,&error));
+  CHECK(calls==2 && selected.choice=="alpha_one" && selected.confidence<1e-6);
+  for(double p:selected.probabilities) CHECK(std::abs(p-1.0/3)<1e-7);
+  ScoreResult scale;
+  CHECK(score(uniform,"state","Question",{"low","middle","high"},&scale,&error));
+  CHECK(std::abs(scale.score-1)<1e-7 && scale.confidence<1e-6);
+  PairInference escaped=[&](const auto& pairs,auto,auto* logits,auto*) {
+    CHECK(pairs[0].hypothesis=="The answer to the question \"Read {value}\" is low.");
+    logits->assign(pairs.size(),{0,0});return true;
+  };
+  CHECK(score(escaped,"state","Read {{value}}",{"low","high"},&scale,&error));
+  scale.score=123;
+  CHECK(!score(uniform,"state","Read {value}",{"low","high"},&scale,&error) && scale.score==123);
+  CHECK(!score(uniform,"state","Question",{"low","low"},&scale,&error) && scale.score==123);
+  CHECK(!score(uniform,"state","Question",{"{}","high"},&scale,&error) && scale.score==123);
+  CHECK(score(uniform,"state","Question",{"low","{}"},&scale,&error));
+  selected.choice="sentinel";
+  CHECK(!choice(uniform,"state","Question",{{"same","a"},{"same","b"}},&selected,&error));
+  CHECK(selected.choice=="sentinel");
+  calls=0;
+  PairInference interrupted=[&](const auto& pairs,auto truncation,auto* logits,auto* why) {
+    if(calls==2) return false;
+    return disputed(pairs,truncation,logits,why);
+  };
+  CHECK(!choice(interrupted,"state","Question",candidates,&selected,&error));
+  CHECK(calls==2 && selected.choice=="sentinel");
+  std::printf("PASS native text scoring: %u checks; predicate, Choice profiles, ordered Score, relations and atomic refusal\n",checks);
 }

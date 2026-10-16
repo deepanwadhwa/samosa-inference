@@ -15,18 +15,28 @@ Preserved behavior:
 - Relations score each proposition and its supplied opposite independently,
   preserve input order, use `only_first` truncation and batches of at most eight,
   and apply inclusive thresholds for supports, contradicts, unknown or conflicted.
+- Choice executes description/question and label-description/default profiles.
+  Agreement averages their distributions; disagreement adjudicates the two
+  winners in original candidate order and returns the corresponding original
+  profile's full distribution. Natural names, duplicate-description prefixes
+  and the default HF hypothesis template are preserved.
+- Ordered Score uses question-specific hypotheses and the zero-based expected
+  scale position. Both operations calculate normalized entropy confidence.
+  HF's question-template handling of escaped braces and invalid format fields
+  is preserved.
 - Failures preserve the caller's previous output. Invalid thresholds, malformed
   model output and non-finite logits are rejected. The private relation call
   bounds each request to 64 items; an empty item list returns an empty result.
 
 The caller supplies already serialized state. Structured-state rendering,
-Choice's multiple profiles, ordered Score, typed request/result JSON, native
+typed request/result JSON, native
 model/tokenizer connection and public service controls remain to be implemented
 and qualified. A complete OpenDecision provider is still required before image
 decisions or later components begin.
 
 `make test-decision-evidence sanitize-decision-evidence` checks predicate
-semantics, exact batch order, all four threshold outcomes, ownership of results
+semantics, exact batch order, all four threshold outcomes, Choice agreement and
+adjudication, candidate rendering, score ordering, ownership of results
 and refusal behavior. These targets also belong to `make test sanitize`, so the
 shared local/hosted CI command executes them. The normal target additionally
 compiles the separate capture-parity harness.
@@ -39,16 +49,18 @@ build/test-decision-evidence-reference REPORT_JSON REPORT_SHA256
 
 The harness authenticates the report before parsing, replays its actual logits
 through the native scorer, and compares probabilities with absolute tolerance
-`1e-7`. It covers six original-model captures: positive/negative predicates,
+`1e-7`. It covers nine original-model captures: Chat routing, duplicate
+descriptions, ordered scoring, positive/negative predicates,
 explicit binary criteria, supporting/contradicting relations, and four long
 relations forming a full batch of eight pairs. Report SHA-256:
 `f2c54e4d1be67059c184b9a2326b1b7b96ee7b1de02b6efcaeef5cbf3951dc11`.
 
-On macOS 26.5.1 ARM64 with Apple Clang 21, both normal and ASan/UBSan runs passed
-63 model-free checks and 195 capture checks. This qualifies scoring on captured
-logits, not a fresh native-model invocation or end-to-end typed result parity.
-Ubuntu 24.04 ARM64 with GCC 13.3.0 passed the same 63 model-free and 195 capture
-checks in normal and ASan/UBSan builds, from a separate source snapshot. The
-full shared suites for the preceding tokenizer changes also passed on both
-hosts. The newly added scoring targets still require a subsequent full shared
-suite run before these changes may be pushed.
+The predicate/relation checkpoint passed on macOS 26.5.1 ARM64 with Apple
+Clang 21 and Ubuntu 24.04 ARM64 with GCC 13.3.0 in normal and ASan/UBSan builds.
+Its final Choice/Score extension passed 102 branch checks and nine captures
+(337 checks) on both hosts in normal and ASan/UBSan builds. The synthetic
+checks additionally exercise format refusal and a failed adjudication.
+This qualifies scoring on captured logits, not a fresh native-model invocation
+or end-to-end typed result parity. The full shared suites for the preceding
+tokenizer changes passed on both hosts. Scoring changes require a subsequent
+full shared suite run before pushing.
