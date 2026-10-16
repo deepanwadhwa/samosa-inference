@@ -32,6 +32,9 @@ int sm_decision_request_normalized(const void *,SmTokenizerOutput *);
 /* Exact typed result schema, order, finite probabilities and consistency with
  * this admitted request. Model-free; returns tokenizer status codes. */
 int sm_decision_result_validate(const void *,const uint8_t *,size_t);
+/* Explicit modality profile: 0=text, 1=image. The latter requires SigLIP
+ * relation metadata and refuses batch relations. Unknown profiles fail. */
+int sm_decision_result_validate_profile(const void *,const uint8_t *,size_t,uint32_t);
 void sm_decision_request_free(void *);
 #ifdef __cplusplus
 }

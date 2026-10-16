@@ -150,9 +150,51 @@ and shared request checks pass normal/SAN on macOS and independent Linux ARM64.
 Standard model-free CI also compiles the image bridge without linking ORT.
 Actual typed image execution on Linux is not established by these checks.
 
-Public image registry/configuration, asset profile admission and worker transport
-remain unfinished. This private proof does not close area1 or any downstream
-Inference area.
+## Shared asset profile and framed worker
+
+The existing asset verifier now has explicit text/image profiles. Text remains
+limited to 1 GiB for its model; image admits at most 2 GiB for the pinned float32
+graph. Engine/runtime/tokenizer caps and every held-file, closed-tree, owner,
+mutation, cancellation and loader-graph check remain shared. Unknown profiles
+refuse admission. Sparse boundary tests exercise both caps without allocating
+model storage. `sm_decision_result_validate_profile` similarly shares the strict
+Rust result schema and request-consistency checks; image relation metadata must
+be `siglip_image_text`, text must be `explicit_opposite`, and image batch
+relations are refused. The original C ABI remains a text-profile wrapper.
+
+The existing native worker accepts an optional prepared raw frame through
+`--image-rgba ABSOLUTE_PATH --width N --height N`. It checks a regular owned
+file, exact packed RGBA size and 1..512 dimensions, prepares pixels once, and
+serves the same repeated bounded length-prefixed requests. Text launches retain
+their original arguments and computation. Neither mode imports Python or
+decodes an encoded image file.
+
+`tests/test_decision_image_worker.py` passes all eleven pinned actual-model cases
+through normal and ASan/UBSan worker builds, covering repeated frames, clean EOF,
+invalid dimensions and truncated raw inputs. Maximum typed numeric error remains
+`0.00000314415`. Logs: `/private/tmp/samosa-image-worker-real.log` and
+`/private/tmp/samosa-image-worker-real-sanitize.log`. The typed actual-model
+harness also passes all results through the new strict image-profile validator.
+Rust's eight tests and normal/SAN asset-profile checks pass locally; independent
+Linux checks cover the same Rust/schema and asset logic, plus worker compilation.
+Final asset checks pass 104 assertions per normal/SAN configuration on both
+platforms. The combined worker also passes an original actual-model text request
+with the original text assets (`/private/tmp/samosa-image-worker-text-regression.log`).
+
+The same converted graph now sits in a flat static execution root at
+`/private/tmp/samosa-decision-image-onnx-v1`; no second weight copy was made.
+The export provenance moved beside it to
+`/private/tmp/samosa-decision-image-onnx-v1.provenance.json` so the execution root
+has exactly the four required assets. A small engine/runtime/tokenizer copy
+completes the layout. Inventory `/private/tmp/samosa-decision-image-flat-v1.json`
+pins those bytes. The actual-asset gate passes image-profile admission and held
+recheck for the 1.5 GB graph, including the existing closed native loader graph.
+This proves static acceptance, not installed-package or public readiness.
+
+Hosted CI passed `f603265`, `d7d7a5f` and `8c375dc`. Current worker/profile changes
+still require their own hosted run. Public image registry/configuration and
+controlled provider dispatch remain unfinished. This private proof does not
+close area1 or any downstream Inference area.
 
 ## Acceptance and scope
 

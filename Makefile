@@ -493,7 +493,7 @@ sanitize: sanitize-decision-request
 
 DECISION_TRANSPORT_SOURCES = engines/decision/transport.cpp engines/decision/request.cpp engines/decision/text_evidence.cpp tests/decision_transport_fixture.cpp
 .PHONY: test-decision-transport sanitize-decision-transport
-build/decision-worker-main.o: engines/decision/main.cpp engines/decision/native_text.h engines/decision/request.h engines/decision/transport.h | build
+build/decision-worker-main.o: engines/decision/main.cpp engines/decision/native_text.h engines/decision/native_image.h engines/decision/image_pixels.h engines/decision/request.h engines/decision/transport.h | build
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -c engines/decision/main.cpp -o $@
 build/decision-transport-fixture: $(DECISION_TRANSPORT_SOURCES) $(DECISION_REQUEST_HEADERS) engines/decision/transport.h $(DECISION_TOKENIZER_ARCHIVE) | build
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines $(DECISION_TRANSPORT_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" $(DECISION_RUST_LIBS) -o $@
@@ -520,8 +520,8 @@ test: test-decision-assets
 sanitize: sanitize-decision-assets
 
 # Explicit pinned SDK/runtime inputs; neither CI nor this rule downloads a model.
-DECISION_WORKER_SOURCES = engines/decision/main.cpp engines/decision/transport.cpp engines/decision/request.cpp engines/decision/text_evidence.cpp engines/decision/native_text.cpp engines/decision/ort_nli.cpp
-DECISION_WORKER_HEADERS = $(DECISION_REQUEST_HEADERS) engines/decision/transport.h engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/ort_runtime.h engines/decision/token_json.h engines/decision/tokenizer/tokenizer.h engines/json.h
+DECISION_WORKER_SOURCES = engines/decision/main.cpp engines/decision/transport.cpp engines/decision/request.cpp engines/decision/text_evidence.cpp engines/decision/native_text.cpp engines/decision/ort_nli.cpp engines/decision/native_image.cpp engines/decision/ort_image.cpp engines/decision/image_pixels.cpp
+DECISION_WORKER_HEADERS = $(DECISION_REQUEST_HEADERS) engines/decision/transport.h engines/decision/native_text.h engines/decision/native_image.h engines/decision/ort_image.h engines/decision/image_pixels.h engines/decision/ort_nli.h engines/decision/ort_runtime.h engines/decision/token_json.h engines/decision/tokenizer/tokenizer.h engines/json.h
 DECISION_ORT_RPATH ?= $(if $(filter Darwin,$(shell uname -s)),@loader_path,$$ORIGIN)
 DECISION_IMAGE_ORT_SOURCES = tests/test_decision_image_ort_real.cpp engines/decision/ort_image.cpp engines/decision/image_pixels.cpp
 DECISION_IMAGE_ORT_HEADERS = engines/decision/ort_image.h engines/decision/ort_runtime.h engines/decision/image_pixels.h engines/json.h src/sha256.h

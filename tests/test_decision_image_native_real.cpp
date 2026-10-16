@@ -1,5 +1,6 @@
 #include "decision/native_image.h"
 #include "decision/image_pixels.h"
+#include "decision/tokenizer/request.h"
 #include "json.h"
 #include "sha256.h"
 #include <cmath>
@@ -69,6 +70,13 @@ int main(int argc,char** argv) {
       }
       request+='}';std::string result="sentinel";
       if(!samosa::decision::execute_request(backend,request,&result,&error)) throw std::runtime_error(error);
+      void* admitted=nullptr;
+      CHECK(!sm_decision_request_load(reinterpret_cast<const uint8_t*>(request.data()),request.size(),&admitted));
+      CHECK(!sm_decision_result_validate_profile(admitted,reinterpret_cast<const uint8_t*>(result.data()),result.size(),1));
+      CHECK(sm_decision_result_validate_profile(admitted,reinterpret_cast<const uint8_t*>(result.data()),result.size(),99));
+      if(std::string(method->str)=="relation")
+        CHECK(sm_decision_result_validate(admitted,reinterpret_cast<const uint8_t*>(result.data()),result.size()));
+      sm_decision_request_free(admitted);
       char* result_arena=nullptr;jval* actual=json_parse(result.c_str(),&result_arena);
       compare(actual,json_get(item,"result"));json_free(actual);free(result_arena);
       auto retained=result;

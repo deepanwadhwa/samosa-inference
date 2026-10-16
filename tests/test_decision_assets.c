@@ -47,6 +47,16 @@ int main(void) {
     char unused[65];put(root,"unexpected","x",1,0600,unused);
     CHECK(decision_assets_recheck(&assets,NULL,NULL)!=NULL);CHECK(!unlinkat(root,"unexpected",0));
     decision_assets_close(&assets);decision_assets_close(&assets);
+    CHECK(!decision_assets_open_profile(path,values,DECISION_ASSETS_IMAGE,NULL,NULL,&assets));
+    CHECK(assets.profile==DECISION_ASSETS_IMAGE&&!decision_assets_recheck(&assets,NULL,NULL));
+    decision_assets_close(&assets);
+    CHECK(!strcmp(decision_assets_open_profile(path,values,2,NULL,NULL,&empty),"invalid_decision_configuration")&&!empty.active);
+    int large=openat(root,decision_asset_name(DECISION_MODEL),O_WRONLY);CHECK(large>=0);
+    CHECK(!ftruncate(large,1073741825LL));
+    CHECK(!strcmp(decision_assets_open(path,values,NULL,NULL,&empty),"invalid_artifact_configuration")&&!empty.active);
+    CHECK(!ftruncate(large,2147483649LL));
+    CHECK(!strcmp(decision_assets_open_profile(path,values,DECISION_ASSETS_IMAGE,NULL,NULL,&empty),"invalid_artifact_configuration")&&!empty.active);
+    CHECK(!ftruncate(large,5));CHECK(!close(large));
     put(root,decision_asset_name(2),"wrong",5,0600,unused);
     CHECK(!strcmp(decision_assets_open(path,values,NULL,NULL,&empty),"artifact_checksum_mismatch")&&!empty.active);
     put(root,decision_asset_name(2),"model",5,0600,pins[2]);

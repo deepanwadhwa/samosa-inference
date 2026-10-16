@@ -59,7 +59,8 @@ static const char *file_check(const DecisionAssets *assets,unsigned i,int compar
     if(!error&&(!S_ISREG(before.st_mode)||before.st_uid!=geteuid()||before.st_nlink!=1||
        (before.st_mode&022)||before.st_size<=0||(i==DECISION_ENGINE&&!(before.st_mode&0111))))error="unsupported_artifact";
     if(!error&&(!same(&before,&named)||(compare&&!same(&before,&assets->identities[i]))))error="artifact_changed";
-    if(!error)error=artifact_verify_controlled(assets->files[i],(uint64_t)before.st_size,ceilings[i],assets->pins[i],control,context);
+    uint64_t ceiling=i==DECISION_MODEL&&assets->profile==DECISION_ASSETS_IMAGE?2147483648ULL:ceilings[i];
+    if(!error)error=artifact_verify_controlled(assets->files[i],(uint64_t)before.st_size,ceiling,assets->pins[i],control,context);
     if(!error&&(fstat(assets->files[i],&after)||!same(&before,&after)))error="artifact_changed";
     if(!error&&receipt)*receipt=after;
     return error;
@@ -71,7 +72,7 @@ void decision_assets_close(DecisionAssets *assets) {
     memset(assets,0,sizeof(*assets));
 }
 const char *decision_assets_recheck(const DecisionAssets *assets,const char *(*control)(void *),void *context) {
-    if(!assets||!assets->active)return "invalid_decision_configuration";
+    if(!assets||!assets->active||assets->profile>DECISION_ASSETS_IMAGE)return "invalid_decision_configuration";
     const char *error=control?control(context):NULL;struct stat held,named;
     if(!error&&(fstat(assets->root,&held)||lstat(assets->path,&named)))error="artifact_unavailable";
     if(!error&&(!same(&held,&assets->directory)||!same(&held,&named)))error="artifact_changed";
@@ -83,9 +84,14 @@ const char *decision_assets_recheck(const DecisionAssets *assets,const char *(*c
 }
 const char *decision_assets_open(const char *path,const char *const pins[DECISION_ASSET_COUNT],
     const char *(*control)(void *),void *context,DecisionAssets *out) {
-    if(!out||out->active||!path||path[0]!='/'||strlen(path)>=sizeof(out->path)||!pins)
+    return decision_assets_open_profile(path,pins,DECISION_ASSETS_TEXT,control,context,out);
+}
+const char *decision_assets_open_profile(const char *path,const char *const pins[DECISION_ASSET_COUNT],
+    unsigned profile,const char *(*control)(void *),void *context,DecisionAssets *out) {
+    if(!out||out->active||!path||path[0]!='/'||strlen(path)>=sizeof(out->path)||!pins||profile>DECISION_ASSETS_IMAGE)
         return "invalid_decision_configuration";
     DecisionAssets candidate={.active=1,.root=-1,.files={-1,-1,-1,-1}};
+    candidate.profile=profile;
     for(unsigned i=0;i<DECISION_ASSET_COUNT;i++) {
         if(!pins[i]||strlen(pins[i])!=64||strspn(pins[i],"0123456789abcdef")!=64)return "invalid_decision_configuration";
         memcpy(candidate.pins[i],pins[i],65);

@@ -392,10 +392,10 @@ fn text_is(values: &Fields<'_>, name: &str, expected: &str) -> Result<(), i32> {
         Err(INVALID)
     }
 }
-fn result_relation(raw: &RawValue, threshold: f64) -> Result<(), i32> {
+fn result_relation(raw: &RawValue, threshold: f64, backend: &str) -> Result<(), i32> {
     let values = exact_fields(raw, &["type", "relation", "scores", "threshold", "backend"])?;
     text_is(&values, "type", "relation")?;
-    text_is(&values, "backend", "explicit_opposite")?;
+    text_is(&values, "backend", backend)?;
     if result_number(field(&values, "threshold")?)? != threshold {
         return Err(INVALID);
     }
@@ -410,7 +410,16 @@ fn result_relation(raw: &RawValue, threshold: f64) -> Result<(), i32> {
     };
     text_is(&values, "relation", expected)
 }
+#[cfg(test)]
 fn validate_result(request: &Owned, bytes: &[u8]) -> Result<(), i32> {
+    validate_result_profile(request, bytes, 0)
+}
+fn validate_result_profile(request: &Owned, bytes: &[u8], profile: u32) -> Result<(), i32> {
+    let backend = match profile {
+        0 => "explicit_opposite",
+        1 if request.kind != 6 => "siglip_image_text",
+        _ => return Err(INVALID),
+    };
     let raw: &RawValue = serde_json::from_slice(bytes).map_err(|_| INVALID)?;
     match request.kind {
         1 | 2 => {
@@ -493,14 +502,14 @@ fn validate_result(request: &Owned, bytes: &[u8]) -> Result<(), i32> {
             text_is(&values, "type", "noul")?;
             probability(field(&values, "noul")?).map(|_| ())
         }
-        5 => result_relation(raw, request.threshold),
+        5 => result_relation(raw, request.threshold, backend),
         6 => {
             let results: Vec<&RawValue> = serde_json::from_str(raw.get()).map_err(|_| INVALID)?;
             if results.len() != request.relations.len() {
                 return Err(INVALID);
             }
             for result in results {
-                result_relation(result, request.threshold)?;
+                result_relation(result, request.threshold, backend)?;
             }
             Ok(())
         }
@@ -513,13 +522,23 @@ pub unsafe extern "C" fn sm_decision_result_validate(
     data: *const u8,
     length: usize,
 ) -> i32 {
+    sm_decision_result_validate_profile(handle, data, length, 0)
+}
+#[no_mangle]
+pub unsafe extern "C" fn sm_decision_result_validate_profile(
+    handle: *const c_void,
+    data: *const u8,
+    length: usize,
+    profile: u32,
+) -> i32 {
     if handle.is_null() || data.is_null() || length == 0 || length > MAX_REQUEST {
         return INVALID;
     }
     match catch_unwind(AssertUnwindSafe(|| {
-        validate_result(
+        validate_result_profile(
             &*handle.cast::<Owned>(),
             std::slice::from_raw_parts(data, length),
+            profile,
         )
     })) {
         Ok(Ok(())) => 0,
@@ -671,6 +690,8 @@ mod tests {
         let valid =
             br#"{"type":"choice","choice":"z","probabilities":{"z":0.5,"a":0.5},"confidence":0}"#;
         assert!(validate_result(&choice, valid).is_ok());
+        assert!(validate_result_profile(&choice, valid, 1).is_ok());
+        assert!(validate_result_profile(&choice, valid, 2).is_err());
         for invalid in [
             r#"{"type":"choice","choice":"a","probabilities":{"z":0.5,"a":0.5},"confidence":0}"#,
             r#"{"type":"choice","choice":"z","probabilities":{"a":0.5,"z":0.5},"confidence":0}"#,
@@ -684,12 +705,14 @@ mod tests {
                 validate_result(&choice, invalid.as_bytes()).is_err(),
                 "{invalid}"
             );
+            assert!(validate_result_profile(&choice, invalid.as_bytes(), 1).is_err());
         }
         let score =
             decode(br#"{"method":"score","state":0,"instructions":"q","criteria":["low","high"]}"#)
                 .unwrap();
         let valid = br#"{"type":"score","score":0.5,"legend":{"0":"low","1":"high"},"probabilities":{"0":0.5,"1":0.5},"confidence":0}"#;
         assert!(validate_result(&score, valid).is_ok());
+        assert!(validate_result_profile(&score, valid, 1).is_ok());
         let wrong_score = String::from_utf8(valid.to_vec())
             .unwrap()
             .replace("\"score\":0.5", "\"score\":0.8");
@@ -700,6 +723,7 @@ mod tests {
         assert!(validate_result(&score, wrong_legend.as_bytes()).is_err());
         let noul = decode(br#"{"method":"noul","state":0,"instructions":"q"}"#).unwrap();
         assert!(validate_result(&noul, br#"{"type":"noul","noul":0.5}"#).is_ok());
+        assert!(validate_result_profile(&noul, br#"{"type":"noul","noul":0.5}"#, 1).is_ok());
         for invalid in [
             r#"{"type":"noul","noul":-0.1}"#,
             r#"{"type":"noul","noul":1e999}"#,
@@ -712,18 +736,39 @@ mod tests {
                 .unwrap();
         let valid = br#"{"type":"relation","relation":"supports","scores":{"supports":0.7,"contradicts":0.2},"threshold":0.5,"backend":"explicit_opposite"}"#;
         assert!(validate_result(&relation, valid).is_ok());
+        assert!(validate_result_profile(&relation, valid, 1).is_err());
+        let image = String::from_utf8(valid.to_vec())
+            .unwrap()
+            .replace("explicit_opposite", "siglip_image_text");
+        assert!(validate_result_profile(&relation, image.as_bytes(), 1).is_ok());
+        assert!(validate_result(&relation, image.as_bytes()).is_err());
+        let invalid_image = image.replace("\"supports\",", "\"unknown\",");
+        assert!(validate_result_profile(&relation, invalid_image.as_bytes(), 1).is_err());
         let wrong_relation = String::from_utf8(valid.to_vec())
             .unwrap()
             .replace("\"supports\",", "\"conflicted\",");
         assert!(validate_result(&relation, wrong_relation.as_bytes()).is_err());
         let relations = decode(br#"{"method":"relations","items":[]}"#).unwrap();
         assert!(validate_result(&relations, b"[]").is_ok());
+        assert!(validate_result_profile(&relations, b"[]", 1).is_err());
         assert!(validate_result(&relations, valid).is_err());
         unsafe {
             let handle = Box::into_raw(Box::new(relation)).cast();
             assert_eq!(
                 sm_decision_result_validate(handle, valid.as_ptr(), valid.len()),
                 0
+            );
+            assert_eq!(
+                sm_decision_result_validate_profile(handle, image.as_ptr(), image.len(), 1),
+                0
+            );
+            assert_eq!(
+                sm_decision_result_validate_profile(handle, image.as_ptr(), image.len(), 0),
+                INVALID
+            );
+            assert_eq!(
+                sm_decision_result_validate_profile(handle, image.as_ptr(), image.len(), 99),
+                INVALID
             );
             assert_eq!(
                 sm_decision_result_validate(std::ptr::null(), valid.as_ptr(), valid.len()),
