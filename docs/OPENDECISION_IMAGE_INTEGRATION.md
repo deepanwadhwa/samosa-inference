@@ -91,11 +91,32 @@ ARM64 container for both model primitives and the image harness. The existing
 actual NLI regression also passes all fourteen captured batches after the shared
 runtime extraction, with unchanged maximum logit error `0.005859375`.
 
-This qualifies captured-tensor model execution and tokenizer reuse only.
-PIL-compatible pixel preprocessing, full typed native image decisions and public
-image operations remain unfinished. In particular, the existing Molmo2
-half-pixel bilinear sampler lacks PIL's downsampling antialias kernel; substituting
-it would invalidate the patterned non-square reference.
+## Prepared pixel qualification
+
+The existing Molmo2 half-pixel bilinear sampler lacks PIL's downsampling
+antialias kernel and quantized intermediate RGB pass. It cannot reproduce the
+patterned non-square reference. The small private `image_pixels` adapter supplies
+that missing processor step without adding image decoding or changing Molmo2.
+It admits bounded packed RGB/RGBA (maximum 512 per axis), discards alpha exactly
+as the original RGB conversion, performs separable bilinear antialias resizing
+with byte-rounded intermediate pixels, then emits planar float32 normalization.
+Failure preserves the caller's previous tensor.
+
+The actual-model harness now prepares the original RGB pixels and verifies exact
+float tensor equality against every captured processor input. It separately
+verifies RGBA with varying alpha. All eleven model cases continue to pass in
+normal and ASan/UBSan builds, maximum logit error `0.0000181198`. Logs:
+`/private/tmp/samosa-decision-image-pixels-native-v1.log` and
+`/private/tmp/samosa-decision-image-pixels-native-sanitize-v1.log`.
+
+`test-decision-image-pixels` and `sanitize-decision-image-pixels` add eight
+reference-pinned tensor hashes and invalid-input/output-preservation checks to
+standard model-free CI. Expected hashes come from the pinned original report,
+not the native algorithm. This gate runs without weights, ORT, Pillow or Python
+model dependencies. Native macOS and Linux ARM64 tests pass in both
+configurations; Linux checks use the same independent source container.
+
+Full typed native image decisions and public image operations remain unfinished.
 
 ## Acceptance and scope
 

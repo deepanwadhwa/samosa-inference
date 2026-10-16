@@ -1,5 +1,6 @@
 // Actual captured tensors through the native image primitive. Not a public-provider gate.
 #include "decision/ort_image.h"
+#include "decision/image_pixels.h"
 #include "json.h"
 #include "sha256.h"
 #include <algorithm>
@@ -81,9 +82,37 @@ int main(int argc, char** argv) {
       std::ifstream blob(path, std::ios::binary);
       blob.read(reinterpret_cast<char*>(pixels.data()), pixels.size() * sizeof(float));
       CHECK(blob.good() && blob.peek() == std::char_traits<char>::eof());
+      auto* state = json_get(item, "state");
+      auto* rgb_file = json_get(state, "file"); auto* rgb_pin = json_get(state, "sha256");
+      auto* width = json_get(state, "width"); auto* height = json_get(state, "height");
+      CHECK(rgb_file && rgb_file->t == J_STR && rgb_pin && rgb_pin->t == J_STR &&
+            width && width->t == J_NUM && height && height->t == J_NUM);
+      CHECK(width->num >= 1 && width->num <= 512 && std::floor(width->num) == width->num &&
+            height->num >= 1 && height->num <= 512 && std::floor(height->num) == height->num);
+      std::filesystem::path rgb_relative(rgb_file->str);
+      CHECK(rgb_relative.filename() == rgb_relative && !rgb_relative.is_absolute());
+      auto rgb_path = std::filesystem::path(argv[2]).parent_path() / rgb_relative;
+      CHECK(digest(rgb_path) == rgb_pin->str);
+      std::vector<uint8_t> rgb(static_cast<size_t>(width->num * height->num * 3));
+      std::ifstream rgb_input(rgb_path, std::ios::binary);
+      rgb_input.read(reinterpret_cast<char*>(rgb.data()), rgb.size());
+      CHECK(rgb_input.good() && rgb_input.peek() == std::char_traits<char>::eof());
+      std::vector<float> prepared;
+      CHECK(samosa::decision::image_pixels(rgb, width->num, height->num, 3, &prepared, &error));
+      CHECK(prepared == pixels);
+      std::vector<uint8_t> rgba;
+      for (size_t pixel_index = 0; pixel_index < rgb.size() / 3; ++pixel_index) {
+        for (int channel = 0; channel < 3; ++channel) rgba.push_back(rgb[pixel_index * 3 + channel]);
+        rgba.push_back(static_cast<uint8_t>(pixel_index % 256));
+      }
+      CHECK(samosa::decision::image_pixels(rgba, width->num, height->num, 4, &prepared, &error));
+      CHECK(prepared == pixels);
+      CHECK(!samosa::decision::image_pixels({}, 0, 1, 4, &prepared, &error) && prepared == pixels);
+      CHECK(!samosa::decision::image_pixels({}, 513, 1, 4, &prepared, &error) && prepared == pixels);
+      CHECK(!samosa::decision::image_pixels(rgb, width->num, height->num, 2, &prepared, &error) && prepared == pixels);
       const auto original_ids = ids;
       const auto original_pixels = pixels;
-      if (!model.infer(ids, pixels, tokens->len, &logits, &error)) throw std::runtime_error(error);
+      if (!model.infer(ids, prepared, tokens->len, &logits, &error)) throw std::runtime_error(error);
       CHECK(ids == original_ids && pixels == original_pixels);
       auto* expected = json_get(batch, "logits_per_image");
       CHECK(expected && expected->t == J_ARR && expected->len == 1);
