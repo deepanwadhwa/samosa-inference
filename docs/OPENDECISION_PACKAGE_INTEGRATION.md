@@ -161,3 +161,34 @@ the initial normal proofs above do not substitute for that final candidate.
 Hosted recipe integration run38975464089 passed atf24cce5 on macOS/Linux. Actual
 model execution here remains macOS ARM64 evidence. Production distribution
 catalogs and all original remaining area2 criteria are still open.
+
+## Separate index and payload credentials
+
+Catalog review found that setup copied its index bearer key into the independently
+configured digest endpoint. The existing native downloader already restricts
+credentials across redirects, but that did not protect this second initial URL.
+Setup now supplies no payload bearer by default; the trusted host can explicitly
+provide `--digest-bearer-key-file`. It uses the existing private-key reader and
+clears both independent buffers. No downloader, credential store or public request
+fields were added.
+
+The shared HTTPS fixture requires distinct index/payload keys for both decision
+profiles. It verifies that the index key never appears on payload requests,
+missing payload authentication refuses without completion, explicit payload
+authentication installs successfully, missing/private key configuration and
+duplicate/incomplete flags refuse, and subsequent cache-only operations succeed
+after both credential files are deleted. It deliberately uses the same authority
+for both endpoints: sharing an origin must not implicitly share credentials.
+
+`make test-setup sanitize-setup` passes on macOS ARM64 and Ubuntu ARM64, including
+all six existing recipe families. Logs:
+
+- `/private/tmp/samosa-setup-credential-isolation-macos.log`
+- `/private/tmp/samosa-setup-credential-isolation-linux-final.log`
+- `/private/tmp/samosa-setup-credential-final-focused.log`
+- `/private/tmp/samosa-setup-credential-final-focused-linux.log`
+
+The final focused runs additionally require offline reuse after deleting the key
+files. These controlled transport checks do not qualify production distribution
+URLs or model availability. Hosted run38977208005 passed at0a65512 before this
+credential change; it is not CI evidence for the credential change.

@@ -63,3 +63,8 @@ are a copied bounded configuration snapshot, and each install still verifies its
 full size/digest. There is no destructive cleanup, eviction, install rollback or
 automatic repair of ambiguous foreign/torn state. Engine activation, executable
 mode qualification and actual runtime closure use separate owner operations.
+
+For multi-file packages, the catalog bearer key authenticates only the index.
+Payload endpoint authentication is independently configured through
+`--digest-bearer-key-file`; it never inherits the index key. See
+[the package installer contract](package-installer-v1.md#setup-command-connection).

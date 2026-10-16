@@ -79,7 +79,12 @@ prepares an owner-private directory for the selected pinned package. Install and
 resume additionally require `--reservation-directory`, `--copy-ceiling`,
 `--reservation-ceiling` and `--reservation-capacity`. `--digest-endpoint` supplies
 the optional payload endpoint; `--state` supplies the verified artifact cache.
-Existing CA, credential, redirect and artifact quota flags still apply. Status
+CA, redirect and artifact quota flags still apply. `--bearer-key-file` authenticates
+the catalog-selected index URL only. Payload credentials require the independent
+`--digest-bearer-key-file` private key file, together with a package directory and
+digest endpoint. Catalog credentials are never inherited by the payload endpoint,
+even when both URLs share an origin. Both use the existing bounded private-key
+reader and transport redirect isolation; key buffers are cleared before exit. Status
 requires no reservation configuration. Requests remain strict contract-version,
 operation and provider-ID objects; paths and URLs are host CLI configuration.
 Success reports `installed_verified`, `activation:not_requested` and
