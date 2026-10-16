@@ -126,6 +126,14 @@ QA tools and are not package artifacts or evidence of successful inference.
 The independently built corrected engine also still needs its own complete
 installed execution qualification.
 
+A subsequent diagnostic run of the existing engine passed the public two-frame
+actual-model harness (524671 checks) under the unchanged file cap, without an
+oversize write reported by the temporary tracer. A minimal Metal library-load
+probe also succeeded with that cap. These results do not reproduce or explain
+the failed installed run, and neither qualifies the independent engine package.
+The required next evidence is complete installed execution using the production
+provider, followed by resolving any remaining cold-start failure.
+
 ## Corrected independent package
 
 The separately packaged `9a6a718e...` engine passed normal and
