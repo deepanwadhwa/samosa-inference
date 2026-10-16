@@ -68,6 +68,53 @@ inventory, hashes, package compatibility and actual-model tests remain required.
 The existing OpenDecision Python backend is a parity reference; introducing a
 new shipped Python dependency has not been established as the module design.
 
-Keep the current installation work sequential: finish the in-flight VisionPsy
-qualification, then resolve this newly identified provider/package dependency
-before declaring model acquisition complete or advancing to engine lifecycle.
+Keep implementation sequential: finish the OpenDecision text provider first,
+then its image provider. Qualify their package dependencies and the remaining
+production catalogs before declaring model acquisition complete or advancing
+to engine lifecycle. Completed Molmo2 and VisionPsy evidence remains below.
+
+## Pinned text reference checkpoint
+
+The Molmo2 installation and affected VisionPsy regressions are now qualified;
+OpenDecision is the active prerequisite. `tests/opendecision_text_assets.json`
+pins the seven existing Chat checkpoint files, including weights SHA-256
+`2031ec34340911b2cecf4f95f5e24db91b2a5d7ea0fa1e704e9cd6d61585e477`.
+This is an inventory of the existing local checkpoint, not an installed native
+package or production distribution entry.
+
+`tests/opendecision_reference.py` imports a tracked-source export at the revision
+above, validates the original checkpoint before and after execution, and records
+actual input tensors, logits and typed results. It preserves the existing CPU,
+four-thread and batch-eight settings. Nine actual-model cases passed twice with
+identical tensors, logits and results: Chat routing, duplicate descriptions,
+positive/negative predicates, explicit binary criteria, ordered scoring,
+support/contradiction and structured Unicode state. The routing fixture selected
+`find`. This reference uses the existing Python environment only for QA; no
+Python provider or runtime is added to the module.
+
+The observed environment is Torch 2.14.0, Transformers 5.17.0, Tokenizers 0.23.2
+and SentencePiece 0.2.2. The actual model uses float16 weights, two output labels
+(`entailment` and `not_entailment`), a 512-position limit and a Hugging Face
+Unigram tokenizer backend. The effective tokenizer differs from the cached JSON
+in its normalizer, pre-tokenizer and decoder. Its exported initializer has
+4242551 bytes and SHA-256
+`7caa16d3d730231fc7b9c2db4716e3e38736880bd4f2e016bb37987645e4900a`.
+The existing native BPE helper cannot be substituted for this computation.
+
+Text Choice runs two profiles and, on disagreement, a third adjudication;
+the Chat routing fixture exercises all three. Preserve its rendering, original
+candidate order, collision handling and selection of the returned probability
+distribution. Noul uses per-pair entailment probability, or softmax over explicit
+true/false entailment logits. Score uses its question-specific hypothesis
+template and zero-based expected position. For this two-label checkpoint,
+Relation uses independent entailment scores for explicit opposite statements;
+it must not pretend to expose a native three-way NLI distribution.
+
+Private reference report SHA-256:
+`7afae3530f696e67abffeb41b91620b7af335fc4adf13b0398fa1cccf90f7d33`.
+Reproduce with the existing OpenDecision environment:
+`python tests/opendecision_reference.py OPENDECISION_REPOSITORY MODEL_DIRECTORY
+NEW_REPORT_JSON`. The matching `.tokenizer.json` is written beside the report.
+The native model backend, tokenizer parity, typed provider and package gates
+remain open. An existing qualified speech runtime contains ONNX Runtime and
+exports `OrtGetApiBase`; using it for this model still requires execution proof.
