@@ -118,3 +118,14 @@ NEW_REPORT_JSON`. The matching `.tokenizer.json` is written beside the report.
 The native model backend, tokenizer parity, typed provider and package gates
 remain open. An existing qualified speech runtime contains ONNX Runtime and
 exports `OrtGetApiBase`; using it for this model still requires execution proof.
+
+
+## Native backend checkpoint
+
+The native tensor primitive now executes all 14 extended reference batches in
+normal and sanitizer builds using the existing ORT runtime, including eight
+512-position inputs in one batch. See [backend evidence](OPENDECISION_BACKEND_VERIFICATION.md)
+for artifact pins, numerical tolerance, independent build inputs and platform
+limits. This closes the raw model execution prerequisite. Native tokenizer
+parity and the typed public provider are next; no public OpenDecision provider
+is advertised yet.

@@ -136,6 +136,14 @@ def main():
             ("structured_unicode", "noul", dict(
                 state={"status": "paid", "currency": "€", "note": "Café invoice"},
                 instructions="The invoice has been paid.")),
+            # Four explicit-opposite relations produce eight pairs. The NLI
+            # backend truncates each long premise to its 512-position limit.
+            ("capacity_relations", "relations", dict(items=[
+                dict(state="An invoice was found. " + "The document record remains available. " * 300,
+                     proposition=f"Invoice number {index + 1} was found.",
+                     contradiction=f"Invoice number {index + 1} was not found.")
+                for index in range(4)
+            ], threshold=0.5)),
         ]
         captured = []
         try:

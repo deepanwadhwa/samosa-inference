@@ -111,3 +111,16 @@ The current build profile explicitly targets the build host's macOS version.
 It does not establish support for an older deployment target or Linux model
 execution. Build and actual installed-model results are tracked in
 [Molmo2 installation evidence](../docs/MOLMO_PACKAGE_INSTALLATION_VERIFICATION.md).
+
+
+## OpenDecision text backend prerequisite
+
+`decision/ort_nli.{h,cpp}` is the private native float16 DeBERTa tensor primitive.
+It requires the public ORT API headers pinned by `decision/ort_sdk_pins.json`
+and an independently byte-pinned runtime. The snapshot qualifier
+`tests/opendecision_native_backend.py` builds and executes normal/sanitizer
+harnesses outside the checkout using explicit SDK, runtime, model and reference
+inputs. See [qualification and commands](../docs/OPENDECISION_BACKEND_VERIFICATION.md).
+Native tokenization, typed decisions, framed engine dispatch and public provider
+integration remain under construction; this primitive alone is not an engine
+release or an installed model package.

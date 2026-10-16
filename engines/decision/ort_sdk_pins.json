@@ -1,0 +1,38 @@
+{
+  "api_version": 27,
+  "files": {
+    "LICENSE": {
+      "bytes": 1073,
+      "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
+    },
+    "onnxruntime_c_api.h": {
+      "bytes": 392016,
+      "sha256": "c4ed26d7bbc7b649c1c38622424d88dfb1a28e3d3594c5f1456cf458814e8381"
+    },
+    "onnxruntime_cxx_api.h": {
+      "bytes": 168888,
+      "sha256": "c5f9bb73d7674cf99a197b383a144eb2a5eda71cc060193a86c7d24e6fa36ed7"
+    },
+    "onnxruntime_cxx_inline.h": {
+      "bytes": 157429,
+      "sha256": "114b4d008351eaa4462560438474cebd104f74259cc8af607acc0b97453200d2"
+    },
+    "onnxruntime_ep_c_api.h": {
+      "bytes": 149810,
+      "sha256": "f65ac849718cabe3ff4902698dd2de643c3b3dbe0010242b2b0407548e7ee00c"
+    },
+    "onnxruntime_float16.h": {
+      "bytes": 17991,
+      "sha256": "88b242845d25981633a0bbd1c148e273cf8bfb016ea3f57c4af41a06530f72b0"
+    }
+  },
+  "format": "samosa.inference.ort-sdk-pins.v1",
+  "observed_qa_runtime": {
+    "bytes": 28025584,
+    "filename": "libonnxruntime.1.27.0.dylib",
+    "provenance": "Existing qualified Pocket speech runtime; not a new decision package.",
+    "sha256": "5b4c4df69e6d1bc10eb0d08da525b11faf8365a0a78cc597a5cc57926330a9ca"
+  },
+  "source_repository": "https://github.com/microsoft/onnxruntime",
+  "source_revision": "8f0278c77bf44b0cc83c098c6c722b92a36ac4b5"
+}
