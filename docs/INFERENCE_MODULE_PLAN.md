@@ -5,19 +5,18 @@ This checklist owns Inference completion; Sources closure does not close these
 gates. Existing S02–S13 documents describe qualified subsets and remain evidence.
 No area is closed by a fixture, a descriptor, or a file move alone.
 
-## 1. Provider and modality integration — active OpenDecision prerequisite
+## 1. Provider and modality integration — complete
 
-The original modality set was qualified on 2026-10-14. The subsequently
-identified OpenDecision text/image requirement reopens provider integration;
-area 1 is not fully complete for the expanded inventory. See
-[OpenDecision integration](OPENDECISION_INTEGRATION.md). Independent Molmo2
-installation and installed execution now pass normally and with sanitizers,
-along with affected VisionPsy and combined-registry regressions; see
-[Molmo2 evidence](MOLMO_PACKAGE_INSTALLATION_VERIFICATION.md). The OpenDecision public text prerequisite is now qualified; see
-[public text evidence](OPENDECISION_PUBLIC_INTEGRATION.md). The image provider
-is implemented through the same public path; finish its qualification and
-integration audit next, before further installation acceptance or lifecycle work.
-See [image evidence](OPENDECISION_IMAGE_INTEGRATION.md).
+The original modality foundation and expanded OpenDecision text/image integration
+are qualified. All nine provider kinds coexist through the common public registry.
+Pinned actual-model text/image results and normal/SAN controls are recorded in
+[the requirement audit](PROVIDER_INTEGRATION_AUDIT.md),
+[public text evidence](OPENDECISION_PUBLIC_INTEGRATION.md) and
+[image evidence](OPENDECISION_IMAGE_INTEGRATION.md). Full exported-source checks
+passed on macOS/Linux, and hosted run38973353427 passed at46612a4. This closes
+area1 only:1/7 areas complete; area2 is active. Independent Molmo2 installation
+and installed execution remain recorded in
+[Molmo2 evidence](MOLMO_PACKAGE_INSTALLATION_VERIFICATION.md).
 
 Reuse the existing native text, EmbeddingGemma2, T5 summary, Whisper,
 VisionPsy and Molmo2 implementations and their public contracts. Audit native
@@ -36,7 +35,7 @@ Do not introduce a shipped Python runtime.
 - Qualify actual supported models and combined-provider routing, malformed input,
   provenance, unavailable providers and platform-specific capability reporting.
 
-## 2. Model acquisition and installation — production acceptance pending
+## 2. Model acquisition and installation — active, production acceptance pending
 
 - Assemble trusted catalogs over the existing verified artifact, HTTPS download
   and setup primitives; pin full engine/model packages and provenance.

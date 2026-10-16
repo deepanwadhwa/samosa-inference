@@ -16,9 +16,10 @@ public control and independent shared checks pass on macOS and Ubuntu ARM64.
 See [public integration evidence](OPENDECISION_PUBLIC_INTEGRATION.md).
 This supersedes the historical public-text gap below. OpenDecision image
 matching now has native preprocessing, model execution, typed decisions and
-public `image_decisions` / `decide_image` dispatch; final qualification remains
-the active area1 prerequisite. See [image evidence](OPENDECISION_IMAGE_INTEGRATION.md).
-No full area is closed by that implementation checkpoint.
+public `image_decisions` / `decide_image` dispatch. Final model/control and
+independent/hosted checks now pass; the expanded
+[provider audit](PROVIDER_INTEGRATION_AUDIT.md) closes area1 (1/7).
+See [image evidence](OPENDECISION_IMAGE_INTEGRATION.md). Areas2–7 remain open.
 
 ## Existing Chat use
 

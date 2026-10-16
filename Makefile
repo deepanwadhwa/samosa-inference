@@ -519,6 +519,18 @@ sanitize-decision-assets: | build
 test: test-decision-assets
 sanitize: sanitize-decision-assets
 
+DECISION_DESCRIPTOR_SOURCES = src/decision_package_descriptor.c $(DECISION_ASSET_SOURCES) src/package_index.c src/catalog_host.c
+.PHONY: test-decision-package-descriptor sanitize-decision-package-descriptor
+build/test-decision-package-descriptor: tests/test_decision_package_descriptor.c $(DECISION_DESCRIPTOR_SOURCES) src/decision_package_descriptor.h src/decision_assets.h src/package_index.h src/json.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc tests/test_decision_package_descriptor.c $(DECISION_DESCRIPTOR_SOURCES) -o $@
+test-decision-package-descriptor: build/test-decision-package-descriptor
+	./build/test-decision-package-descriptor
+sanitize-decision-package-descriptor: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Isrc tests/test_decision_package_descriptor.c $(DECISION_DESCRIPTOR_SOURCES) -o build/test-decision-package-descriptor-sanitize
+	./build/test-decision-package-descriptor-sanitize
+test: test-decision-package-descriptor
+sanitize: sanitize-decision-package-descriptor
+
 # Explicit pinned SDK/runtime inputs; neither CI nor this rule downloads a model.
 DECISION_WORKER_SOURCES = engines/decision/main.cpp engines/decision/transport.cpp engines/decision/request.cpp engines/decision/text_evidence.cpp engines/decision/native_text.cpp engines/decision/ort_nli.cpp engines/decision/native_image.cpp engines/decision/ort_image.cpp engines/decision/image_pixels.cpp
 DECISION_WORKER_HEADERS = $(DECISION_REQUEST_HEADERS) engines/decision/transport.h engines/decision/native_text.h engines/decision/native_image.h engines/decision/ort_image.h engines/decision/image_pixels.h engines/decision/ort_nli.h engines/decision/ort_runtime.h engines/decision/token_json.h engines/decision/tokenizer/tokenizer.h engines/json.h

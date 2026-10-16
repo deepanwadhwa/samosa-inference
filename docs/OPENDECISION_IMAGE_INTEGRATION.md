@@ -1,9 +1,8 @@
-# OpenDecision image prerequisite — active
+# OpenDecision image integration — qualified
 
 Assignment OD-I01 follows C02/C03/C13 and the seven-area Inference plan.
 The public text prerequisite is qualified at `1cfeb05`; its hosted macOS/Linux
-CI run `38946753940` completed successfully. Image decisions remain
-required before area1 can close. This work belongs to the independent Inference
+CI run `38946753940` completed successfully. Image decisions are now qualified under the expanded area1 audit. This work belongs to the independent Inference
 repository; Sources owns image decoding/prepared pixels, Agent owns application
 policy, and App assembles pinned public dependencies.
 
@@ -314,8 +313,9 @@ instance; its normal/SAN gates pass459 checks on both platforms. Logs:
 
 No production computation changed for these additional cases, and no weights
 were downloaded, copied or re-exported. The extra18MiB reference directory holds
-only tokenizer and captured inputs/results. Hosted qualification of the final
-source revision remains a separate gate before area1 closes.
+only tokenizer and captured inputs/results. Full exported-source checks passed on macOS/Linux, and hosted run38973353427
+passed at46612a4. The expanded provider audit therefore closes area1, while
+installation and all area2–7 requirements remain open.
 
 ## Acceptance and scope
 

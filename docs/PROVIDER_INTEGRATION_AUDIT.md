@@ -3,16 +3,49 @@
 ## Current expanded inventory — 2026-10-16
 
 The original seven-modality completion decision below predates the required
-OpenDecision text/image inventory. Area1 remains active until that expanded
-integration audit and its final hosted checks pass. Public text decisions are
+OpenDecision text/image inventory. The expanded area1 audit is now complete:
+all local and hosted final checks passed. Public text decisions are
 qualified in [the text record](OPENDECISION_PUBLIC_INTEGRATION.md). Native image
-decisions now reuse the same registry/operation/guardian path; all eleven pinned
+decisions now reuse the same registry/operation/guardian path; all twenty pinned
 actual-model image cases pass through the public adapter normally and under
 ASan/UBSan on macOS ARM64. See [image evidence](OPENDECISION_IMAGE_INTEGRATION.md).
 Text/image coexistence, image limits and common controls pass on macOS and Linux;
 Linux model quality and downstream areas remain outside those fixture checks.
 The historical foundation audit below remains evidence, not a completion claim
-for the newly expanded inventory.
+for the newly expanded inventory; the decision below supersedes it.
+
+| Expanded requirement | Current evidence | Gate outcome / retained scope |
+| --- | --- | --- |
+| Preserve existing provider/model implementations | Original seven adapters and qualified model records below; OpenDecision reuses native ORT, the locked tokenizer, typed decoder/result types and common provider controls | Passed final independent and hosted source checks |
+| One discovery/dispatch interface with coexisting selection | All nine provider kinds coexist in one registry; normal/SAN registry gates pass459 checks on macOS and Linux | Passed final hosted checks |
+| Actual OpenDecision text behavior | Ten pinned public actual-model cases, including8x512 relations, still pass after image integration; maximum typed error0.000583839146 | Broader platform/release coverage remains area7 |
+| Actual OpenDecision image behavior and limits | Original eleven cases plus nine extended cases pass public normal/SAN adapters with unchanged executable pins;128-candidate Choice/Score, all relation categories, fallback/ties, Unicode and extreme frame dimensions; maximum typed error0.0000595896272 | Passed final hosted checks; broader platform/release coverage remains area7 |
+| Exact native processor/tokenizer reuse | Twenty-case private native pipeline passes normal/SAN; every expanded processor tensor matches exactly in the sanitizer gate; all51 native tokenizer matrices match on both platforms; twelve model-free pixel tensors pass normal/SAN on both | Passed final source qualification |
+| Common owner, retry, cancellation, deadlines and cleanup | Public text/image control gates exercise NUL/order, retained offline replay, provider/owner isolation, malformed results, worker death, mutation, full-frame bounds, pixel/dimension conflicts and requester-death raw-file cleanup on both hosts | Service-wide and global runtime requirements remain areas3–6 |
+| Preserve original transports, receipts and modality behavior | Sources public transports/validators are unchanged. Original modality evidence below remains applicable; minimal registry, native registry CLI, VisionPsy and guardian normal/SAN regressions pass on both hosts | Passed full shared script at final source revision |
+| Accurate availability and platform claims | Registry still declares configured/unqualified availability. Actual image/text model execution is qualified on macOS ARM64; Linux fixture/tokenizer/build checks are explicitly scoped | Actual supported-platform release matrix remains area7 |
+
+Runtime implementation is at `5f84d7a`; expanded qualification source is
+`46612a4`. The complete `tools/check_native.sh` passed from exported source on
+macOS ARM64 and independent Ubuntu ARM64; logs are
+`/private/tmp/samosa-image-final-independent-macos.log` and
+`/private/tmp/samosa-image-final-independent-linux.log`. The source archive SHA256
+is `dfd590c3112a2ced7e5b1898c7a95984733401203777f952aa5c93a713504250`.
+Fresh hosted macOS/Linux checks also completed successfully for exactly
+`46612a4e492dc14701255a039c3c5f6d2b48d6e9` in
+[run38973353427](https://github.com/deepanwadhwa/samosa-inference/actions/runs/38973353427).
+The public implementation's prior hosted run38972535169 also passed.
+
+**Expanded area1 completion decision, 2026-10-16:** every provider integration
+requirement in the original foundation and expanded table has direct evidence.
+Area1 is complete; area2 is active. This is1/7 Inference areas complete. Actual
+model/platform release breadth, production catalogs, persistent readiness,
+global scheduling, sessions/streaming, authenticated service, pinned App assembly
+and legacy retirement retain all original area2–7 requirements. The full goal
+remains incomplete.
+The next installation task is mapped to existing code in
+[OpenDecision package follow-through](OPENDECISION_PACKAGE_INTEGRATION.md);
+it preserves the original remaining area2–7 scope.
 
 ## Original modality foundation
 
