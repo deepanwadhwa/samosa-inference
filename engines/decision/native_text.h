@@ -16,6 +16,7 @@ class NativeText {
   NativeText(const NativeText&) = delete;
   NativeText& operator=(const NativeText&) = delete;
   bool load(const std::string& model, const std::string& tokenizer, std::string* error);
+  static bool render_state(const std::string& json, std::string* output, std::string* error);
   bool infer(const std::vector<TextPair>&, PairTruncation,
              std::vector<std::array<float, 2>>*, std::string*, EncodedPairs* observed = nullptr);
  private:

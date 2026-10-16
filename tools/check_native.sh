@@ -19,6 +19,13 @@ uname -a
 cargo +1.90.0 fmt --manifest-path "$native_check_source/engines/decision/tokenizer/Cargo.toml" -- --check
 cargo +1.90.0 test --locked --manifest-path "$native_check_source/engines/decision/tokenizer/Cargo.toml"
 cargo +1.90.0 build --locked --release --manifest-path "$native_check_source/engines/decision/tokenizer/Cargo.toml"
+native_check_target=${CARGO_TARGET_DIR:-"$native_check_source/engines/decision/tokenizer/target"}
+case $(uname -s) in
+    Darwin) native_check_extension=dylib ;;
+    Linux) native_check_extension=so ;;
+    *) echo "unsupported native tokenizer host" >&2; exit 2 ;;
+esac
+python3 "$native_check_source/tests/opendecision_state_parity.py" "$native_check_target/release/libsamosa_decision_tokenizer.$native_check_extension"
 make -C "$native_check_source" CC="${CC:-clang}" CURL_LIBS=-lcurl test sanitize
 make -C "$native_check_source" CC="${CC:-clang}" CURL_LIBS=-lcurl test-registry-modalities sanitize-registry-modalities
 make -C "$native_check_source" CC="${CC:-clang}" CURL_LIBS=-lcurl test-registry-cli sanitize-registry-cli

@@ -1,6 +1,7 @@
 //! Native bridge to the exact tokenizer implementation used by the reference.
 //! No model downloads, Python callbacks, or training features are enabled.
 use serde::{Deserialize, Serialize};
+mod state;
 use std::ffi::c_void;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
@@ -260,6 +261,36 @@ pub unsafe extern "C" fn sm_tokenizer_output_free(output: *mut Output) {
         length: 0,
         owner: ptr::null_mut(),
     };
+}
+
+/// Render bounded JSON state with the existing OpenDecision text convention.
+#[no_mangle]
+pub unsafe extern "C" fn sm_decision_state(
+    data: *const u8,
+    length: usize,
+    output: *mut Output,
+) -> i32 {
+    if data.is_null() || length == 0 || length > MAX_REQUEST || output.is_null() {
+        return INVALID;
+    }
+    if !(*output).data.is_null() || (*output).length != 0 || !(*output).owner.is_null() {
+        return INVALID;
+    }
+    match catch_unwind(AssertUnwindSafe(|| {
+        state::render(std::slice::from_raw_parts(data, length))
+    })) {
+        Ok(Ok(bytes)) => {
+            let owned = Box::new(bytes);
+            *output = Output {
+                data: owned.as_ptr(),
+                length: owned.len(),
+                owner: Box::into_raw(owned).cast(),
+            };
+            0
+        }
+        Ok(Err(code)) => code,
+        Err(_) => PANIC,
+    }
 }
 
 #[cfg(test)]

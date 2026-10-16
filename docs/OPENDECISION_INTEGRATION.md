@@ -144,8 +144,9 @@ now preserve predicate, explicit binary, explicit-opposite relation, multi-profi
 Choice and ordered Score postprocessing. Nine actual-model captures agree within
 `1e-7` probability on macOS and Ubuntu ARM64 in normal and sanitizer builds;
 102 branch checks additionally cover ordering, rendering and refusal. Native
-model/tokenizer connection is now [qualified for nine string-state cases](OPENDECISION_NATIVE_TEXT_VERIFICATION.md)
-on macOS ARM64. Isolated normal/sanitizer runs each passed 15,367 checks with
+model/tokenizer connection is now [qualified for ten cases](OPENDECISION_NATIVE_TEXT_VERIFICATION.md)
+on macOS ARM64, including native structured-state rendering. Isolated normal/sanitizer runs each passed 15,560 checks with
 exact token matrices, matching discrete results and maximum typed-result
-difference approximately `0.000583839`. Structured-state rendering, engine
-protocol and public service integration remain open.
+difference approximately `0.000583839`. Native state rendering additionally
+passed 25,651 Python differential and ABI checks. Typed request/result JSON,
+engine protocol and public service integration remain open.

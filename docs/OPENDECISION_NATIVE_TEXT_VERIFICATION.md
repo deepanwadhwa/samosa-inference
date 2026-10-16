@@ -22,15 +22,15 @@ token type IDs. Fixed absolute tolerances are `0.01` for model logits and
 Discrete Choice/Relation outputs must match exactly. These are fixture acceptance
 tolerances, not a general error bound for arbitrary decisions.
 
-The nine string-state cases cover routing with Choice adjudication, duplicate
+The ten cases cover routing with Choice adjudication, duplicate
 descriptions, positive/negative predicates, explicit true/false criteria, ordered
 scoring, supporting/contradicting relations and a full eight-by-512 batch.
-The structured Unicode state case is excluded until the native typed request
-layer implements deterministic state rendering. The test also checks invalid
+The structured Unicode case passes through the native state renderer. The test also checks invalid
 inputs and recovery after failed model/tokenizer replacement.
 
 On macOS 26.5.1 ARM64 / Apple Clang 21, the isolated normal and ASan/UBSan
-connected runs each passed 15,367 checks. All token matrices matched exactly. Maximum absolute differences were
+connected runs each passed 15,560 checks, including structured Unicode state.
+All token matrices matched exactly. Maximum absolute differences were
 `0.005859375` for logits and approximately `0.000583839` for typed results.
 The independent normal/sanitizer repeat is recorded by the qualification runner;
 both runs measured the same maxima.
@@ -54,7 +54,7 @@ statically so the test cannot accidentally load a different tokenizer dylib.
 | Effective tokenizer initializer | `7caa16d3d730231fc7b9c2db4716e3e38736880bd4f2e016bb37987645e4900a` |
 | Original-model reference report | `f2c54e4d1be67059c184b9a2326b1b7b96ee7b1de02b6efcaeef5cbf3951dc11` |
 | Existing ORT runtime | `5b4c4df69e6d1bc10eb0d08da525b11faf8365a0a78cc597a5cc57926330a9ca` |
-| Tested Rust static archive | `b217fc7853efd7b8e82771e631791cb0201abc6b5da617d30138a611a6997d9c` |
+| Tested Rust static archive with state renderer | `8d398d208b926fbc5ef58b471f082bdc13badc6a9359fd434816cd924e79ddf4` |
 
 The SDK pins and model conversion provenance remain described in
 [backend qualification](OPENDECISION_BACKEND_VERIFICATION.md). The Rust archive
@@ -64,7 +64,23 @@ Sanitizers instrument local C++ code and the harness, not the prebuilt ORT
 runtime or Rust archive. Shared CI compiles the bridge and real harness without
 requiring model downloads; actual-model execution remains an explicit gate.
 
-This is a private native engine building block. Structured-state handling,
-typed request/result JSON, framed engine protocol, public provider ownership and
+## State rendering
+
+`sm_decision_state` / `NativeText::render_state` preserve string bytes, including
+embedded NUL. Other JSON values become compact, Unicode JSON with recursively
+sorted object keys. Raw JSON parsing retains integer precision; floats are
+rounded to binary64 and rendered with Python's notation and exponent rules.
+Inputs are bounded to 1 MiB, nesting to 64 and rendered UTF-8 to 65,536 bytes.
+Malformed JSON, invalid Unicode and non-finite numbers are refused atomically.
+
+The standard-library-only differential test
+`python3 tests/opendecision_state_parity.py NATIVE_TOKENIZER_LIBRARY` passed
+25,651 Python comparisons and ABI checks on macOS. It includes arbitrary-width
+integers, exponent boundaries, signed zero, Unicode ordering, control characters,
+nested objects and 25,000 deterministic random binary64 samples. It now runs in
+the shared local/hosted CI command after the release tokenizer build.
+
+This is a private native engine building block. Typed request/result JSON,
+framed engine protocol, public provider ownership and
 controls, installable model/runtime packages and further platform qualification
 remain required. It does not complete the public OpenDecision text provider.

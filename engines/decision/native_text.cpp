@@ -38,6 +38,15 @@ bool matrix(jval* value, size_t rows, size_t* columns, int64_t maximum,
 }
 }
 NativeText::~NativeText() { sm_tokenizer_free(tokenizer_); }
+bool NativeText::render_state(const std::string& json, std::string* output, std::string* error) {
+  if(!output) return fail(error,"invalid_decision_output");
+  SmTokenizerOutput text={};
+  const int status=sm_decision_state(reinterpret_cast<const uint8_t*>(json.data()),json.size(),&text);
+  if(status) return fail(error,status==SM_TOKENIZER_CONTEXT_LIMIT?"decision_state_limit":"invalid_decision_state");
+  struct Release {SmTokenizerOutput* value;~Release(){sm_tokenizer_output_free(value);}} release{&text};
+  std::string result(reinterpret_cast<const char*>(text.data),text.length);
+  *output=std::move(result);return true;
+}
 bool NativeText::load(const std::string& model, const std::string& tokenizer, std::string* error) {
   void* replacement=nullptr;
   if(sm_tokenizer_load(reinterpret_cast<const uint8_t*>(tokenizer.data()),tokenizer.size(),&replacement))

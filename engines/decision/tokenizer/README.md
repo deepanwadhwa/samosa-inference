@@ -52,3 +52,10 @@ then run `python3 tests/opendecision_tokenizer_replay.py LIBRARY INITIALIZER
 CORPUS --corpus-sha256 EXPECTED_HASH`. The replay tool requires only Python's
 standard library; the initial reference comparison requires the pinned HF
 environment. Corpus generation refuses replacement of an existing file.
+
+The same archive provides `sm_decision_state` for bounded JSON-to-text state
+rendering without a model handle. Strings retain their bytes; other finite JSON
+values use compact, Unicode JSON with sorted keys, exact integers and Python
+float notation. The response uses the same owned buffer and can contain NUL.
+`tests/opendecision_state_parity.py` compares rendering with Python and runs in
+the shared CI command. See the header for input, depth and output limits.

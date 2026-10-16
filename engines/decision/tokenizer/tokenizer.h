@@ -21,6 +21,10 @@ int sm_tokenizer_load(const uint8_t *, size_t, void **handle);
 /* Request is bounded UTF-8 JSON. Initialize every output field to zero.
  * On failure outputs remain unchanged; returned JSON owns all three matrices. */
 int sm_tokenizer_encode(void *, const uint8_t *, size_t, SmTokenizerOutput *);
+/* JSON state to OpenDecision text: preserve strings; sort object keys and use
+ * compact Unicode JSON otherwise. Output may contain embedded NUL bytes.
+ * Finite JSON numbers only, depth <=64, output <=65536 bytes. Same ownership. */
+int sm_decision_state(const uint8_t *, size_t, SmTokenizerOutput *);
 /* Free each handle once. Output free clears its fields and is repeatable.
  * Do not alter the opaque owner field or retain data beyond output free. */
 void sm_tokenizer_free(void *);

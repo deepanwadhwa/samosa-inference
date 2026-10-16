@@ -18,6 +18,26 @@ static jval* get(jval* value, const char* name, jtype type) {
 }
 static std::string text(jval* value,const char* name) {return get(value,name,J_STR)->str;}
 #ifdef SAMOSA_DECISION_NATIVE_REAL
+// The authenticated report's one structured-state fixture contains only string
+// keys/values. Serialize that QA input without implementing a public JSON parser.
+static std::string fixture_json(jval* value) {
+  CHECK(value&&(value->t==J_STR||value->t==J_OBJ));
+  if(value->t==J_STR) {
+    std::string result="\"";for(const char* p=value->str;*p;++p) {
+      CHECK(static_cast<unsigned char>(*p)>=32);
+      if(*p=='"'||*p=='\\') result+='\\';
+      result+=*p;
+    }
+    return result+'"';
+  }
+  std::string result="{";
+  for(int i=0;i<value->len;++i) {
+    if(i) result+=',';
+    jval key={};key.t=J_STR;key.str=value->keys[i];
+    result+=fixture_json(&key)+":"+fixture_json(value->kids[i]);
+  }
+  return result+'}';
+}
 static void verify_file(const char* path,const char* expected) {
   std::ifstream input(path,std::ios::binary);CHECK(input.good());Sha256 sha;sha256_init(&sha);
   char block[65536];while(input) {input.read(block,sizeof(block));sha256_update(&sha,block,static_cast<size_t>(input.gcount()));}
@@ -43,6 +63,11 @@ int main(int argc,char** argv) {
     tokenizer_input.seekg(0);std::ostringstream tokenizer_bytes;tokenizer_bytes<<tokenizer_input.rdbuf();
     NativeText native;std::string load_error;
     CHECK(native.load(argv[1],tokenizer_bytes.str(),&load_error));
+    std::string rendered="sentinel";
+    CHECK(NativeText::render_state("\"hello\\u0000world\"",&rendered,&load_error));
+    CHECK(rendered==std::string("hello\0world",11));
+    CHECK(!NativeText::render_state("{",&rendered,&load_error));
+    CHECK(rendered==std::string("hello\0world",11));
     std::vector<std::array<float,2>> sentinel{{123,456}};EncodedPairs observed;observed.rows=123;
     NativeText unloaded;
     CHECK(!unloaded.infer({{"state","statement"}},PairTruncation::OnlyFirst,&sentinel,&load_error,&observed));
@@ -82,7 +107,17 @@ int main(int argc,char** argv) {
       jval* test=cases->kids[i];const std::string method=text(test,"method");
       if(method!="noul"&&method!="relation"&&method!="relations"&&method!="choice"&&method!="score") continue;
       jval* args=get(test,"arguments",J_OBJ);jval* state=json_get(args,"state");
-      if(method!="relations"&&(!state||state->t!=J_STR)) continue;
+      std::string state_text;
+      if(method!="relations") {
+#ifdef SAMOSA_DECISION_NATIVE_REAL
+        if(state&&state->t==J_OBJ) {
+          CHECK(NativeText::render_state(fixture_json(state),&state_text,&load_error));
+        } else {CHECK(state&&state->t==J_STR);state_text=state->str;}
+#else
+        if(!state||state->t!=J_STR) continue;
+        state_text=state->str;
+#endif
+      }
       std::cout<<"BEGIN "<<text(test,"name")<<std::endl;
       jval* batches=get(test,"batches",J_ARR);size_t next=0;
       PairInference infer=[&](const auto& pairs,auto truncation,auto* output,auto*) {
@@ -122,7 +157,7 @@ int main(int argc,char** argv) {
             candidates.push_back({criteria->keys[index],description->t==J_STR?description->str:""});
           }
           ChoiceResult result;
-          CHECK(choice(infer,state->str,text(args,"instructions"),candidates,&result,&error));
+          CHECK(choice(infer,state_text,text(args,"instructions"),candidates,&result,&error));
           CHECK(result.choice==text(expected,"choice"));
           probabilities=result.probabilities;certainty=result.confidence;
           jval* expected_probabilities=get(expected,"probabilities",J_OBJ);
@@ -132,7 +167,7 @@ int main(int argc,char** argv) {
           jval* criteria=get(args,"criteria",J_ARR);std::vector<std::string> levels;
           for(int index=0;index<criteria->len;++index) { CHECK(criteria->kids[index]->t==J_STR);levels.push_back(criteria->kids[index]->str); }
           ScoreResult result;
-          CHECK(score(infer,state->str,text(args,"instructions"),levels,&result,&error));
+          CHECK(score(infer,state_text,text(args,"instructions"),levels,&result,&error));
           CHECK(close(result.score,get(expected,"score",J_NUM)->num));
           probabilities=result.probabilities;certainty=result.confidence;
           jval* expected_probabilities=get(expected,"probabilities",J_OBJ);
@@ -143,12 +178,12 @@ int main(int argc,char** argv) {
       } else if(method=="noul") {
         double value=-1;jval* criteria=json_get(args,"criteria");
         if(criteria&&criteria->t==J_OBJ)
-          CHECK(binary_predicate(infer,state->str,text(criteria,"true"),text(criteria,"false"),&value,&error));
-        else CHECK(predicate(infer,state->str,text(args,"instructions"),&value,&error));
+          CHECK(binary_predicate(infer,state_text,text(criteria,"true"),text(criteria,"false"),&value,&error));
+        else CHECK(predicate(infer,state_text,text(args,"instructions"),&value,&error));
         CHECK(close(value,get(expected,"noul",J_NUM)->num));
       } else {
         std::vector<RelationInput> items;
-        if(method=="relation") items.push_back({state->str,text(args,"proposition"),text(args,"contradiction")});
+        if(method=="relation") items.push_back({state_text,text(args,"proposition"),text(args,"contradiction")});
         else {
           jval* inputs=get(args,"items",J_ARR);
           for(int index=0;index<inputs->len;++index) {
@@ -169,9 +204,11 @@ int main(int argc,char** argv) {
       }
       CHECK(next==static_cast<size_t>(batches->len));++exercised;
     }
-    CHECK(exercised==9);
 #ifdef SAMOSA_DECISION_NATIVE_REAL
+    CHECK(exercised==10);
     std::cout<<"Native model maximum absolute logit error: "<<maximum_logit_error<<"\n";
+#else
+    CHECK(exercised==9);
 #endif
     std::cout<<"Maximum absolute result error: "<<maximum_result_error<<"\n";
     std::cout<<"PASS native text evidence reference: "<<checks<<" checks; "<<exercised<<" actual-model captures, absolute result tolerance "<<tolerance<<"\n";

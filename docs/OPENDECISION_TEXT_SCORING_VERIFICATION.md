@@ -28,9 +28,9 @@ Preserved behavior:
   model output and non-finite logits are rejected. The private relation call
   bounds each request to 64 items; an empty item list returns an empty result.
 
-The caller supplies already serialized state. Structured-state rendering,
-typed request/result JSON, native
-model/tokenizer connection and public service controls remain to be implemented
+The caller supplies already serialized state. The connected native bridge now
+provides [state rendering and fresh-model qualification](OPENDECISION_NATIVE_TEXT_VERIFICATION.md).
+Typed request/result JSON and public service controls remain to be implemented
 and qualified. A complete OpenDecision provider is still required before image
 decisions or later components begin.
 
