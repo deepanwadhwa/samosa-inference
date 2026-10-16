@@ -377,7 +377,7 @@ test: test-speech-package
 sanitize: sanitize-speech-package
 
 .PHONY: test-package-compatibility sanitize-package-compatibility
-PACKAGE_COMPATIBILITY_SOURCES = src/molmo_package.c src/molmo_package_descriptor.c src/temporal_package.c src/vision_package.c src/whisper_package.c src/package_remove.c src/package_removal_record.c src/package_lease.c src/llama_package.c src/llama_package_descriptor.c src/gguf_metadata.c src/package_native_runtime.c src/package_catalog.c src/package_identity.c src/package_reserve.c src/package_cache.c src/install.c src/package_assemble.c src/package_compatibility.c src/package_copy_record.c src/package_stage.c src/package_tree.c src/package_publish.c $(PACKAGE_INDEX_SOURCES) $(SPEECH_PACKAGE_SOURCES) $(SPEECH_LOADER_SOURCES) src/engine_runtime.c
+PACKAGE_COMPATIBILITY_SOURCES = src/decision_package.c src/decision_package_descriptor.c src/decision_assets.c src/molmo_package.c src/molmo_package_descriptor.c src/temporal_package.c src/vision_package.c src/whisper_package.c src/package_remove.c src/package_removal_record.c src/package_lease.c src/llama_package.c src/llama_package_descriptor.c src/gguf_metadata.c src/package_native_runtime.c src/package_catalog.c src/package_identity.c src/package_reserve.c src/package_cache.c src/install.c src/package_assemble.c src/package_compatibility.c src/package_copy_record.c src/package_stage.c src/package_tree.c src/package_publish.c $(PACKAGE_INDEX_SOURCES) $(SPEECH_PACKAGE_SOURCES) $(SPEECH_LOADER_SOURCES) src/engine_runtime.c
 build/test-package-compatibility: tests/test_package_compatibility.c $(PACKAGE_COMPATIBILITY_SOURCES) src/package_catalog.h src/package_identity.h src/package_reserve.h src/package_cache.h src/package_assemble.h src/package_compatibility.h src/package_copy_record.h src/package_stage.h src/package_tree.h src/package_publish.h src/package_index.h src/catalog.h src/platform.h $(SPEECH_PACKAGE_HEADERS) $(SPEECH_LOADER_HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc tests/test_package_compatibility.c $(PACKAGE_COMPATIBILITY_SOURCES) -o $@
 test-package-compatibility: build/test-package-compatibility build/test-speech-worker build/speech-worker-fixture.so
@@ -531,6 +531,18 @@ sanitize-decision-package-descriptor: | build
 test: test-decision-package-descriptor
 sanitize: sanitize-decision-package-descriptor
 
+DECISION_PACKAGE_SOURCES = src/decision_package.c $(DECISION_DESCRIPTOR_SOURCES) src/package_native_runtime.c src/package_tree.c
+.PHONY: test-decision-package sanitize-decision-package
+build/test-decision-package: tests/test_decision_package.c tests/library_fixture.h $(DECISION_PACKAGE_SOURCES) src/decision_package.h src/package_native_runtime.h src/package_tree.h src/decision_package_descriptor.h src/decision_assets.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc -Itests tests/test_decision_package.c $(DECISION_PACKAGE_SOURCES) -o $@
+test-decision-package: build/test-decision-package
+	./build/test-decision-package
+sanitize-decision-package: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Isrc -Itests tests/test_decision_package.c $(DECISION_PACKAGE_SOURCES) -o build/test-decision-package-sanitize
+	./build/test-decision-package-sanitize
+test: test-decision-package
+sanitize: sanitize-decision-package
+
 # Explicit pinned SDK/runtime inputs; neither CI nor this rule downloads a model.
 DECISION_WORKER_SOURCES = engines/decision/main.cpp engines/decision/transport.cpp engines/decision/request.cpp engines/decision/text_evidence.cpp engines/decision/native_text.cpp engines/decision/ort_nli.cpp engines/decision/native_image.cpp engines/decision/ort_image.cpp engines/decision/image_pixels.cpp
 DECISION_WORKER_HEADERS = $(DECISION_REQUEST_HEADERS) engines/decision/transport.h engines/decision/native_text.h engines/decision/native_image.h engines/decision/ort_image.h engines/decision/image_pixels.h engines/decision/ort_nli.h engines/decision/ort_runtime.h engines/decision/token_json.h engines/decision/tokenizer/tokenizer.h engines/json.h
@@ -609,21 +621,24 @@ sanitize: sanitize-package-identity
 
 # Define setup after complete package source groups so make tracks every input.
 SETUP_SOURCES = src/setup_main.c $(PACKAGE_REMOTE_SOURCES)
-SETUP_HEADERS = src/molmo_package.h src/molmo_package_descriptor.h src/temporal_package.h src/vision_package.h src/whisper_package.h src/llama_package.h src/llama_package_descriptor.h src/gguf_metadata.h src/catalog.h src/artifact.h src/remote_artifact.h src/json.h src/private_key.h src/sha256.h $(wildcard src/package*.h) $(SPEECH_PACKAGE_HEADERS) $(SPEECH_LOADER_HEADERS) src/library_runtime.h src/engine_runtime.h src/platform.h
+SETUP_HEADERS = src/decision_package.h src/decision_package_descriptor.h src/decision_assets.h src/molmo_package.h src/molmo_package_descriptor.h src/temporal_package.h src/vision_package.h src/whisper_package.h src/llama_package.h src/llama_package_descriptor.h src/gguf_metadata.h src/catalog.h src/artifact.h src/remote_artifact.h src/json.h src/private_key.h src/sha256.h $(wildcard src/package*.h) $(SPEECH_PACKAGE_HEADERS) $(SPEECH_LOADER_HEADERS) src/library_runtime.h src/engine_runtime.h src/platform.h
 build/samosa-inference-setup: $(SETUP_SOURCES) $(SETUP_HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(CURL_CFLAGS) $(SETUP_SOURCES) $(CURL_LIBS) -o $@
+build/samosa-inference-setup-sanitize: $(SETUP_SOURCES) $(SETUP_HEADERS) | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(CURL_CFLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer $(SETUP_SOURCES) $(CURL_LIBS) -o $@
 
 .PHONY: test-setup sanitize-setup
-test-setup: build/test-molmo-package build/test-vision-package build/test-whisper-package build/test-package-native-runtime build/samosa-inference-setup build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so
+test-setup: build/test-decision-package build/test-molmo-package build/test-vision-package build/test-whisper-package build/test-package-native-runtime build/samosa-inference-setup build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so
 	sh tests/setup_cli.sh
+	python3 tests/decision_setup_fixture.py build/samosa-inference-setup build/test-decision-package
 	python3 tests/molmo_setup_fixture.py build/samosa-inference-setup build/test-molmo-package
 	python3 tests/vision_setup_fixture.py build/samosa-inference-setup build/test-vision-package
 	python3 tests/whisper_setup_fixture.py build/samosa-inference-setup build/test-whisper-package
 	python3 tests/llama_setup_fixture.py build/samosa-inference-setup build/test-package-native-runtime
 	python3 tests/package_compatibility_fixture.py build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so --https --setup build/samosa-inference-setup
-sanitize-setup: build/test-molmo-package build/test-vision-package build/test-whisper-package build/test-package-native-runtime build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(CURL_CFLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer $(SETUP_SOURCES) $(CURL_LIBS) -o build/samosa-inference-setup-sanitize
+sanitize-setup: build/samosa-inference-setup-sanitize build/test-decision-package build/test-molmo-package build/test-vision-package build/test-whisper-package build/test-package-native-runtime build/test-package-remote build/test-speech-worker build/speech-worker-fixture.so | build
 	sh tests/setup_cli.sh ./build/samosa-inference-setup-sanitize
+	python3 tests/decision_setup_fixture.py build/samosa-inference-setup-sanitize build/test-decision-package
 	python3 tests/molmo_setup_fixture.py build/samosa-inference-setup-sanitize build/test-molmo-package
 	python3 tests/vision_setup_fixture.py build/samosa-inference-setup-sanitize build/test-vision-package
 	python3 tests/whisper_setup_fixture.py build/samosa-inference-setup-sanitize build/test-whisper-package

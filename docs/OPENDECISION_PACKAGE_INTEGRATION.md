@@ -13,7 +13,7 @@ cache-only status/retry and registered removal. Its catalog/setup transports and
 credential/HTTPS primitives remain the entry points. Do not add another catalog,
 downloader, installer, reservation store or publication journal.
 
-`package_backend_compatible` already dispatches five concrete recipes: Sherpa
+The five original recipes in `package_backend_compatible` cover Sherpa
 speech, GGUF, Whisper, VisionPsy and Molmo2. The GGUF recipe's separate host policy
 already distinguishes text, embeddings and T5 summaries. Its existing summary
 package and actual installed quality proof are in
@@ -78,6 +78,40 @@ Normal and ASan/UBSan descriptor gates pass406 checks each on macOS ARM64 and
 Linux ARM64. Logs: `/private/tmp/samosa-decision-package-descriptor.log` and
 `/private/tmp/samosa-decision-package-descriptor-linux.log`.
 
-This preparation is not connected to `package_backend_compatible` or setup yet.
-It does not admit a new recipe, install bytes, prove host policy or qualify a
-loaded model. The remaining steps above retain their full acceptance scope.
+## Recipe and controlled setup qualification
+
+`decision_package_verify` now compares independent host profile/revision and all
+four asset pins, reuses package-wide native/tree checks and the existing flat
+asset verifier, binds the asset subtree to the held package root and repeats
+whole-tree/named-root checks before publishing output. Normal/SAN direct gates
+pass99 checks on macOS/Linux. Synthetic assets prove static policy/graph behavior,
+not ONNX loading or model readiness. The shared named-root helper was extracted
+from Molmo's existing check; its72-check normal/SAN admission regressions pass.
+
+Recipe `opendecision-package-v1` is connected to the existing compatibility
+dispatch, acquisition preflight, assembly/status and public setup. The six
+trusted host flags are specified in the descriptor contract. The setup duplicate
+flag mask now uses64 bits to preserve all existing flags plus the new policy;
+partial and duplicate high-bit flags refuse. Public request fields cannot choose
+the policy. Missing policy refuses before download/cache/reservation creation.
+
+The existing `llama_setup_https.py` gate now covers this recipe using a thin
+`decision_setup_fixture.py` wrapper. Both text and image profiles pass cold
+catalog HTTPS acquisition, TLS refusal, complete policy admission, immutable
+publication, engine/runtime/model/tokenizer pin mismatch, profile mismatch,
+last-good inode preservation, offline status/resume, complete/incomplete removal
+and cache-only reinstall. Both platforms pass normally and with ASan/UBSan.
+The complete setup suite also reruns every existing recipe with the shared
+script; all gates pass. Logs:
+
+- `/private/tmp/samosa-decision-setup-all-macos.log`
+- `/private/tmp/samosa-decision-setup-all-linux.log`
+- `/private/tmp/samosa-decision-package-admission-final.log`
+- `/private/tmp/samosa-decision-package-admission-linux.log`
+
+The sanitizer setup binary now has explicit source/header dependencies, so a
+direct build cannot silently reuse an older sanitizer executable. No production
+catalog entry, model download or retained weight copy was added for these
+controlled fixtures. Next qualify actual fresh installed text/image inodes and
+their public inference, then finish the remaining production catalog and original
+area2 acceptance requirements. Installation remains readiness `unqualified`.

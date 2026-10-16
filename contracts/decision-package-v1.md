@@ -1,9 +1,10 @@
 # OpenDecision package descriptor v1 — integration in progress
 
 The bounded `decision-package.json` declaration binds the existing native worker
-profile to an already pinned `PackageIndex`. Descriptor parsing is implemented;
-recipe dispatch, host-policy verification and catalog installation still require
-the follow-through in `OPENDECISION_PACKAGE_INTEGRATION.md`.
+profile to an already pinned `PackageIndex`. Recipe `opendecision-package-v1`
+uses the existing catalog installer, compatibility dispatch and public setup.
+Controlled installation is qualified; actual installed-model and production
+catalog qualification remain in `OPENDECISION_PACKAGE_INTEGRATION.md`.
 
 ```json
 {"format":"samosa.inference.decision-package.v1",
@@ -39,3 +40,19 @@ tree, named-root binding, independent host pins, text/image file-size caps,
 platform/minimum OS and native loader/asset checks remain required before
 compatible publication. Actual installed inference and loaded readiness remain
 separate qualification gates. No successful descriptor parse reports readiness.
+
+Trusted setup configuration supplies all six options together:
+`--decision-profile text|image`, `--decision-runtime-revision`,
+`--decision-engine-sha256`, `--decision-runtime-sha256`,
+`--decision-model-sha256` and `--decision-tokenizer-sha256`.
+These are host flags, never public JSON or manifest-selected policy. Missing
+policy refuses before acquisition or reservation. Partial, malformed or duplicate
+flags refuse before setup work. Discovery's supported flag reports admission
+capability; installation continues to report readiness `unqualified`.
+
+The verifier compares profile, revision and all four asset pins with independent
+host policy, reuses whole-package tree/native graph verification and existing
+text/image flat asset limits, and binds the named asset directory to the held
+package root. A final whole-tree check and named-root check precede successful
+output. Molmo2 shares its existing directory-binding helper through the common
+native package module; its admission behavior is preserved.

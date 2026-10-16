@@ -29,6 +29,8 @@ const char *package_install_catalog(const PackageInstaller *c,PackageTreeResult 
     if(!strcmp(c->entry->recipe,"whisper-ggml-package-v1")&&!whisper_package_policy_valid(c->assembly.whisper_policy))return "invalid_whisper_package_policy";
     if(!strcmp(c->entry->recipe,"visionpsy-package-v1")&&!c->assembly.vision_policy)return "unqualified_vision_package_runtime";
     if(!strcmp(c->entry->recipe,"visionpsy-package-v1")&&!vision_package_policy_valid(c->assembly.vision_policy))return "invalid_vision_package_policy";
+    if(!strcmp(c->entry->recipe,"opendecision-package-v1")&&!c->assembly.decision_policy)return "unqualified_decision_package_runtime";
+    if(!strcmp(c->entry->recipe,"opendecision-package-v1")&&!decision_package_policy_valid(c->assembly.decision_policy))return "invalid_decision_package_policy";
     if(!strcmp(c->entry->recipe,"molmo2-mlx-package-v1")&&!c->assembly.molmo_policy)return "unqualified_molmo_package_runtime";
     if(!strcmp(c->entry->recipe,"molmo2-mlx-package-v1")&&!molmo_package_policy_valid(c->assembly.molmo_policy))return "invalid_molmo_package_policy";
     ArtifactConfig artifact=c->store;artifact.sha256=c->entry->sha256;artifact.size=c->entry->size;

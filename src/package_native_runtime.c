@@ -9,6 +9,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+int package_native_runtime_bound(int root,const char *path) {
+    struct stat held,named;
+    return path&&path[0]=='/'&&!fstat(root,&held)&&!lstat(path,&named)&&
+        S_ISDIR(held.st_mode)&&S_ISDIR(named.st_mode)&&held.st_dev==named.st_dev&&held.st_ino==named.st_ino;
+}
 static int open_file(int root,const char *name){
     char path[256];strcpy(path,name);int parent=openat(root,".",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
     if(parent<0)return -1;char *leaf=path;

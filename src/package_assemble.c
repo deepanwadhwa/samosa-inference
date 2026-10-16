@@ -30,6 +30,8 @@ const char *package_assemble(const PackageAssembly *c,PackageTreeResult *out){
     if(!strcmp(c->index->recipe,"whisper-ggml-package-v1")&&!whisper_package_policy_valid(c->whisper_policy))return "invalid_whisper_package_policy";
     if(!strcmp(c->index->recipe,"visionpsy-package-v1")&&!c->vision_policy)return "unqualified_vision_package_runtime";
     if(!strcmp(c->index->recipe,"visionpsy-package-v1")&&!vision_package_policy_valid(c->vision_policy))return "invalid_vision_package_policy";
+    if(!strcmp(c->index->recipe,"opendecision-package-v1")&&!c->decision_policy)return "unqualified_decision_package_runtime";
+    if(!strcmp(c->index->recipe,"opendecision-package-v1")&&!decision_package_policy_valid(c->decision_policy))return "invalid_decision_package_policy";
     if(!strcmp(c->index->recipe,"molmo2-mlx-package-v1")&&!c->molmo_policy)return "unqualified_molmo_package_runtime";
     if(!strcmp(c->index->recipe,"molmo2-mlx-package-v1")&&!molmo_package_policy_valid(c->molmo_policy))return "invalid_molmo_package_policy";
     if(!private_directory(c->directory))return "unsafe_package_assembly";
@@ -46,7 +48,7 @@ const char *package_assemble(const PackageAssembly *c,PackageTreeResult *out){
     if(!e)e=c->control?c->control(c->context):NULL;
     /* Completed payloads are never overwritten or recopied. Verifiable
      * interrupted completion metadata is recovered after all package gates. */
-    PackageCompatibilityContext compatibility={.payload_path=c->payload_path,.control=c->control,.context=c->context,.llama_policy=c->llama_policy,.whisper_policy=c->whisper_policy,.vision_policy=c->vision_policy,.molmo_policy=c->molmo_policy};
+    PackageCompatibilityContext compatibility={.payload_path=c->payload_path,.control=c->control,.context=c->context,.llama_policy=c->llama_policy,.whisper_policy=c->whisper_policy,.vision_policy=c->vision_policy,.molmo_policy=c->molmo_policy,.decision_policy=c->decision_policy};
     PackagePublication publication={.directory=c->directory,.index=c->index,.compatible=package_backend_compatible,.compatibility=&compatibility,.control=c->control,.context=c->context};
     PackageTreeResult observed;
     int complete=0;
@@ -109,7 +111,7 @@ const char *package_assembly_status(const PackageAssembly *c,PackageAssemblyStat
                 }else{
                     payload=openat(c->directory,"payload",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
                     if(payload<0||!private_directory(payload)||!bound(c->directory,"payload",payload)||!path_bound(c->payload_path,payload))e="unsafe_package_assembly";
-                    PackageCompatibilityContext compatibility={.payload_path=c->payload_path,.control=c->control,.context=c->context,.llama_policy=c->llama_policy,.whisper_policy=c->whisper_policy,.vision_policy=c->vision_policy,.molmo_policy=c->molmo_policy};
+                    PackageCompatibilityContext compatibility={.payload_path=c->payload_path,.control=c->control,.context=c->context,.llama_policy=c->llama_policy,.whisper_policy=c->whisper_policy,.vision_policy=c->vision_policy,.molmo_policy=c->molmo_policy,.decision_policy=c->decision_policy};
                     PackagePublication publication={.directory=c->directory,.index=c->index,.compatible=package_backend_compatible,.compatibility=&compatibility,.control=c->control,.context=c->context};
                     if(!e)e=package_publication_verify(&publication,&result.package);
                     if(!e&&(!bound(c->directory,"payload",payload)||!path_bound(c->payload_path,payload)))e="package_tree_changed";

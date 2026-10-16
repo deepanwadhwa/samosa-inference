@@ -31,6 +31,8 @@ parser.add_argument("root")
 parser.add_argument("index")
 parser.add_argument("pin")
 parser.add_argument("--revision")
+parser.add_argument("--decision-profile", choices=["text", "image"])
+parser.add_argument("--runtime-pin")
 parser.add_argument("--kind")
 parser.add_argument("--architecture")
 parser.add_argument("--engine-pin", required=True)
@@ -59,12 +61,16 @@ assert not args.summary_cli or args.kind == "summary"
 body = Path(args.index).read_bytes()
 assert hashlib.sha256(body).hexdigest() == args.pin
 index = json.loads(body)
-assert index["recipe"] in ("llama-gguf-package-v1", "whisper-ggml-package-v1", "visionpsy-package-v1", "molmo2-mlx-package-v1")
+assert index["recipe"] in ("llama-gguf-package-v1", "whisper-ggml-package-v1", "visionpsy-package-v1", "molmo2-mlx-package-v1", "opendecision-package-v1")
+is_decision = index["recipe"] == "opendecision-package-v1"
 is_whisper = index["recipe"] == "whisper-ggml-package-v1"
 is_vision = index["recipe"] == "visionpsy-package-v1"
 is_molmo = index["recipe"] == "molmo2-mlx-package-v1"
 assert not args.reject_model or is_molmo
-assert (args.manifest_pin and args.kernels_pin) if is_molmo else ((args.config_pin and args.tokenizer_pin and args.weights_pin and args.kernels_pin) if is_vision else (args.revision and ((args.profile and args.model_pin) if is_whisper else (args.kind and args.architecture))))
+if is_decision:
+    assert args.decision_profile and args.revision and args.runtime_pin and args.model_pin and args.tokenizer_pin
+else:
+    assert (args.manifest_pin and args.kernels_pin) if is_molmo else ((args.config_pin and args.tokenizer_pin and args.weights_pin and args.kernels_pin) if is_vision else (args.revision and ((args.profile and args.model_pin) if is_whisper else (args.kind and args.architecture))))
 temporal_test_args = (args.temporal_cli, args.temporal_test)
 assert not any(temporal_test_args) or (is_molmo and all(temporal_test_args) and not args.reject_model)
 vision_test_args = (args.vision_cli, args.vision_test, args.image)
@@ -136,7 +142,12 @@ try:
               "--byte-ceiling", str(total + len(body)), "--disk-ceiling", str(2 * (total + len(body))),
               "--artifact-capacity", "513", "--package-directory", str(package)]
     reservations = ["--reservation-directory", str(pool), "--copy-ceiling", str(total), "--reservation-ceiling", str(total), "--reservation-capacity", "1"]
-    if is_molmo:
+    if is_decision:
+        policy = ["--decision-profile", args.decision_profile, "--decision-runtime-revision", args.revision,
+                  "--decision-engine-sha256", args.engine_pin, "--decision-runtime-sha256", args.runtime_pin,
+                  "--decision-model-sha256", args.model_pin, "--decision-tokenizer-sha256", args.tokenizer_pin]
+        runtime_error = "unqualified_decision_package_runtime"
+    elif is_molmo:
         policy = ["--molmo-engine-sha256", args.engine_pin, "--molmo-kernels-sha256", args.kernels_pin,
                   "--molmo-manifest-sha256", args.manifest_pin]
         runtime_error = "unqualified_molmo_package_runtime"
@@ -176,12 +187,15 @@ try:
         assert provider["supported"] == supported, provider
         if not supported:
             assert provider["unavailable_reason"] == runtime_error, provider
-    if is_whisper or is_vision or is_molmo:
+    if is_whisper or is_vision or is_molmo or is_decision:
         incomplete = subprocess.run(config + policy[:-2], input="{}", text=True, capture_output=True, timeout=15)
         assert incomplete.returncode == 2 and not incomplete.stdout
+    if is_decision:
+        duplicate = subprocess.run(config + policy + policy[-2:], input="{}", text=True, capture_output=True, timeout=15)
+        assert duplicate.returncode == 2 and not duplicate.stdout
     call("provider_install", reservations, error=runtime_error)
     assert not requests and not (package / "assemble.lock").exists() and not (base / "cache").exists()
-    call("provider_install", reservations + policy, extra={"molmo_engine_sha256": args.engine_pin} if is_molmo else ({"vision_engine_sha256": args.engine_pin} if is_vision else ({"whisper_model_sha256": args.model_pin} if is_whisper else {"llama_engine_sha256": args.engine_pin})), error="invalid_request")
+    call("provider_install", reservations + policy, extra={"decision_engine_sha256": args.engine_pin} if is_decision else ({"molmo_engine_sha256": args.engine_pin} if is_molmo else ({"vision_engine_sha256": args.engine_pin} if is_vision else ({"whisper_model_sha256": args.model_pin} if is_whisper else {"llama_engine_sha256": args.engine_pin}))), error="invalid_request")
     call("provider_install", reservations + policy + ["--digest-endpoint", endpoint], error="artifact_tls_verification_failed")
     assert not requests and not (package / "payload").exists()
     if args.reject_model:
@@ -204,7 +218,9 @@ try:
     identity = installed_engine.stat()
     assert identity.st_mode & 0o777 == 0o500
     wrong = policy.copy()
-    if is_molmo:
+    if is_decision:
+        wrong[wrong.index("--decision-engine-sha256") + 1] = "0" * 64
+    elif is_molmo:
         wrong[wrong.index("--molmo-engine-sha256") + 1] = "0" * 64
     elif is_vision:
         wrong[wrong.index("--vision-engine-sha256") + 1] = "0" * 64
@@ -214,6 +230,16 @@ try:
         wrong[wrong.index("--llama-kind") + 1] = "text" if args.kind == "embedding" else "embedding"
     call("provider_resume", reservations + wrong, error=runtime_error)
     assert (package / "complete").is_file() and installed_engine.stat().st_ino == identity.st_ino
+    if is_decision:
+        for flag, code in (("--decision-runtime-sha256",runtime_error),("--decision-model-sha256","unqualified_decision_package_model"),("--decision-tokenizer-sha256","unqualified_decision_package_model")):
+            wrong_model = policy.copy()
+            wrong_model[wrong_model.index(flag) + 1] = "0" * 64
+            call("provider_resume", reservations + wrong_model, error=code)
+            assert (package / "complete").is_file() and installed_engine.stat().st_ino == identity.st_ino
+        other_profile = policy.copy()
+        other_profile[other_profile.index("--decision-profile") + 1] = "text" if args.decision_profile == "image" else "image"
+        call("provider_resume", reservations + other_profile, error="unqualified_decision_package_profile")
+        assert (package / "complete").is_file() and installed_engine.stat().st_ino == identity.st_ino
     if is_whisper:
         wrong_model = policy.copy()
         wrong_model[wrong_model.index("--whisper-model-sha256") + 1] = "0" * 64
@@ -269,7 +295,7 @@ try:
         run_stage("actual whisper inference", [os.path.abspath(args.whisper_test), os.path.abspath(args.whisper_cli),
                         os.path.abspath(args.sources_cli), str(installed_engine), str(package / "payload" / model["name"]),
                         os.path.abspath(args.audio)], check=True, timeout=600)
-    print(f"PASS {'Molmo' if is_molmo else ('VisionPsy' if is_vision else ('Whisper' if is_whisper else 'llama'))} setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
+    print(f"PASS {'OpenDecision' if is_decision else ('Molmo' if is_molmo else ('VisionPsy' if is_vision else ('Whisper' if is_whisper else 'llama')))} setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
 finally:
     if server is not None:
         if thread is not None and thread.is_alive():

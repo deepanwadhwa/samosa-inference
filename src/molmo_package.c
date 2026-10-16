@@ -11,13 +11,12 @@
 #include <unistd.h>
 static int pin(const char *s){return s&&strnlen(s,65)==64&&strspn(s,"0123456789abcdef")==64;}
 int molmo_package_policy_valid(const MolmoPackagePolicy *p){return p&&pin(p->engine_sha256)&&pin(p->kernels_sha256)&&pin(p->manifest_sha256);}
-static int bound(int root,const char *path){struct stat held,named;return !fstat(root,&held)&&!lstat(path,&named)&&S_ISDIR(held.st_mode)&&S_ISDIR(named.st_mode)&&held.st_dev==named.st_dev&&held.st_ino==named.st_ino;}
 const char *molmo_package_verify(int root,const char *path,const PackageIndex *index,const MolmoPackagePolicy *policy,
                                 const char *(*control)(void *),void *context,MolmoPackageDescriptor *out){
     if(!out||!molmo_package_policy_valid(policy))return "invalid_molmo_package_policy";
     if(!index||!index->count||index->count>PACKAGE_INDEX_FILES)return "invalid_package_index";
     const char *e=control?control(context):NULL;if(e)return e;
-    if(!path||path[0]!='/'||strnlen(path,4096)>=4096||!bound(root,path))return "unsafe_molmo_package_root";
+    if(!path||path[0]!='/'||strnlen(path,4096)>=4096||!package_native_runtime_bound(root,path))return "unsafe_molmo_package_root";
     const PackageFile *descriptor=NULL;
     for(size_t i=0;i<index->count;i++){
         const PackageFile *f=&index->files[i];if(!memchr(f->name,0,sizeof(f->name)))return "invalid_package_index";
@@ -42,7 +41,7 @@ const char *molmo_package_verify(int root,const char *path,const PackageIndex *i
     if(!e)e=molmo_package_bind_model(index,receipt);
     if(!e)e=temporal_package_verify(model,model_path,policy->manifest_sha256,control,context,receipt,1);
     if(!e)e=package_native_runtime_verify(root,index,control,context);
-    if(!e&&!bound(root,path))e="unsafe_molmo_package_root";
+    if(!e&&!package_native_runtime_bound(root,path))e="unsafe_molmo_package_root";
     if(!e)e=control?control(context):NULL;
     free(receipt);if(model>=0)close(model);if(!e)*out=result;return e;
 }
