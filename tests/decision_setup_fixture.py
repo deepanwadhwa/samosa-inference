@@ -12,6 +12,7 @@ for profile in ['text', 'image']:
     try:
         subprocess.run([sys.executable, str(Path(__file__).with_name('llama_setup_https.py')), setup,
                         package['root'], package['index'], package['pin'],
+                        *(['--per-file-sources'] if profile == 'image' else []),
                         '--credential-isolation', '--decision-profile', profile, '--revision', '327d6911fc7f31e779d2fa673e83ba1f3410b468',
                         '--engine-pin', package['engine_pin'], '--runtime-pin', package['runtime_pin'],
                         '--model-pin', package['model_pin'], '--tokenizer-pin', package['tokenizer_pin']],

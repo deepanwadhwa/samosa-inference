@@ -94,6 +94,12 @@ Setup request controls also verify the package and reservation names still refer
 to their held private directory descriptors throughout installation. Renamed or
 substituted roots fail with `package_tree_changed` before further controlled work.
 
+For upstream files with independent URLs, `--file-sources` selects the existing
+per-file remote-source path instead of a digest endpoint. The trusted private
+[source configuration](package-sources-v1.md) binds its ordered URLs and optional
+per-file credential paths to the selected index hash. It introduces no public
+URL fields or alternate downloader.
+
 ## Catalog-selected empty release
 
 `package_release_empty_from_file` loads the private catalog and verified cached

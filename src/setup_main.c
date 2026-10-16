@@ -6,6 +6,7 @@
 #include "json.h"
 #include "package_installer.h"
 #include "package_compatibility.h"
+#include "package_sources.h"
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -46,7 +47,7 @@ static void descriptor(const ProviderEntry *e) {
 }
 int main(int argc,char **argv) {
     ArtifactConfig c={.cancelled=cancelled};RemoteArtifactSource remote={0};
-    const char *catalog_path=NULL,*key_path=NULL,*digest_key_path=NULL,*package_path=NULL,*pool_path=NULL,*digest_url=NULL;uint64_t seen=0;
+    const char *catalog_path=NULL,*key_path=NULL,*digest_key_path=NULL,*sources_path=NULL,*package_path=NULL,*pool_path=NULL,*digest_url=NULL;uint64_t seen=0;
     uint64_t copy_ceiling=0,pool_ceiling=0,pool_capacity=0;
     LlamaPackagePolicy llama_policy={0};WhisperPackagePolicy whisper_policy={0};VisionPackagePolicy vision_policy={0};MolmoPackagePolicy molmo_policy={0};DecisionPackagePolicy decision_policy={0};
     for(int i=1;i<argc;i++) {
@@ -67,6 +68,7 @@ int main(int argc,char **argv) {
         else if(!strcmp(key,"--reservation-capacity")){bit=2048;if(!number(value,&pool_capacity)||pool_capacity>1024)return 2;}
         else if(!strcmp(key,"--digest-endpoint")){bit=4096;digest_url=value;}
         else if(!strcmp(key,"--digest-bearer-key-file")){bit=UINT64_C(1)<<35;digest_key_path=value;}
+        else if(!strcmp(key,"--file-sources")){bit=UINT64_C(1)<<36;sources_path=value;}
         else if(!strcmp(key,"--llama-runtime-revision")){bit=8192;llama_policy.runtime_revision=value;}
         else if(!strcmp(key,"--llama-kind")){bit=16384;llama_policy.kind=value;}
         else if(!strcmp(key,"--llama-architecture")){bit=32768;llama_policy.architecture=value;}
@@ -110,8 +112,9 @@ int main(int argc,char **argv) {
     if((seen&decision_flags)&&((seen&decision_flags)!=decision_flags||!decision_package_policy_valid(&decision_policy)))return 2;
     const DecisionPackagePolicy *qualified_decision=(seen&decision_flags)?&decision_policy:NULL;
     if(digest_key_path&&(!digest_url||!package_path))return 2;
+    if(sources_path&&(!package_path||digest_url||digest_key_path))return 2;
     char key[130]={0},digest_key[130]={0},platform[65]={0},os[65]={0};
-    ProviderCatalog *catalog=malloc(sizeof(*catalog));
+    ProviderCatalog *catalog=malloc(sizeof(*catalog));PackageSources *sources=NULL;
     const ProviderEntry *entry=NULL;const char *status=NULL,*error=NULL,*host_error=NULL;
     char request[4097];size_t n=fread(request,1,sizeof(request),stdin);Json j;size_t version;char *op=NULL,*id=NULL;
     if(ferror(stdin)||n>4096)error="request_too_large";
@@ -135,6 +138,7 @@ int main(int argc,char **argv) {
     if(!error&&id&&(!strcmp(op,"provider_install")||!strcmp(op,"provider_resume"))) {
         if(key_path&&!private_key_read(key_path,key))error="invalid_provider_credentials";
         if(!error&&digest_key_path&&!private_key_read(digest_key_path,digest_key))error="invalid_provider_credentials";
+        if(!error&&sources_path)error=package_sources_load(sources_path,entry->sha256,&remote,&sources);
         if(!error) {
             struct sigaction sa;memset(&sa,0,sizeof(sa));sa.sa_handler=stop;sigemptyset(&sa.sa_mask);
             if(sigaction(SIGINT,&sa,NULL)||sigaction(SIGTERM,&sa,NULL))error="provider_signal_setup_failed";
@@ -156,6 +160,7 @@ int main(int argc,char **argv) {
          * only once when opening the descriptors. */
         SetupControl controls={.package_path=package_path,.pool_path=pool_path,.package=package,.pool=pool};
         PackageInstaller installer={.entry=entry,.store=c,.index_source=&remote,.digest_source=digest_url?&digest:NULL,
+            .file_sources=sources?sources->files:NULL,.file_count=sources?sources->count:0,
             .assembly={.directory=package,.source=-1,.payload_path=payload,.copy_ceiling=copy_ceiling,.reservation_directory=pool,.reservation_ceiling=pool_ceiling,.reservation_capacity=(size_t)pool_capacity,.control=control,.context=&controls,.llama_policy=qualified,.whisper_policy=qualified_whisper,.vision_policy=qualified_vision,.molmo_policy=qualified_molmo,.decision_policy=qualified_decision}};
         if(!error&&observing){PackageAssemblyStatus observed;error=package_status_from_file(catalog_path,id,&installer,&observed);if(!error)status=observed.state;}
         else if(!error&&!strcmp(op,"provider_release_empty")){int released;error=package_release_empty_from_file(catalog_path,id,&installer,&released);if(!error)status=released?"reservation_released":"reservation_absent";}
@@ -192,6 +197,6 @@ int main(int argc,char **argv) {
             fputc(']',stdout);
         }
     }
-    fputs("}\n",stdout);private_key_clear(key);private_key_clear(digest_key);free(op);free(id);free(catalog);
+    fputs("}\n",stdout);private_key_clear(key);private_key_clear(digest_key);package_sources_free(sources);free(op);free(id);free(catalog);
     return error?1:0;
 }

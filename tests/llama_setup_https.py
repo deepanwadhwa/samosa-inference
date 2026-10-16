@@ -35,6 +35,7 @@ parser.add_argument("--revision")
 parser.add_argument("--decision-profile", choices=["text", "image"])
 parser.add_argument("--runtime-pin")
 parser.add_argument("--credential-isolation", action="store_true")
+parser.add_argument("--per-file-sources", action="store_true")
 parser.add_argument("--workspace", type=Path, help="Create an exclusive QA workspace; never adopts an existing directory")
 parser.add_argument("--source-map", type=Path, help="Pinned QA-only name-to-source mapping; avoids copying weights into a staging layout")
 parser.add_argument("--source-map-pin")
@@ -180,6 +181,15 @@ try:
             path.chmod(0o600)
         config += ["--bearer-key-file", str(catalog_key)]
         digest_auth = ["--digest-bearer-key-file", str(payload_key)]
+    sources_file = base / "sources.json"
+    sources_document = dict(format="samosa.inference.package-sources.v1", index_sha256=args.pin,
+                            files=[dict(url=f"{endpoint}/{file['sha256']}",
+                                        **({"bearer_key_file": str(payload_key)} if args.credential_isolation else {}))
+                                   for file in index["files"]])
+    sources_file.write_text(json.dumps(sources_document))
+    sources_file.chmod(0o600)
+    acquisition = (["--file-sources", str(sources_file)] if args.per_file_sources else
+                   digest_auth + ["--digest-endpoint", endpoint])
     reservations = ["--reservation-directory", str(pool), "--copy-ceiling", str(total), "--reservation-ceiling", str(total), "--reservation-capacity", "1"]
     if is_decision:
         policy = ["--decision-profile", args.decision_profile, "--decision-runtime-revision", args.revision,
@@ -234,6 +244,28 @@ try:
         assert duplicate.returncode == 2 and not duplicate.stdout
     call("provider_install", reservations, error=runtime_error)
     assert not requests and not (package / "assemble.lock").exists() and not (base / "cache").exists()
+    if args.per_file_sources:
+        conflicting = subprocess.run(config + acquisition + ["--digest-endpoint", endpoint], input="{}", text=True, capture_output=True, timeout=15)
+        assert conflicting.returncode == 2 and not conflicting.stdout
+        sources_file.chmod(0o644)
+        call("provider_install", reservations + policy + acquisition, error="invalid_package_sources_file")
+        sources_file.chmod(0o600)
+        sources_file.write_text(json.dumps(dict(sources_document, index_sha256="0" * 64)))
+        call("provider_install", reservations + policy + acquisition, error="package_sources_identity_conflict")
+        for invalid_document in (
+            dict(sources_document, extra=True),
+            dict(sources_document, files=[]),
+            dict(sources_document, files=[dict(url="http://example.com/model")]),
+            dict(sources_document, files=[dict(url="https://user:secret@example.com/model")]),
+            dict(sources_document, files=[dict(url=endpoint, command="run")]),
+            dict(sources_document, files=[dict(url=endpoint, bearer_key_file=str(base / "missing-key"))]),
+        ):
+            sources_file.write_text(json.dumps(invalid_document))
+            invalid_files = invalid_document["files"]
+            expected = "invalid_provider_credentials" if invalid_files and invalid_files[0].get("bearer_key_file") == str(base / "missing-key") else "invalid_package_sources"
+            call("provider_install", reservations + policy + acquisition, error=expected)
+        sources_file.write_text(json.dumps(sources_document))
+        assert not requests and not (base / "cache").exists()
     if args.credential_isolation:
         for flags in (digest_auth, digest_auth + digest_auth + ["--digest-endpoint", endpoint]):
             invalid = subprocess.run(config + flags, input="{}", text=True, capture_output=True, timeout=15)
@@ -247,8 +279,13 @@ try:
     if args.credential_isolation:
         call("provider_install", reservations + policy + ["--digest-endpoint", endpoint, "--ca-file", str(cert)], error="artifact_http_error")
         assert requests == [args.pin] and not (package / "complete").exists()
+    if args.per_file_sources:
+        sources_file.write_text(json.dumps(dict(sources_document, files=sources_document["files"][:-1])))
+        call("provider_install", reservations + policy + acquisition + ["--ca-file", str(cert)], error="invalid_package_remote_source")
+        assert requests == [args.pin] and not (package / "complete").exists()
+        sources_file.write_text(json.dumps(sources_document))
     if args.reject_model:
-        call("provider_install", reservations + policy + digest_auth + ["--digest-endpoint", endpoint, "--ca-file", str(cert)], error="invalid_model_package")
+        call("provider_install", reservations + policy + acquisition + ["--ca-file", str(cert)], error="invalid_model_package")
         assert sorted(requests) == sorted(payloads) and not (package / "complete").exists()
         engine = package / "payload" / next(f["name"] for f in index["files"] if f["role"] == "engine")
         identity = engine.stat()
@@ -261,7 +298,7 @@ try:
         assert not (package / "payload").exists() and sorted(requests) == sorted(payloads)
         print("PASS Molmo setup controlled refusal: policy/TLS checks, hash-consistent invalid native model refused, no completion, offline resume/status and owned incomplete removal")
         raise SystemExit(0)
-    call("provider_install", reservations + policy + digest_auth + ["--digest-endpoint", endpoint, "--ca-file", str(cert)])
+    call("provider_install", reservations + policy + acquisition + ["--ca-file", str(cert)])
     assert sorted(requests) == sorted(payloads), requests
     if args.credential_isolation:
         # All following retries/status/removal/reinstall must use only verified
@@ -269,6 +306,7 @@ try:
         del config[-2:]
         catalog_key.unlink()
         payload_key.unlink()
+    sources_file.unlink()
     installed_engine = package / "payload" / next(f["name"] for f in index["files"] if f["role"] == "engine")
     identity = installed_engine.stat()
     assert identity.st_mode & 0o777 == 0o500

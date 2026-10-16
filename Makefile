@@ -620,7 +620,8 @@ test: test-package-identity
 sanitize: sanitize-package-identity
 
 # Define setup after complete package source groups so make tracks every input.
-SETUP_SOURCES = src/setup_main.c $(PACKAGE_REMOTE_SOURCES)
+SETUP_SOURCES = src/setup_main.c src/package_sources.c $(PACKAGE_REMOTE_SOURCES)
+build/test-catalog build/test-package-remote build/samosa-inference-setup build/samosa-inference-setup-sanitize: src/private_config.h
 SETUP_HEADERS = src/decision_package.h src/decision_package_descriptor.h src/decision_assets.h src/molmo_package.h src/molmo_package_descriptor.h src/temporal_package.h src/vision_package.h src/whisper_package.h src/llama_package.h src/llama_package_descriptor.h src/gguf_metadata.h src/catalog.h src/artifact.h src/remote_artifact.h src/json.h src/private_key.h src/sha256.h $(wildcard src/package*.h) $(SPEECH_PACKAGE_HEADERS) $(SPEECH_LOADER_HEADERS) src/library_runtime.h src/engine_runtime.h src/platform.h
 build/samosa-inference-setup: $(SETUP_SOURCES) $(SETUP_HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(CURL_CFLAGS) $(SETUP_SOURCES) $(CURL_LIBS) -o $@

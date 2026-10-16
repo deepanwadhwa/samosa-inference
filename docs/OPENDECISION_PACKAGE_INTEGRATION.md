@@ -192,3 +192,31 @@ The final focused runs additionally require offline reuse after deleting the key
 files. These controlled transport checks do not qualify production distribution
 URLs or model availability. Hosted run38977208005 passed at0a65512 before this
 credential change; it is not CI evidence for the credential change.
+
+## Per-file upstream source connection
+
+`--file-sources` now exposes the existing installer's `file_sources` array.
+It accepts a host-private configuration bound to the selected index SHA-256,
+with URLs in pinned-index order and independent optional credential files.
+The model index still cannot select URLs or credentials. The original downloader,
+verified cache, resumable acquisition, assembler and compatibility checks handle
+every file. A digest endpoint remains available as an alternative.
+
+The catalog's existing private-file snapshot checks were extracted into
+`private_config.h` and reused by both loaders. The951 catalog checks pass normal
+and SAN on macOS/Linux. The shared setup fixture uses digest acquisition for text
+and per-file acquisition for image, with distinct index and payload credentials.
+It checks private-file refusal, wrong index binding, unknown fields, empty arrays,
+insecure/credential-bearing URLs, missing keys and source-count mismatch. The
+last mismatch may acquire the verified index but cannot begin payload assembly.
+Successful installation, last-good preservation, and cache-only reuse/removal
+after deleting source configuration and credentials use the same existing gate.
+
+Full setup normal/SAN logs are
+`/private/tmp/samosa-file-sources-full-macos.log` and
+`/private/tmp/samosa-file-sources-full-linux.log`; catalog regression is also in
+`/private/tmp/samosa-private-config-regression.log`. This makes mixed upstream
+model and runtime release URLs representable without republishing unchanged model
+weights. It does not qualify or publish production entries. The original App
+catalog includes placeholder speech artifacts and Molmo2 without artifact URLs;
+those declarations cannot substitute for qualified distribution sources.
