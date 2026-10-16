@@ -25,6 +25,14 @@ int main(void) {
     vector("abc","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
     vector("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
            "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
+    /* A checkpoint digest finalizes a copy, then the live stream continues. */
+    Sha256 prefix;sha256_init(&prefix);sha256_update(&prefix,"a",1);
+    Sha256 checkpoint=prefix;unsigned char raw[32];char checkpoint_hex[65];
+    sha256_final(&checkpoint,raw);sha256_hex(raw,checkpoint_hex);
+    CHECK(!strcmp(checkpoint_hex,"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"));
+    sha256_update(&prefix,"b",1);sha256_update(&prefix,"c",1);
+    sha256_final(&prefix,raw);sha256_hex(raw,checkpoint_hex);
+    CHECK(!strcmp(checkpoint_hex,"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"));
     char path[]="/tmp/samosa-artifact-XXXXXX";int fd=mkstemp(path);CHECK(fd>=0);
     CHECK(write(fd,"abc",3)==3);const char *sha="ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
     CHECK(!artifact_verify(fd,3,3,sha));CHECK(lseek(fd,0,SEEK_CUR)==3);

@@ -1,10 +1,32 @@
-/* Mechanical SHA-256 primitive copied from legacy samosa_fs.c, not its policy.
- * Owned locally; no private source/include dependency on the old gateway. */
+/* SHA-256 artifact identity; macOS uses its system implementation.
+ * The portable primitive was copied from legacy samosa_fs.c, not its policy.
+ * No private source/include dependency on the old gateway. */
 #ifndef SOURCES_SHA256_H
 #define SOURCES_SHA256_H
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#if defined(__APPLE__) && !defined(SAMOSA_SHA256_PORTABLE)
+#include <CommonCrypto/CommonDigest.h>
+/* Large model packages are rehashed at each ownership boundary. CommonCrypto
+ * uses the host's accelerated implementation without adding a dependency.
+ * Its value context preserves the copies used for resumable checkpoints. */
+typedef CC_SHA256_CTX Sha256;
+static void sha256_init(Sha256 *ctx) { (void)CC_SHA256_Init(ctx); }
+static void sha256_update(Sha256 *ctx, const void *data_, size_t len) {
+    const unsigned char *data = (const unsigned char *)data_;
+    /* CommonCrypto's update length is 32-bit; the local API accepts size_t. */
+    while (len) {
+        CC_LONG chunk = len > UINT32_MAX ? UINT32_MAX : (CC_LONG)len;
+        (void)CC_SHA256_Update(ctx, data, chunk);
+        data += chunk;
+        len -= chunk;
+    }
+}
+static void sha256_final(Sha256 *ctx, unsigned char out[32]) {
+    (void)CC_SHA256_Final(out, ctx);
+}
+#else
 typedef struct { uint32_t h[8]; uint64_t bits; unsigned char block[64]; size_t used; } Sha256;
 static uint32_t rotr32(uint32_t x, int n) {
     return (x >> n) | (x << (32 - n));
@@ -94,6 +116,8 @@ static void sha256_final(Sha256 *ctx, unsigned char out[32]) {
         out[i * 4 + 3] = (unsigned char)ctx->h[i];
     }
 }
+
+#endif
 
 static void sha256_hex(const unsigned char digest[32], char out[65]) {
     static const char hex[] = "0123456789abcdef";
