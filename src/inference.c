@@ -55,7 +55,11 @@ static int dispatch_core(const InferenceConfig *cfg,const char *input,size_t len
     int native=cfg&&cfg->endpoint;
     if(cfg&&(!inference_platform_valid(cfg->platform)||cfg->queue_capacity>8||cfg->admission_wait_ms>60000||
              (cfg->queue_capacity&&!cfg->admission_state)))return fail(out,"invalid_configuration");
-    if(!identity||!*identity||strlen(identity)>128||context<128||context>131072)return fail(out,"invalid_configuration");
+    size_t minimum_context=128;
+#ifdef SAMOSA_WITH_DECISION
+    if(cfg&&cfg->decision&&cfg->decision->profile==DECISION_ASSETS_IMAGE)minimum_context=64;
+#endif
+    if(!identity||!*identity||strlen(identity)>128||context<minimum_context||context>131072)return fail(out,"invalid_configuration");
     for(const char *p=identity;*p;p++)if(!isalnum((unsigned char)*p)&&!strchr("-_:.",*p))return fail(out,"invalid_configuration");
 #ifndef SAMOSA_WITH_LLAMA
     if(native)return fail(out,"provider_unavailable");
@@ -68,7 +72,7 @@ static int dispatch_core(const InferenceConfig *cfg,const char *input,size_t len
         char *work=json_string(&request,json_get(&request,0,"op"));
         int executes=work&&(!strcmp(work,"generate")||!strcmp(work,"count_tokens")||!strcmp(work,"provider_status")||
             !strcmp(work,"embed_text")||!strcmp(work,"summarize")||!strcmp(work,"summarize_opening")||
-            !strcmp(work,"transcribe")||!strcmp(work,"analyze_image")||!strcmp(work,"analyze_video_frames")||!strcmp(work,"speech_generate")||!strcmp(work,"decide_text"));
+            !strcmp(work,"transcribe")||!strcmp(work,"analyze_image")||!strcmp(work,"analyze_video_frames")||!strcmp(work,"speech_generate")||(!strcmp(work,"decide_text")||!strcmp(work,"decide_image")));
         free(work);
         /* Tracked replay happens before dispatch_core. Foreign deployment
          * targets refuse new model work while preserving retained data access. */
@@ -167,7 +171,7 @@ static int dispatch_core(const InferenceConfig *cfg,const char *input,size_t len
 }
 static char *normalized(const InferenceConfig *cfg,const Json *j,const char *op){
 #ifdef SAMOSA_WITH_DECISION
-    if(!strcmp(op,"decide_text")&&cfg&&cfg->decision)return decision_normalized(cfg,j);
+    if((!strcmp(op,"decide_text")||!strcmp(op,"decide_image"))&&cfg&&cfg->decision)return decision_normalized(cfg,j);
 #endif
 #ifdef SAMOSA_WITH_SPEECH
     if(!strcmp(op,"speech_generate")&&cfg&&cfg->speech)return speech_normalized(cfg,j);
@@ -214,7 +218,7 @@ int inference_dispatch_config(const InferenceConfig *cfg,const char *input,size_
     size_t budget=0;int budget_token=json_get(&j,0,"timeout_ms");InferenceConfig scoped={.provider_id=PROVIDER,.context_tokens=CONTEXT,.owner="local"};if(cfg)scoped=*cfg;
     int transcription=0,visual=0,summarization=0,temporal=0,speech=0,decision=0;
 #ifdef SAMOSA_WITH_DECISION
-    decision=cfg&&cfg->decision&&op&&!strcmp(op,"decide_text");
+    decision=cfg&&cfg->decision&&op&&(!strcmp(op,"decide_text")||!strcmp(op,"decide_image"));
     if(decision&&budget_token<0){if(received<0){free(op);free(id);return fail(out,"state_unavailable");}double deadline=received+60;if(!scoped.deadline_monotonic||deadline<scoped.deadline_monotonic)scoped.deadline_monotonic=deadline;cfg=&scoped;}
 #endif
 #ifdef SAMOSA_WITH_SPEECH

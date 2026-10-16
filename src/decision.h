@@ -6,6 +6,7 @@
 struct DecisionConfig {
   const char *self, *assets;
   const char *pins[DECISION_ASSET_COUNT];
+  unsigned profile;
 };
 /* Native typed worker request, validated and normalized by the existing Rust
  * decoder. The caller owns returned buffers. No model is loaded here. */

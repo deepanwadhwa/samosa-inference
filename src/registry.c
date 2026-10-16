@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
 #include "registry.h"
+#include "decision.h"
 #include "json.h"
 #ifdef SAMOSA_WITH_DECISION
 #define parse_request(j,s,n) json_parse_opaque(j,s,n,"request")
@@ -30,7 +31,7 @@ static int path(const char *s) {
     return s[strlen(s)-1]!='/';
 }
 static const char *kind(const InferenceConfig *c) {
-    if(c->decision)return "text_decisions";
+    if(c->decision)return c->decision->profile==DECISION_ASSETS_IMAGE?"image_decisions":"text_decisions";
     if(c->speech)return "speech_output";
     if(c->whisper)return "transcription";
     if(c->vision)return "image_analysis";
@@ -70,7 +71,7 @@ const char *inference_registry_validate(const InferenceRegistry *r) {
         const InferenceConfig *c=&r->providers[i];
         unsigned modalities=!!c->whisper+!!c->vision+!!c->temporal+!!c->summary+!!c->embedding+!!c->speech+!!c->decision;
         if(!identity(c->provider_id,128)||!identity(c->owner,64)||!path(c->admission_state)||
-           c->context_tokens<128||c->context_tokens>131072||c->queue_capacity>8||
+           c->context_tokens<(c->decision&&c->decision->profile==DECISION_ASSETS_IMAGE?64u:128u)||c->context_tokens>131072||c->queue_capacity>8||
            c->admission_wait_ms>60000||!inference_platform_valid(c->platform)||modalities>1||
            (c->endpoint&&modalities&&!c->embedding)||(c->embedding&&!c->endpoint))return "invalid_registry_configuration";
         if(!compiled(c))return "provider_not_compiled";
@@ -87,7 +88,7 @@ const char *inference_registry_validate(const InferenceRegistry *r) {
     return NULL;
 }
 static int work(const InferenceConfig *c,const char *op) {
-    if(c->decision)return !strcmp(op,"decide_text");
+    if(c->decision)return !strcmp(op,c->decision->profile==DECISION_ASSETS_IMAGE?"decide_image":"decide_text");
     if(c->speech)return !strcmp(op,"speech_generate")||!strcmp(op,"audio_read")||!strcmp(op,"audio_delete");
     if(c->whisper)return !strcmp(op,"transcribe");
     if(c->vision)return !strcmp(op,"analyze_image");
@@ -98,7 +99,7 @@ static int work(const InferenceConfig *c,const char *op) {
            !strcmp(op,"provider_status")||!strcmp(op,"session_create")||!strcmp(op,"session_get");
 }
 static const char *operations(const InferenceConfig *c) {
-    if(c->decision)return "\"decide_text\"";
+    if(c->decision)return c->decision->profile==DECISION_ASSETS_IMAGE?"\"decide_image\"":"\"decide_text\"";
     if(c->speech)return "\"speech_generate\",\"audio_read\",\"audio_delete\"";
     if(c->whisper)return "\"transcribe\"";
     if(c->vision)return "\"analyze_image\"";

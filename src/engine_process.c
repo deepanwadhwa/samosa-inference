@@ -37,7 +37,7 @@ static void clean_workspace(const char *path){
     if(fstat(6,&retained)||lstat(path,&current)||!S_ISDIR(retained.st_mode)||retained.st_uid!=geteuid()||(retained.st_mode&077)||retained.st_dev!=current.st_dev||retained.st_ino!=current.st_ino)return;
     (void)unlinkat(6,"input.wav",0);(void)unlinkat(6,"result.srt",0);
     (void)unlinkat(6,"request.frame",0);(void)unlinkat(6,"result.frame",0);
-    (void)unlinkat(6,"input.ppm",0);(void)unlinkat(6,"request.json",0);(void)unlinkat(6,"result.json",0);
+    (void)unlinkat(6,"input.rgba",0);(void)unlinkat(6,"input.ppm",0);(void)unlinkat(6,"request.json",0);(void)unlinkat(6,"result.json",0);
     /* Temporal adapters create only these sixteen owned frame names. */
     for(size_t k=0;k<16;k++){char frame[32];snprintf(frame,sizeof(frame),"frame-%02zu.ppm",k);(void)unlinkat(6,frame,0);}
     (void)rmdir(path);

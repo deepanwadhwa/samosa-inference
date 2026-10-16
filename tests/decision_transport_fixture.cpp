@@ -14,9 +14,12 @@ extern "C" const void *OrtGetApiBase();
 #include <unistd.h>
 int main(int argc, char **argv) {
 #ifdef SAMOSA_DECISION_PUBLIC_FIXTURE
-  if (argc != 5 || std::string(argv[1]) != "--model" ||
+  if ((argc != 5 && argc != 11) || std::string(argv[1]) != "--model" ||
       std::string(argv[3]) != "--tokenizer" || !OrtGetApiBase())
     return 2;
+  if (argc == 11 && (std::string(argv[5]) != "--image-rgba" ||
+      std::string(argv[7]) != "--width" || std::string(argv[9]) != "--height" ||
+      access(argv[6], R_OK))) return 2;
   std::ifstream config(argv[2]);
   std::string mode;
   config >> mode;

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Public decision adapter controls using the existing model-free worker fixture."""
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -22,6 +23,7 @@ def main():
     parser.add_argument('public', type=Path)
     parser.add_argument('worker', type=Path)
     parser.add_argument('runtime', type=Path)
+    parser.add_argument('--image', action='store_true')
     args = parser.parse_args()
     checks = 0
     def check(value, detail=None):
@@ -42,7 +44,7 @@ def main():
         marker = base/'ready'
         config = base/'host.json'
         env = dict(os.environ, SAMOSA_DECISION_QA_MARKER=str(marker))
-        provider = dict(provider_id='decision', kind='text_decisions', state=str(base/'state'),
+        provider = dict(provider_id='decision', kind='image_decisions' if args.image else 'text_decisions', state=str(base/'state'),
                         assets=str(assets), engine_sha256=sha(assets/'decision-engine'),
                         runtime_sha256=sha(assets/args.runtime.name), model_sha256=sha(model),
                         tokenizer_sha256=sha(tokenizer))
@@ -85,8 +87,11 @@ def main():
         def control(op, identity, selected='decision'):
             return dict(contract_version=1, op=op, provider_id=selected, operation_id=identity)
         def work(identity, request=None, timeout=10000):
-            return dict(contract_version=1, op='decide_text', provider_id='decision', operation_id=identity,
+            result = dict(contract_version=1, op='decide_image' if args.image else 'decide_text', provider_id='decision', operation_id=identity,
                         timeout_ms=timeout, request=request or dict(method='noul', state='s', instructions='q'))
+            if args.image:
+                result.update(width=1, height=1, image_rgba_base64=base64.b64encode(bytes([255,0,0,17])).decode())
+            return result
         def ready(p):
             deadline = time.monotonic()+10
             while not marker.exists():
@@ -114,6 +119,27 @@ def main():
         provider['assets'] = str(base/'absent-engine')
         check(run(request) == response)
         provider['assets'] = str(assets)
+        if args.image:
+            check(response['image_sha256'] == hashlib.sha256(bytes([255,0,0,17])).hexdigest())
+            for change in [dict(width=2,height=1,image_rgba_base64=base64.b64encode(bytes([255,0,0,17])*2).decode()),
+                           dict(image_rgba_base64=base64.b64encode(bytes([0,0,0,17])).decode())]:
+                altered = dict(request, **change)
+                run(altered, 'idempotency_conflict')
+            shape = work('shape-binding')
+            shape.update(width=1,height=2,image_rgba_base64=base64.b64encode(bytes([255,0,0,17])*2).decode())
+            run(shape)
+            run(dict(shape,width=2,height=1), 'idempotency_conflict')
+            maximum = work('max-frame')
+            maximum.update(width=512,height=512,image_rgba_base64=base64.b64encode(bytes([0,0,0,255])*(512*512)).decode())
+            check(run(maximum)['result']['noul'] == 0.5)
+            run(work('wrong-relation-backend',dict(method='relation',state='s',proposition='p',contradiction='c')), 'invalid_provider_response')
+            bad = work('bad-image')
+            bad['width'] = 513
+            run(bad, 'invalid_request')
+            bad = work('bad-b64')
+            bad['image_rgba_base64'] = '/wAAER=='  # noncanonical padding bits
+            run(bad, 'invalid_request')
+            run(work('unsupported-batch', dict(method='relations',items=[])), 'invalid_request')
         changed = json.loads(json.dumps(request))
         changed['request']['criteria'] = {'a':'first','z\0x':'last'}
         run(changed, 'idempotency_conflict')

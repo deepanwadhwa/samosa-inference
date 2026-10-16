@@ -50,7 +50,8 @@ static char *configuration(const char *path,size_t *bytes) {
 static const char *provider(InferenceRegistryHost *h,const Json *j,int object,size_t i,const char *self,const char *owner) {
     const char *common="|provider_id|kind|state|platform|context_tokens|queue_capacity|admission_wait_ms|";
     char *kind=string(h,j,object,"kind");if(!kind)return "invalid_registry_configuration";
-    int decision=!strcmp(kind,"text_decisions"),speech=!strcmp(kind,"speech_output"),fake=!strcmp(kind,"fake_text"),text=!strcmp(kind,"text"),embedding=!strcmp(kind,"embeddings"),
+    int image_decision=!strcmp(kind,"image_decisions");
+    int decision=image_decision||!strcmp(kind,"text_decisions"),speech=!strcmp(kind,"speech_output"),fake=!strcmp(kind,"fake_text"),text=!strcmp(kind,"text"),embedding=!strcmp(kind,"embeddings"),
         summary=!strcmp(kind,"summarization"),whisper=!strcmp(kind,"transcription"),vision=!strcmp(kind,"image_analysis"),temporal=!strcmp(kind,"video_analysis");
     if(!fake&&!text&&!embedding&&!summary&&!whisper&&!vision&&!temporal&&!speech&&!decision)return "unsupported_provider_kind";
     char allowed[512];snprintf(allowed,sizeof(allowed),"%s%s",common,
@@ -62,15 +63,15 @@ static const char *provider(InferenceRegistryHost *h,const Json *j,int object,si
     InferenceConfig *c=&h->providers[i];c->owner=owner;
     c->provider_id=string(h,j,object,"provider_id");c->admission_state=string(h,j,object,"state");
     if(json_get(j,object,"platform")>=0){c->platform=string(h,j,object,"platform");if(!c->platform)return "invalid_registry_configuration";}
-    if(!number(j,object,"context_tokens",4096,128,131072,&c->context_tokens)||
+    if(!number(j,object,"context_tokens",4096,image_decision?64:128,131072,&c->context_tokens)||
        !number(j,object,"queue_capacity",4,0,8,&c->queue_capacity)||
        !number(j,object,"admission_wait_ms",10000,1,60000,&c->admission_wait_ms))return "invalid_registry_configuration";
-    if(decision){DecisionConfig *d=&h->decisions[i];d->self=self;d->assets=string(h,j,object,"assets");
+    if(decision){DecisionConfig *d=&h->decisions[i];d->profile=image_decision?DECISION_ASSETS_IMAGE:DECISION_ASSETS_TEXT;d->self=self;d->assets=string(h,j,object,"assets");
         const char *keys[]={"engine_sha256","runtime_sha256","model_sha256","tokenizer_sha256"};
         if(!absolute(self)||!absolute(d->assets))return "invalid_registry_configuration";
         for(unsigned k=0;k<DECISION_ASSET_COUNT;k++){d->pins[k]=string(h,j,object,keys[k]);if(!digest(d->pins[k]))return "invalid_registry_configuration";}
-        c->decision=d;c->context_tokens=512;
-        size_t declared=512;if(!number(j,object,"context_tokens",512,512,512,&declared))return "invalid_registry_configuration";
+        c->decision=d;c->context_tokens=image_decision?64:512;
+        size_t declared=c->context_tokens;if(!number(j,object,"context_tokens",c->context_tokens,c->context_tokens,c->context_tokens,&declared))return "invalid_registry_configuration";
     }
     if(speech){const char *package=string(h,j,object,"package"),*pin=string(h,j,object,"manifest_sha256");
         if(!absolute(self)||!absolute(package)||!digest(pin))return "invalid_registry_configuration";

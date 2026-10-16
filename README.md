@@ -11,7 +11,8 @@ select a configured provider ID; discovery and controls use one public interface
 See [provider-registry-v1](contracts/provider-registry-v1.md) for private host
 configuration, limits, qualification and remaining lifecycle/service work.
 [Native text decisions](contracts/decision-v1.md) reuse the existing OpenDecision
-backend; image decisions remain an open integration requirement.
+backend and SigLIP image matching through one registry. Image qualification is
+tracked in [the integration record](docs/OPENDECISION_IMAGE_INTEGRATION.md).
 
 Independent native C11 Inference boundary, libc and system SQLite. `make test`,
 `make sanitize`, `make release`. One JSON body on stdin, one result on stdout.

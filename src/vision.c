@@ -6,6 +6,7 @@
 #include "engine_process.h"
 #include "sha256.h"
 #include "vision.h"
+#include "rgba_input.h"
 #include <fcntl.h>
 #include <limits.h>
 #include <poll.h>
@@ -110,44 +111,6 @@ char *vision_normalized(const InferenceConfig *cfg, const Json *j) {
     free(prompt);
     free(parent);
     return body;
-}
-static int b64(unsigned char c) {
-    if (c >= 'A' && c <= 'Z')
-        return c - 'A';
-    if (c >= 'a' && c <= 'z')
-        return c - 'a' + 26;
-    if (c >= '0' && c <= '9')
-        return c - '0' + 52;
-    return c == '+' ? 62 : c == '/' ? 63 : -1;
-}
-static unsigned char *decode(const char *s, size_t expected) {
-    size_t n = strlen(s);
-    if (n != ((expected + 2) / 3) * 4 || expected > IMAGE_MAX)
-        return NULL;
-    unsigned char *bytes = malloc(n / 4 * 3);
-    if (!bytes)
-        return NULL;
-    size_t used = 0;
-    for (size_t i = 0; i < n; i += 4) {
-        int a = b64((unsigned char)s[i]), b = b64((unsigned char)s[i + 1]),
-            c = b64((unsigned char)s[i + 2]), d = b64((unsigned char)s[i + 3]),
-            pc = s[i + 2] == '=', pd = s[i + 3] == '=';
-        if (a < 0 || b < 0 || (!pc && c < 0) || (!pd && d < 0) || (pc && !pd) ||
-            ((pc || pd) && i + 4 != n) || (pc && (b & 15)) || (!pc && pd && (c & 3))) {
-            free(bytes);
-            return NULL;
-        }
-        bytes[used++] = (unsigned char)((a << 2) | (b >> 4));
-        if (!pc)
-            bytes[used++] = (unsigned char)((b << 4) | (c >> 2));
-        if (!pd)
-            bytes[used++] = (unsigned char)((c << 6) | d);
-    }
-    if (used != expected) {
-        free(bytes);
-        return NULL;
-    }
-    return bytes;
 }
 static const char *verify_control(void *context) { return inference_interrupted(context); }
 static const char *verify(const InferenceConfig *cfg, int fd, const char *digest, uint64_t ceiling,
@@ -514,7 +477,7 @@ int vision_dispatch(const InferenceConfig *cfg, const Json *j, FILE *out) {
         error = "invalid_request";
     else if (strcmp(provider, cfg->provider_id))
         error = "provider_unavailable";
-    unsigned char *rgba = error ? NULL : decode(encoded, width * height * 4);
+    unsigned char *rgba = error ? NULL : rgba_decode(encoded, width * height * 4);
     if (!error && !rgba)
         error = "invalid_image";
     char *observation = NULL, digest[65], prepared[65];

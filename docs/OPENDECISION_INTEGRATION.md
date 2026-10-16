@@ -15,7 +15,10 @@ pass normally and with the sanitized public adapter on macOS ARM64; normal/SAN
 public control and independent shared checks pass on macOS and Ubuntu ARM64.
 See [public integration evidence](OPENDECISION_PUBLIC_INTEGRATION.md).
 This supersedes the historical public-text gap below. OpenDecision image
-matching remains the active area1 prerequisite; no full area is closed.
+matching now has native preprocessing, model execution, typed decisions and
+public `image_decisions` / `decide_image` dispatch; final qualification remains
+the active area1 prerequisite. See [image evidence](OPENDECISION_IMAGE_INTEGRATION.md).
+No full area is closed by that implementation checkpoint.
 
 ## Existing Chat use
 

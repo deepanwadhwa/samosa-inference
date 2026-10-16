@@ -1,4 +1,4 @@
-# Native text decisions v1
+# Native decisions v1
 
 OpenDecision text inference belongs to the independent Inference module.
 Application routing rules, document selection and actions remain with consumers.
@@ -83,3 +83,50 @@ quality is claimed. `tests/test_decision_public.py` requires explicit pinned
 asset inventory and original-engine reference report and compares every complete
 typed result through fresh public processes, replay, status and retry conflicts.
 Platform and actual-model evidence live in the active integration record.
+
+## Image decisions
+
+The registry also accepts `kind: image_decisions` with the same four private
+asset pins. Its context is exactly64 positions per description and its model
+asset profile admits at most2GiB; the text profile retains its1GiB cap.
+Discovery exposes `decide_image`, Choice, ordered Score, Noul and Relation.
+Batch Relations is unavailable for this model.
+
+`decide_image` uses the same envelope and nested typed `request`, plus root
+`width`, `height` and canonical `image_rgba_base64`. Dimensions are1..512;
+decoded bytes must be exactly `width * height * 4`, packed row-major RGBA.
+Sources owns encoded-media decoding and prepared-frame provenance. Inference
+accepts prepared pixels, never image paths/URLs or encoded image files. The
+nested `state` remains required by the shared request contract but does not
+condition image matching; it may carry a consumer's frame identity. Retry
+identity separately binds the actual pixels and dimensions.
+
+The pinned processor discards alpha, performs224x224 PIL-compatible bilinear
+antialias resizing, rescales by1/255 and normalizes mean/std0.5. Native tokenization
+uses64-position right padding/truncation. Choice uses each description or its
+underscore-expanded candidate name, preserving first-winner ties. Choice and
+Score instructions are unused. Distributions use matching-logit softmax; a lone
+predicate uses sigmoid. Relation independently thresholds its two sigmoid
+scores and reports backend `siglip_image_text`. These scores are visual matches,
+not calibrated truth or text entailment.
+
+Image results retain the existing typed shapes and asset provenance, adding
+`image_sha256`, dimensions, `alpha_policy: discard` and processor profile
+`siglip224-pil-bilinear-v1`. `input_sha256` hashes the UTF-8 string
+`samosa-image-decision-v1:WIDTH:HEIGHT:IMAGE_SHA:REQUEST_SHA`, with decimal
+dimensions and lowercase hex digests. `REQUEST_SHA` covers the canonical typed
+payload; `IMAGE_SHA` covers every original RGBA byte, including discarded alpha.
+Operation identity also binds operation kind, provider, pins, parent and timeout.
+Changed pixels, dimensions, candidate order or pins conflict on retained retry.
+
+Image operations reuse the same admission, deadlines, owner isolation, strict
+typed result validation, operation replay and guardian cleanup. The guardian
+owns the bounded temporary raw frame along with request/result frames. Image
+results carrying text relation metadata refuse before publication. Completed
+replay does not need model assets or the temporary raw frame. Model residency,
+global scheduling and authenticated service remain separate module requirements.
+
+`tests/test_decision_public.py --image` qualifies actual image-model results
+through the public binary with explicit inventory/reference pins. Normal/SAN
+public control tests run both modalities, including full512x512 prepared input,
+pixel/dimension retry conflicts and requester-death workspace cleanup.

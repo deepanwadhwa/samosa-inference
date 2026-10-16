@@ -191,10 +191,83 @@ pins those bytes. The actual-asset gate passes image-profile admission and held
 recheck for the 1.5 GB graph, including the existing closed native loader graph.
 This proves static acceptance, not installed-package or public readiness.
 
-Hosted CI passed `f603265`, `d7d7a5f` and `8c375dc`. Current worker/profile changes
-still require their own hosted run. Public image registry/configuration and
-controlled provider dispatch remain unfinished. This private proof does not
-close area1 or any downstream Inference area.
+Hosted CI passed `f603265`, `d7d7a5f` and `8c375dc`. Worker/profile commit
+`327d691` has a subsequent hosted run; current status must be checked there.
+
+## Public provider integration
+
+The existing registry/configuration supports `image_decisions` and `decide_image`
+alongside `text_decisions` and all original modalities. Only the explicit image
+kind admits64 context positions; other provider limits are preserved. The
+existing decision dispatcher handles both profiles, reusing the strict Rust
+request decoder/normalizer, operation store, scheduling lease, cancellation,
+deadline and framed-file guardian. It rejects image batch relations before
+launch and validates all image results with the shared profile-aware validator.
+
+Prepared RGBA base64 decoding was extracted directly from the existing VisionPsy
+adapter into `rgba_input.h`, with unchanged canonical padding and exact-size
+checks. No new encoded-image decoder is added. The parent writes a bounded
+owned `input.rgba`; the existing guardian now cleans that fixed filename along
+with request/result frames, including on requester death. Image identity binds
+RGBA bytes and dimensions; the consumer's nested state never substitutes for
+that identity. Public pins, retry, result hashes and preprocessing metadata are
+specified in [the shared decision contract](../contracts/decision-v1.md).
+
+The existing public control fixture accepts image-mode launch arguments, and
+the same normal/SAN control runner now covers both modalities. Image checks add
+full512x512 input, canonical base64 refusal, malformed dimensions, dimension-only
+and pixel-only retry conflicts, unavailable batch relations and refusal of text
+relation metadata. Existing NUL/order, offline replay, owner isolation, worker
+death, deadline, cancellation, mutation and requester-death cleanup all remain.
+No fixture score is treated as model quality evidence.
+
+The combined registry test now configures text and image decisions together and
+checks discovery, operation separation,64-position metadata, public path hiding,
+foreign-platform refusal and inherited deadlines. Existing VisionPsy and native
+registry CLI tests cover the shared decoder and generic dispatcher changes.
+
+`tests/test_decision_public.py --image` reuses the text actual-model public gate.
+The pinned flat asset inventory is SHA256
+`7672b919504d0994431402890a7bcc51e06f7fef5122c36e0f9ec338da973733`.
+All eleven original image cases pass through fresh public processes with complete
+typed result comparison, retained replay, operation status and changed timeout/
+pixel retry conflict. Maximum result error is `0.00000314414501`. Normal log:
+`/private/tmp/samosa-image-public-real.log`. The ASan/UBSan public adapter also
+passes every case at the same maximum error, logged in
+`/private/tmp/samosa-image-public-real-sanitize.log`; its external qualified worker
+and prebuilt ORT are not instrumented by that public-adapter gate. Private worker
+sanitizer qualification is recorded above.
+
+Normal/SAN control gates pass on macOS and independent Ubuntu ARM64. The final
+paired registry checks pass438 assertions per configuration on both platforms,
+and guardian checks pass234. Minimal registry, native registry CLI and VisionPsy
+normal/SAN regressions pass on both hosts. Full-frame controls ensure the public
+envelope admits the base64 representation of512x512 RGBA while retaining the
+1MiB nested decision-request/worker-frame limit. Decision-enabled single-modality
+builds use the existing2MiB image envelope budget; combined temporal builds keep
+their existing24MiB envelope budget. No weight download or duplication was used
+for these checks. Hosted CI for the final public integration remains required.
+The original ten-case text public actual-model suite also passes against the
+updated public binary, including its full8x512 capacity case, maximum typed
+error `0.000583839146`. Log:
+`/private/tmp/samosa-image-public-text-regression.log`.
+
+Executed public binary SHA256 pins are
+`fa9b089dbc5e2aca169b72f5c1a8dbf794d39611ee1581897ba178c66d19a8e8`
+(normal) and
+`a1f641acd89e58e7563d59ffd1a206d8717dc6c959b2ce5ec1ed402449267010`
+(ASan/UBSan). They are also retained in
+`/private/tmp/samosa-image-public-executed-binaries.json`. The final header change
+adds the decision-only2MiB envelope branch; combined-provider binaries already
+use the unchanged24MiB temporal branch. Its effective decision-only macro was
+independently checked with the compiler preprocessor.
+
+Actual image-model quality is qualified on macOS ARM64 only so far. Linux
+control/build tests do not establish Linux actual-model execution. Package
+installation, persistent readiness/residency, global scheduling and final release
+retain their independent downstream acceptance requirements. Area1 closure
+requires its complete integration audit; this record does not close all seven
+Inference areas.
 
 ## Acceptance and scope
 

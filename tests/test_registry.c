@@ -172,6 +172,25 @@ int main(void){
     refused(&decision_registry,decision_request,"deadline_exceeded");
     decision_cfg.deadline_monotonic=0;decision_cfg.platform=foreign_platform;
     refused(&decision_registry,decision_request,"unsupported_provider_platform");decision_cfg.platform=NULL;
+    DecisionConfig image_dc=dc;image_dc.profile=DECISION_ASSETS_IMAGE;
+    char image_decision_state[256];snprintf(image_decision_state,sizeof(image_decision_state),"%s/image-decision",root);
+    InferenceConfig decision_pair[]={decision_cfg,decision_cfg};
+    decision_pair[1].provider_id="image-decision";decision_pair[1].context_tokens=64;
+    decision_pair[1].admission_state=image_decision_state;decision_pair[1].decision=&image_dc;
+    InferenceRegistry paired={decision_pair,2};CHECK(!inference_registry_validate(&paired));
+    body=call(&paired,"{\"contract_version\":1,\"op\":\"describe\"}",NULL);
+    CHECK(strstr(body,"text_decisions")&&strstr(body,"image_decisions")&&strstr(body,"decide_text")&&strstr(body,"decide_image"));free(body);
+    body=call(&paired,"{\"contract_version\":1,\"op\":\"provider_describe\",\"provider_id\":\"image-decision\"}",NULL);
+    CHECK(strstr(body,"native_siglip")&&strstr(body,"\"context_tokens\":64")&&!strstr(body,"\"relations\"")&&!strstr(body,"/unused"));free(body);
+    refused(&paired,"{\"contract_version\":1,\"op\":\"decide_text\",\"provider_id\":\"image-decision\"}","unsupported_operation");
+    refused(&paired,"{\"contract_version\":1,\"op\":\"decide_image\",\"provider_id\":\"decision\"}","unsupported_operation");
+    const char *image_request="{\"contract_version\":1,\"op\":\"decide_image\",\"provider_id\":\"image-decision\",\"width\":1,\"height\":1,\"image_rgba_base64\":\"/wAAEQ==\",\"request\":{\"method\":\"noul\",\"state\":\"frame\",\"instructions\":\"red\"}}";
+    CHECK(json_parse_opaque(&dj,image_request,strlen(image_request),"request"));
+    dn=decision_normalized(&decision_pair[1],&dj);CHECK(dn&&strstr(dn,"image_sha256")&&!strstr(dn,"/wAAEQ=="));free(dn);
+    decision_pair[1].deadline_monotonic=1;
+    refused(&paired,image_request,"deadline_exceeded");decision_pair[1].deadline_monotonic=0;
+    decision_pair[1].platform=foreign_platform;
+    refused(&paired,image_request,"unsupported_provider_platform");decision_pair[1].platform=NULL;
 #endif
     cleanup(root);printf("PASS provider registry: %u checks; routed namespaces, owner controls, strict discovery and adapter reuse\n",checks);return 0;
 }

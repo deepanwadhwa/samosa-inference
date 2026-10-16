@@ -14,8 +14,10 @@ area 1 is not fully complete for the expanded inventory. See
 installation and installed execution now pass normally and with sanitizers,
 along with affected VisionPsy and combined-registry regressions; see
 [Molmo2 evidence](MOLMO_PACKAGE_INSTALLATION_VERIFICATION.md). The OpenDecision public text prerequisite is now qualified; see
-[public text evidence](OPENDECISION_PUBLIC_INTEGRATION.md). Complete its image
-provider next, before further installation acceptance or lifecycle work.
+[public text evidence](OPENDECISION_PUBLIC_INTEGRATION.md). The image provider
+is implemented through the same public path; finish its qualification and
+integration audit next, before further installation acceptance or lifecycle work.
+See [image evidence](OPENDECISION_IMAGE_INTEGRATION.md).
 
 Reuse the existing native text, EmbeddingGemma2, T5 summary, Whisper,
 VisionPsy and Molmo2 implementations and their public contracts. Audit native

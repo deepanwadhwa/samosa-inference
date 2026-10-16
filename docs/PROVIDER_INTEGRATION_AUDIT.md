@@ -1,5 +1,21 @@
 # Provider integration requirement audit
 
+## Current expanded inventory — 2026-10-16
+
+The original seven-modality completion decision below predates the required
+OpenDecision text/image inventory. Area1 remains active until that expanded
+integration audit and its final hosted checks pass. Public text decisions are
+qualified in [the text record](OPENDECISION_PUBLIC_INTEGRATION.md). Native image
+decisions now reuse the same registry/operation/guardian path; all eleven pinned
+actual-model image cases pass through the public adapter normally and under
+ASan/UBSan on macOS ARM64. See [image evidence](OPENDECISION_IMAGE_INTEGRATION.md).
+Text/image coexistence, image limits and common controls pass on macOS and Linux;
+Linux model quality and downstream areas remain outside those fixture checks.
+The historical foundation audit below remains evidence, not a completion claim
+for the newly expanded inventory.
+
+## Original modality foundation
+
 This audit follows the original area1 requirements, using the current independent
 source and published qualification records. It does not close areas2–7 or replace
 their acceptance criteria. Qualified provider code atc6eceb3 passed independent

@@ -21,7 +21,7 @@ sanitize-registry: | build
 	./build/test-registry-sanitize
 REGISTRY_FLAGS = -DSAMOSA_WITH_DECISION $(NATIVE_FLAGS) -DSAMOSA_WITH_SPEECH -DSAMOSA_WITH_WHISPER -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -DSAMOSA_WITH_SUMMARY
 REGISTRY_SOURCES = src/decision.c src/decision_assets.c src/speech.c src/audio_store.c src/speech_worker.c src/speech_runtime.c src/speech_package.c src/speech_package_loader.c src/library_runtime.c src/engine_runtime.c $(SOURCES) src/llama.c src/whisper.c src/vision.c src/visual_bridge.c src/temporal.c src/temporal_input.c src/temporal_package.c src/summary.c src/summary_protocol.c src/artifact.c
-REGISTRY_HEADERS = src/decision.h src/decision_assets.h engines/decision/tokenizer/request.h engines/decision/tokenizer/tokenizer.h src/speech.h src/audio_store.h $(SPEECH_WORKER_HEADERS) $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
+REGISTRY_HEADERS = src/rgba_input.h src/decision.h src/decision_assets.h engines/decision/tokenizer/request.h engines/decision/tokenizer/tokenizer.h src/speech.h src/audio_store.h $(SPEECH_WORKER_HEADERS) $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
 .PHONY: providers
 providers: build/samosa-inference-providers
 build/samosa-inference-providers: src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(REGISTRY_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
@@ -80,9 +80,9 @@ sanitize-temporal-input: | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_temporal_input.c src/temporal_input.c src/temporal_package.c src/artifact.c -o build/test-temporal-input-sanitize
 	./build/test-temporal-input-sanitize
 VISION_SOURCES = src/vision_main.c src/vision.c src/visual_bridge.c src/artifact.c $(SOURCES)
-build/samosa-inference-vision: $(VISION_SOURCES) $(HEADERS) src/vision.h src/artifact.h | build
+build/samosa-inference-vision: $(VISION_SOURCES) $(HEADERS) src/rgba_input.h src/vision.h src/artifact.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DSAMOSA_WITH_VISION $(VISION_SOURCES) $(LIBS) -o $@
-build/samosa-inference-vision-sanitize: $(VISION_SOURCES) $(HEADERS) src/vision.h src/artifact.h | build
+build/samosa-inference-vision-sanitize: $(VISION_SOURCES) $(HEADERS) src/rgba_input.h src/vision.h src/artifact.h | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DSAMOSA_WITH_VISION -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $(VISION_SOURCES) $(LIBS) -o $@
 vision: build/samosa-inference-vision
 build/test-vision: tests/test_vision.c tests/vision_fixture.h tests/whisper_fixture.h src/json.h src/sha256.h | build
@@ -803,5 +803,7 @@ build/decision-public-fixture: $(DECISION_TRANSPORT_SOURCES) $(DECISION_REQUEST_
 .PHONY: test-decision-public sanitize-decision-public
 test-decision-public: build/samosa-inference-providers build/decision-public-fixture
 	python3 tests/test_decision_controls.py $(abspath build/samosa-inference-providers) $(abspath build/decision-public-fixture) $(abspath $(DECISION_FIXTURE_RUNTIME))
+	python3 tests/test_decision_controls.py $(abspath build/samosa-inference-providers) $(abspath build/decision-public-fixture) $(abspath $(DECISION_FIXTURE_RUNTIME)) --image
 sanitize-decision-public: build/samosa-inference-providers-sanitize build/decision-public-fixture
 	python3 tests/test_decision_controls.py $(abspath build/samosa-inference-providers-sanitize) $(abspath build/decision-public-fixture) $(abspath $(DECISION_FIXTURE_RUNTIME))
+	python3 tests/test_decision_controls.py $(abspath build/samosa-inference-providers-sanitize) $(abspath build/decision-public-fixture) $(abspath $(DECISION_FIXTURE_RUNTIME)) --image

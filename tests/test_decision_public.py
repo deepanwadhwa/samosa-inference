@@ -5,6 +5,7 @@ Actual-model mode requires an independently pinned flat asset inventory and
 reference report. No model download or Python inference runtime is used here.
 """
 import argparse
+import base64
 import copy
 import hashlib
 import json
@@ -29,7 +30,10 @@ def main():
     parser.add_argument('reference', type=Path)
     parser.add_argument('--inventory-pin', required=True)
     parser.add_argument('--reference-pin', required=True)
+    parser.add_argument('--image', action='store_true')
     args = parser.parse_args()
+    kind = 'image_decisions' if args.image else 'text_decisions'
+    operation = 'decide_image' if args.image else 'decide_text'
     assert __debug__
     assert digest(args.inventory) == args.inventory_pin
     assert digest(args.reference) == args.reference_pin
@@ -63,7 +67,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='samosa-decision-public-') as folder:
         folder = Path(folder)
         config = folder / 'host.json'
-        provider = dict(provider_id='decision', kind='text_decisions', state=str(folder/'state'),
+        provider = dict(provider_id='decision', kind=kind, state=str(folder/'state'),
                         assets=str(root), engine_sha256=pins[0], runtime_sha256=pins[1],
                         model_sha256=pins[2], tokenizer_sha256=pins[3])
         config.write_text(json.dumps(dict(contract_version=1, owner='qa', providers=[provider,
@@ -81,15 +85,24 @@ def main():
                 assert p.returncode == 0, response
             return response
         descriptor = run(dict(contract_version=1, op='describe'))
-        assert descriptor['providers'][0]['kind'] == 'text_decisions'
-        assert 'decide_text' in descriptor['providers'][0]['operations']
+        assert descriptor['providers'][0]['kind'] == kind
+        assert operation in descriptor['providers'][0]['operations']
         assert 'assets' not in json.dumps(descriptor)
         d = run(dict(contract_version=1, op='provider_describe', provider_id='decision'))
-        assert d['context_tokens'] == 512 and 'text_decisions' in d['capabilities']
+        assert d['context_tokens'] == (64 if args.image else 512) and kind in d['capabilities']
         for i, case in enumerate(reference['cases']):
             print('BEGIN public ' + case['name'], flush=True)
-            request = dict(contract_version=1, op='decide_text', provider_id='decision',
+            request = dict(contract_version=1, op=operation, provider_id='decision',
                            operation_id=f'case-{i}', timeout_ms=120000, request=dict(method=case['method'], **case['arguments']))
+            if args.image:
+                state = case['state']
+                image = args.reference.parent / state['file']
+                assert image.parent == args.reference.parent and digest(image) == state['sha256']
+                rgb = image.read_bytes()
+                assert len(rgb) == state['width'] * state['height'] * 3
+                rgba = b''.join(rgb[index:index+3] + bytes([(index//3) % 256]) for index in range(0, len(rgb), 3))
+                request.update(width=state['width'], height=state['height'], image_rgba_base64=base64.b64encode(rgba).decode())
+                request['request']['state'] = 'prepared-frame'
             response = run(request)
             compare(response['result'], case['result'])
             assert response['operation_id'] == f'case-{i}'
@@ -98,17 +111,21 @@ def main():
             status = run(dict(contract_version=1, op='operation_get', provider_id='decision', operation_id=f'case-{i}'))
             assert status['operation_id'] == f'case-{i}'
             changed = copy.deepcopy(request)
-            changed['request']['method'] = 'relations'
-            changed['request'] = dict(method='relations', items=[])
-            if changed['request'] != request['request']:
+            changed['timeout_ms'] = 119999
+            run(changed, 'idempotency_conflict')
+            if args.image:
+                assert response['image_sha256'] == hashlib.sha256(rgba).hexdigest()
+                assert response['width'] == state['width'] and response['height'] == state['height']
+                changed = copy.deepcopy(request)
+                changed['image_rgba_base64'] = base64.b64encode(bytes([rgba[0] ^ 1]) + rgba[1:]).decode()
                 run(changed, 'idempotency_conflict')
-        bad = dict(contract_version=1, op='decide_text', provider_id='decision', request=dict(method='choice', state=0, instructions='q', criteria={}))
+        bad = dict(contract_version=1, op=operation, provider_id='decision', request=dict(method='choice', state=0, instructions='q', criteria={}))
         run(bad, 'invalid_request')
         bad['request'] = dict(method='relations', items=[])
         bad['private_path'] = '/tmp/no'
         run(bad, 'invalid_request')
         run(dict(contract_version=1, op='generate', provider_id='decision', prompt='x', max_output_tokens=1), 'unsupported_operation')
-        run(dict(contract_version=1, op='decide_text', provider_id='fake', request=dict(method='relations', items=[])), 'unsupported_operation')
+        run(dict(contract_version=1, op=operation, provider_id='fake', request=dict(method='relations', items=[])), 'unsupported_operation')
     verify()
     print(f'PASS public native decision actual-model cases/replay/routing/refusal; max result error {maximum:.9g}')
 

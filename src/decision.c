@@ -5,12 +5,39 @@
 #include "admission.h"
 #include "budget.h"
 #include "engine_process.h"
+#include "rgba_input.h"
 #include "sha256.h"
 #include <fcntl.h>
 #include <poll.h>
 #include <unistd.h>
 
 #define DECISION_LIMIT 1048576u
+typedef struct {
+  unsigned char *rgba;
+  size_t width, height;
+  char sha256[65];
+} DecisionFrame;
+static const char *frame_read(const Json *j, DecisionFrame *frame) {
+  if (!json_uint(j, json_get(j, 0, "width"), &frame->width) ||
+      !json_uint(j, json_get(j, 0, "height"), &frame->height) ||
+      !frame->width || frame->width > 512 || !frame->height || frame->height > 512)
+    return "invalid_request";
+  char *encoded = json_string(j, json_get(j, 0, "image_rgba_base64"));
+  if (!encoded)
+    return "invalid_request";
+  frame->rgba = rgba_decode(encoded, frame->width * frame->height * 4);
+  free(encoded);
+  if (!frame->rgba)
+    return "invalid_image";
+  hash_bytes(frame->rgba, frame->width * frame->height * 4, frame->sha256);
+  return NULL;
+}
+static int image_mode(const InferenceConfig *cfg) {
+  return cfg->decision->profile == DECISION_ASSETS_IMAGE;
+}
+static const char *work_op(const InferenceConfig *cfg) {
+  return image_mode(cfg) ? "decide_image" : "decide_text";
+}
 static int fail(FILE *out, const char *error) {
   fprintf(out, "{\"contract_version\":1,\"error\":{\"code\":\"%s\"}}\n", error);
   return 1;
@@ -30,7 +57,8 @@ static int configured(const InferenceConfig *cfg) {
   if (!cfg || !cfg->decision || !cfg->provider_id || !cfg->admission_state)
     return 0;
   const DecisionConfig *d = cfg->decision;
-  if (!d->self || d->self[0] != '/' || !d->assets || d->assets[0] != '/')
+  if (!d->self || d->self[0] != '/' || !d->assets || d->assets[0] != '/' ||
+      d->profile > DECISION_ASSETS_IMAGE)
     return 0;
   for (unsigned i = 0; i < DECISION_ASSET_COUNT; i++)
     if (!d->pins[i] || strlen(d->pins[i]) != 64 ||
@@ -39,9 +67,15 @@ static int configured(const InferenceConfig *cfg) {
   return 1;
 }
 const char *decision_payload(const Json *j, char **out) {
-  if (!j || !out || *out ||
-      !fields(j, "|contract_version|op|provider_id|request|operation_id|parent_"
-                 "operation_id|timeout_ms|"))
+  if (!j || !out || *out)
+    return "invalid_request";
+  char *op = json_string(j, json_get(j, 0, "op"));
+  int image = op && !strcmp(op, "decide_image");
+  free(op);
+  const char *allowed = image ?
+      "|contract_version|op|provider_id|request|operation_id|parent_operation_id|timeout_ms|image_rgba_base64|width|height|" :
+      "|contract_version|op|provider_id|request|operation_id|parent_operation_id|timeout_ms|";
+  if (!fields(j, allowed))
     return "invalid_request";
   int t = json_get(j, 0, "request");
   if (t < 0 || j->tokens[t].type != JT_OBJECT)
@@ -53,6 +87,12 @@ const char *decision_payload(const Json *j, char **out) {
                                j->tokens[t].end - j->tokens[t].begin, &handle);
   if (!code)
     code = sm_decision_request_normalized(handle, &buffer);
+  if (!code && image) {
+    SmDecisionRequest view = {0};
+    code = sm_decision_request_view(handle, &view);
+    if (!code && view.kind == SM_DECISION_RELATIONS)
+      code = SM_TOKENIZER_INVALID_INPUT;
+  }
   const char *error = code == SM_TOKENIZER_CONTEXT_LIMIT ? "context_limit"
                       : code                             ? "invalid_request"
                                                          : NULL;
@@ -78,7 +118,7 @@ char *decision_normalized(const InferenceConfig *cfg, const Json *j) {
   size_t budget = 0;
   int timeout = json_get(j, 0, "timeout_ms"),
       has_parent = json_get(j, 0, "parent_operation_id") >= 0;
-  int valid = op && !strcmp(op, "decide_text") && provider &&
+  int valid = op && !strcmp(op, work_op(cfg)) && provider &&
               !strcmp(provider, cfg->provider_id) &&
               (!has_parent || (parent && *parent && strlen(parent) <= 128)) &&
               (timeout < 0 ||
@@ -89,10 +129,15 @@ char *decision_normalized(const InferenceConfig *cfg, const Json *j) {
         valid = 0;
   char *body = NULL;
   size_t bytes = 0;
+  DecisionFrame frame = {0};
+  if (valid && image_mode(cfg) && frame_read(j, &frame))
+    valid = 0;
   if (valid && !decision_payload(j, &payload)) {
     FILE *f = open_memstream(&body, &bytes);
     if (f) {
-      fputs("{\"op\":\"decide_text\",\"provider_id\":", f);
+      fputs("{\"op\":", f);
+      json_quote(f, op, strlen(op));
+      fputs(",\"provider_id\":", f);
       json_quote(f, provider, strlen(provider));
       fputs(",\"request\":", f);
       fputs(payload, f);
@@ -103,6 +148,9 @@ char *decision_normalized(const InferenceConfig *cfg, const Json *j) {
         json_quote(f, cfg->decision->pins[i], 64);
       }
       fputc(']', f);
+      if (image_mode(cfg))
+        fprintf(f, ",\"width\":%zu,\"height\":%zu,\"image_sha256\":\"%s\"",
+                frame.width, frame.height, frame.sha256);
       if (parent) {
         fputs(",\"parent_operation_id\":", f);
         json_quote(f, parent, strlen(parent));
@@ -120,15 +168,16 @@ char *decision_normalized(const InferenceConfig *cfg, const Json *j) {
   free(op);
   free(provider);
   free(parent);
+  free(frame.rgba);
   return body;
 }
-static const char *validated_result(const char *payload, const uint8_t *bytes,
-                                    size_t length) {
+static const char *validated_result(const InferenceConfig *cfg, const char *payload,
+                                    const uint8_t *bytes, size_t length) {
   void *request = NULL;
   int code = sm_decision_request_load((const uint8_t *)payload, strlen(payload),
                                       &request);
   if (!code)
-    code = sm_decision_result_validate(request, bytes, length);
+    code = sm_decision_result_validate_profile(request, bytes, length, cfg->decision->profile);
   sm_decision_request_free(request);
   if (!code)
     return NULL;
@@ -166,7 +215,7 @@ static int transfer(int fd, void *data, size_t bytes, int writing) {
 /* Use the existing guardian's bounded framed-file transport and workspace
  * cleanup. The worker processes one frame then clean EOF; persistent engine
  * ownership is a subsequent lifecycle requirement. */
-static const char *run(const InferenceConfig *cfg, const char *payload,
+static const char *run(const InferenceConfig *cfg, const char *payload, const DecisionFrame *frame,
                        char **result) {
   const DecisionConfig *d = cfg->decision;
   DecisionAssets assets = {0};
@@ -174,9 +223,9 @@ static const char *run(const InferenceConfig *cfg, const char *payload,
   const char *error = inference_schedule(cfg, &lease);
   if (!error)
     error =
-        decision_assets_open(d->assets, d->pins, control, (void *)cfg, &assets);
+        decision_assets_open_profile(d->assets, d->pins, d->profile, control, (void *)cfg, &assets);
   char workspace[] = "/tmp/samosa-inference-decision-XXXXXX", inpath[256] = {0},
-       outpath[256] = {0};
+       outpath[256] = {0}, imagepath[256] = {0};
   if (!error) {
     created = mkdtemp(workspace) != NULL;
     if (!created)
@@ -203,6 +252,18 @@ static const char *run(const InferenceConfig *cfg, const char *payload,
     close(input);
     input = -1;
   }
+  if (!error && image_mode(cfg)) {
+    snprintf(imagepath, sizeof(imagepath), "%s/input.rgba", workspace);
+    int pixels = open(imagepath, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+    if (pixels < 0)
+      error = "engine_io_failed";
+    else {
+      if (!transfer(pixels, frame->rgba, frame->width * frame->height * 4, 1))
+        error = "engine_io_failed";
+      if (close(pixels) && !error)
+        error = "engine_io_failed";
+    }
+  }
   if (!error) {
     input = open(inpath, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
     if (input < 0)
@@ -218,11 +279,15 @@ static const char *run(const InferenceConfig *cfg, const char *payload,
     for (unsigned i = 0; i < DECISION_ASSET_COUNT; i++)
       snprintf(paths[i], sizeof(paths[i]), "%s/%s", d->assets,
                decision_asset_name(i));
+    char width[16], height[16];
+    snprintf(width, sizeof(width), "%zu", frame->width);
+    snprintf(height, sizeof(height), "%zu", frame->height);
     const char *args[] = {paths[DECISION_ENGINE], "--model",
                           paths[DECISION_MODEL], "--tokenizer",
-                          paths[DECISION_TOKENIZER]};
+                          paths[DECISION_TOKENIZER], "--image-rgba", imagepath,
+                          "--width", width, "--height", height};
     fputc('[', f);
-    for (unsigned i = 0; i < 5; i++) {
+    for (unsigned i = 0; i < (image_mode(cfg) ? 11u : 5u); i++) {
       if (i)
         fputc(',', f);
       json_quote(f, args[i], strlen(args[i]));
@@ -295,7 +360,7 @@ static const char *run(const InferenceConfig *cfg, const char *payload,
             error = "invalid_provider_response";
           else {
             frame[s.st_size] = 0;
-            error = validated_result(payload, frame + 4, length);
+            error = validated_result(cfg, payload, frame + 4, length);
             if (!error) {
               *result = strndup((char *)frame + 4, length);
               if (!*result)
@@ -311,6 +376,8 @@ static const char *run(const InferenceConfig *cfg, const char *payload,
   if (created) {
     unlink(inpath);
     unlink(outpath);
+    if (*imagepath)
+      unlink(imagepath);
     rmdir(workspace);
   }
   if (input >= 0)
@@ -329,7 +396,7 @@ int decision_dispatch(const InferenceConfig *cfg, const Json *j, FILE *out) {
     return fail(out, "invalid_configuration");
   char *op = json_string(j, json_get(j, 0, "op"));
   int describe = op && !strcmp(op, "describe"),
-      work = op && !strcmp(op, "decide_text");
+      work = op && !strcmp(op, work_op(cfg));
   free(op);
   if (describe) {
     if (!fields(j, "|contract_version|op|"))
@@ -338,7 +405,12 @@ int decision_dispatch(const InferenceConfig *cfg, const Json *j, FILE *out) {
           "\"provider_id\":",
           out);
     json_quote(out, cfg->provider_id, strlen(cfg->provider_id));
-    fputs(",\"capabilities\":[\"text_decisions\",\"operations\","
+    if (image_mode(cfg))
+      fputs(",\"capabilities\":[\"image_decisions\",\"operations\",\"cancellation\",\"request_budgets\"],"
+            "\"methods\":[\"choice\",\"score\",\"noul\",\"relation\"],\"input\":\"rgba8_base64\","
+            "\"max_axis\":512,\"alpha_policy\":\"discard\",\"max_decision_request_bytes\":1048576,\"max_image_bytes\":1048576,"
+            "\"default_timeout_ms\":60000,\"max_timeout_ms\":120000,\"context_tokens\":64,\"quality\":\"native_siglip\"}\n", out);
+    else fputs(",\"capabilities\":[\"text_decisions\",\"operations\","
           "\"cancellation\",\"request_budgets\"],\"methods\":[\"choice\","
           "\"score\",\"noul\",\"relation\",\"relations\"],\"max_request_"
           "bytes\":1048576,\"default_timeout_ms\":60000,\"max_timeout_ms\":"
@@ -353,18 +425,31 @@ int decision_dispatch(const InferenceConfig *cfg, const Json *j, FILE *out) {
     return fail(out, "invalid_request");
   free(normalized);
   char *payload = NULL, *result = NULL;
+  DecisionFrame frame = {0};
   const char *error = decision_payload(j, &payload);
+  if (!error && image_mode(cfg))
+    error = frame_read(j, &frame);
   if (!error)
-    error = run(cfg, payload, &result);
+    error = run(cfg, payload, &frame, &result);
   if (!error) {
     char digest[65];
     hash_bytes(payload, strlen(payload), digest);
+    if (image_mode(cfg)) {
+      char material[256];
+      int length = snprintf(material, sizeof(material), "samosa-image-decision-v1:%zu:%zu:%s:%s",
+                            frame.width, frame.height, frame.sha256, digest);
+      hash_bytes(material, (size_t)length, digest);
+    }
     fputs("{\"contract_version\":1,\"provider_id\":", out);
     json_quote(out, cfg->provider_id, strlen(cfg->provider_id));
-    fprintf(out,
-            ",\"input_sha256\":\"%s\",\"result\":%s,\"provenance\":{\"engine\":"
-            "\"samosa-native-deberta\",\"asset_sha256\":[",
-            digest, result);
+    fprintf(out, ",\"input_sha256\":\"%s\",\"result\":%s", digest, result);
+    if (image_mode(cfg))
+      fprintf(out, ",\"image_sha256\":\"%s\",\"width\":%zu,\"height\":%zu", frame.sha256, frame.width, frame.height);
+    fprintf(out, ",\"provenance\":{\"engine\":\"%s\"",
+            image_mode(cfg) ? "samosa-native-siglip" : "samosa-native-deberta");
+    if (image_mode(cfg))
+      fputs(",\"alpha_policy\":\"discard\",\"processor_profile\":\"siglip224-pil-bilinear-v1\"", out);
+    fputs(",\"asset_sha256\":[", out);
     for (unsigned i = 0; i < DECISION_ASSET_COUNT; i++) {
       if (i)
         fputc(',', out);
@@ -374,5 +459,6 @@ int decision_dispatch(const InferenceConfig *cfg, const Json *j, FILE *out) {
   }
   free(payload);
   free(result);
+  free(frame.rgba);
   return error ? fail(out, error) : 0;
 }
