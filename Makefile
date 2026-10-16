@@ -469,6 +469,24 @@ sanitize-decision-evidence: | build
 test: test-decision-evidence
 sanitize: sanitize-decision-evidence
 
+DECISION_TOKENIZER_TARGET ?= $(if $(CARGO_TARGET_DIR),$(CARGO_TARGET_DIR),engines/decision/tokenizer/target)
+DECISION_TOKENIZER_ARCHIVE = $(DECISION_TOKENIZER_TARGET)/release/libsamosa_decision_tokenizer.a
+DECISION_RUST_LIBS = $(if $(filter Darwin,$(shell uname -s)),-framework Security -framework CoreFoundation -liconv -lresolv,-ldl -lpthread -lm)
+DECISION_REQUEST_SOURCES = engines/decision/request.cpp engines/decision/text_evidence.cpp tests/test_decision_request.cpp
+DECISION_REQUEST_HEADERS = engines/decision/request.h engines/decision/text_evidence.h engines/decision/tokenizer/request.h
+$(DECISION_TOKENIZER_ARCHIVE): engines/decision/tokenizer/Cargo.toml engines/decision/tokenizer/Cargo.lock $(wildcard engines/decision/tokenizer/src/*.rs)
+	cargo +1.90.0 build --locked --release --manifest-path engines/decision/tokenizer/Cargo.toml --target-dir "$(DECISION_TOKENIZER_TARGET)"
+.PHONY: test-decision-request sanitize-decision-request
+build/test-decision-request: $(DECISION_REQUEST_SOURCES) $(DECISION_REQUEST_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
+	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines $(DECISION_REQUEST_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" $(DECISION_RUST_LIBS) -o $@
+test-decision-request: build/test-decision-request
+	./build/test-decision-request
+sanitize-decision-request: $(DECISION_TOKENIZER_ARCHIVE) | build
+	$(CXX) -O1 -g -std=c++20 -Wall -Wextra -Werror -Wpedantic -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iengines $(DECISION_REQUEST_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" $(DECISION_RUST_LIBS) -o build/test-decision-request-sanitize
+	./build/test-decision-request-sanitize
+test: test-decision-request
+sanitize: sanitize-decision-request
+
 .PHONY: test-speech-public sanitize-speech-public
 test-speech-public: build/samosa-inference-providers build/test-speech-worker build/speech-worker-fixture.so
 	python3 tests/test_speech_public.py $(abspath build/samosa-inference-providers) $(abspath build/test-speech-worker) $(abspath build/speech-worker-fixture.so)

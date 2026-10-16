@@ -1,6 +1,7 @@
 //! Native bridge to the exact tokenizer implementation used by the reference.
 //! No model downloads, Python callbacks, or training features are enabled.
 use serde::{Deserialize, Serialize};
+mod request;
 mod state;
 use std::ffi::c_void;
 use std::panic::{catch_unwind, AssertUnwindSafe};
