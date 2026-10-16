@@ -2,10 +2,12 @@
 
 The static native compatibility gate reuses the existing temporal model verifier
 and binds its receipt to the shared installation index. Catalog/setup dispatch
-is connected and an independent engine build passes. Actual HTTPS installation
-and installed video inference qualification remain open.
-This document records evidence for component 2 without claiming that the full
-installation slice or later engine lifecycle work is complete.
+is connected. The corrected independent engine now passes full HTTPS
+installation and installed video inference in normal and sanitizer-equipped
+host builds on macOS 26.5.1 arm64. Combined public-registry execution also passes
+in both modes. Earlier static checkpoints and failed runs remain below as
+historical evidence. This closes this Molmo2 installation/execution slice, not
+all of component 2, wider video quality, other platforms or engine lifecycle.
 
 ## Controlled checks
 
@@ -139,8 +141,8 @@ provider, followed by resolving any remaining cold-start failure.
 The separately packaged `9a6a718e...` engine passed normal and
 sanitizer-equipped actual static admission (11 checks each). Its 29-file index
 is `4e2431487e934bd9c124cff3e3c018b335011fd18472ad9463e62f3dbaa0b520`;
-the manifest and colocated kernel pins are unchanged. Installed execution of
-this package remains a separate required check.
+the manifest and colocated kernel pins are unchanged. At this static checkpoint, installed execution remained a separate required
+check; its completed qualification is recorded below.
 
 The shared local/hosted check entry point introduced in `55ba1b0` passed its
 complete local macOS arm64 and Ubuntu arm64 runs before push, then passed both
@@ -167,7 +169,7 @@ of an engine/kernel mismatch.
 The required correction is to bound inference output independently from Metal's
 shared cache files; a larger blanket limit would remain sensitive to unrelated
 cache growth. Production correction, controlled output/cleanup regression tests,
-and complete installed normal/sanitizer execution remain open. No OS cache was
+and complete installed normal/sanitizer execution were required next. No OS cache was
 manually cleared or edited.
 
 ## Guardian output capture correction
@@ -192,5 +194,47 @@ Direct guardian tests also check exact result-file bounds during a 128 KiB
 stdout flood, draining buffered output after child exit, and refusal of an
 arbitrary command attempting captured mode. Temporal checks use the original
 pinned model metadata with explicitly synthetic weights and engine; these are
-control tests, not model execution qualification. Full local CI and the actual
-installed independent-engine run remain required for this correction.
+control tests, not model execution qualification. The subsequent full local CI
+and actual installed independent-engine results follow.
+
+## Completed independent installed qualification
+
+Source `c26bee7` passed the full shared local CI script in clean macOS arm64 and
+Ubuntu 24.04 arm64 exports before push. macOS used Apple Clang 21; Ubuntu used
+Clang 18 and GCC 13 for its C++ component checks. Both runs include normal and
+ASan/UBSan checks. Hosted runner qualification remains a separate exact-commit
+gate, including its Ubuntu x86_64 architecture.
+
+The corrected independent engine package has 29 files totaling 3553773748 bytes,
+index `4e2431487e934bd9c124cff3e3c018b335011fd18472ad9463e62f3dbaa0b520`,
+engine `9a6a718e31d73c006be15f9266996286214f7f492c380d1b09097006d61b87af`,
+and the kernel/manifest pins recorded above. Both normal and sanitizer-equipped
+setup/provider/harness runs passed full HTTPS acquisition, policy/TLS refusals,
+publication, last-good preservation, offline status/resume, completed and
+incomplete removal, repeated removal and cache-only reinstall. Each then passed
+524671 actual public temporal harness checks using freshly installed inodes.
+The real observation described the red-to-blue order; pixel/PPM/timestamp and
+engine/model provenance, foreign-owner refusal and exact runtime-free replay
+were checked. The two-frame fixture is not a general video-quality benchmark.
+
+Both combined-provider runs additionally passed 524778 checks through the
+public registry using this same independent engine/model package. The accompanying
+fake text provider supplies discovery evidence only. Private receipt directories:
+
+- Normal: `/private/tmp/samosa-molmo-captured-registry-7c942eb6149b47bfa84309bfb201e2ae`
+- Sanitizer: `/private/tmp/samosa-molmo-captured-registry-sanitize-f7de86f7e01c4cec8ca947580d671bc4`
+
+Installation command: `python3 tests/llama_setup_https.py SETUP ROOT INDEX
+INDEX_PIN --engine-pin ENGINE_PIN --kernels-pin KERNEL_PIN --manifest-pin
+MANIFEST_PIN --temporal-cli TEMPORAL_CLI --temporal-test ACTUAL_TEMPORAL_HARNESS`.
+For sanitizer execution, use each host executable's `-sanitize` build. Registry
+command: `SAMOSA_TEST_USE_REGISTRY=1 ACTUAL_TEMPORAL_HARNESS PROVIDERS_CLI
+ENGINE MODEL_DIRECTORY NEW_PRIVATE_DIRECTORY`.
+
+The engine and MLX themselves are the pinned release builds, without sanitizer
+instrumentation; host setup/provider/guardian and harness checks are instrumented
+in sanitizer mode. Observed engine minimum OS and actual execution host are
+macOS 26.5.1 arm64. No earlier macOS or Linux model execution is established.
+Original Chat assets were preserved; temporary installed copies were removed by
+the successful harness. Production catalog/distribution and the OpenDecision
+provider/package prerequisite remain open before component 2 can close.

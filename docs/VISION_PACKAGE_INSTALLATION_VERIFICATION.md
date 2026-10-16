@@ -94,3 +94,15 @@ harness runs passed the full seven-file HTTPS gate and 15882 actual image checks
 per mode. MLX and the engine itself are release builds, without sanitizer
 instrumentation. These runs establish only macOS 26.5.1 arm64 execution. See
 [engine build inputs](../engines/README.md#visionpsy).
+
+## Shared GPU capture regression
+
+After `c26bee7` moved GPU stdout capture into the guardian, the same independent
+seven-file package above again passed full HTTPS installation/recovery/removal/
+cache-only reinstall and actual installed image inference in normal and
+sanitizer-equipped host runs. Each actual harness passed 15882 checks; the
+observed fixture text contained `hello` and preserved derived provenance and
+runtime-free replay. The engine/model/kernel/index pins are unchanged.
+The host was macOS 26.5.1 arm64; engine and MLX remain release builds. This
+regression verifies the changed transport against the actual pinned engine;
+it does not broaden the fixture's recognition or platform claims.

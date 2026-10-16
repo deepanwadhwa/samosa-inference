@@ -5,14 +5,17 @@ This checklist owns Inference completion; Sources closure does not close these
 gates. Existing S02–S13 documents describe qualified subsets and remain evidence.
 No area is closed by a fixture, a descriptor, or a file move alone.
 
-## 1. Provider and modality integration — original modalities qualified; OpenDecision gap
+## 1. Provider and modality integration — active OpenDecision prerequisite
 
 The original modality set was qualified on 2026-10-14. The subsequently
 identified OpenDecision text/image requirement reopens provider integration;
 area 1 is not fully complete for the expanded inventory. See
-[OpenDecision integration](OPENDECISION_INTEGRATION.md). Finish the in-flight
-Molmo2 installation qualification, then close this prerequisite before further
-installation acceptance or lifecycle implementation.
+[OpenDecision integration](OPENDECISION_INTEGRATION.md). Independent Molmo2
+installation and installed execution now pass normally and with sanitizers,
+along with affected VisionPsy and combined-registry regressions; see
+[Molmo2 evidence](MOLMO_PACKAGE_INSTALLATION_VERIFICATION.md). Close the
+OpenDecision provider prerequisite next, before further installation acceptance
+or lifecycle implementation.
 
 Reuse the existing native text, EmbeddingGemma2, T5 summary, Whisper,
 VisionPsy and Molmo2 implementations and their public contracts. Audit native
@@ -31,7 +34,7 @@ Do not introduce a shipped Python runtime.
 - Qualify actual supported models and combined-provider routing, malformed input,
   provenance, unavailable providers and platform-specific capability reporting.
 
-## 2. Model acquisition and installation — active
+## 2. Model acquisition and installation — production acceptance pending
 
 - Assemble trusted catalogs over the existing verified artifact, HTTPS download
   and setup primitives; pin full engine/model packages and provenance.
@@ -102,10 +105,10 @@ upstream contract permanently open. Reuse the already implemented foundations.
 
 1. Provider contract and original native adapters: qualified; evidence is in
    `PROVIDER_INTEGRATION_AUDIT.md`. Newly identified OpenDecision text/image
-   inference remains an open prerequisite, documented above.
-2. Model acquisition and installation: the only active implementation area.
-   Finish the in-flight Molmo2 qualification, then the newly identified
-   OpenDecision provider prerequisite. Finish catalogs, supported package
+   inference is the only active implementation prerequisite, documented above.
+2. Model acquisition and installation: existing model installation slices now
+   include qualified independent Molmo2 execution. After OpenDecision provider
+   coverage, finish its package dependency and the catalogs, supported package
    compatibility, resumable/recoverable installation and qualified production
    entries before moving to lifecycle.
 3. Engine lifecycle/readiness builds on installed, verified packages.
