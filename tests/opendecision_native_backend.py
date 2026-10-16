@@ -80,7 +80,7 @@ def main():
         copy_pinned(args.sdk / name, target, entry["sha256"])
     library = output / "lib" / args.runtime.name
     copy_pinned(args.runtime, library, args.runtime_pin)
-    sources = ["engines/decision/ort_nli.h", "engines/decision/ort_nli.cpp",
+    sources = ["engines/decision/ort_nli.h", "engines/decision/ort_nli.cpp", "engines/decision/ort_runtime.h",
                "tests/test_decision_ort_real.cpp", "engines/json.h", "src/sha256.h"]
     if native_text:
         sources += ["engines/decision/native_text.h", "engines/decision/native_text.cpp",

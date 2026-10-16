@@ -16,10 +16,11 @@ def main():
     parser.add_argument("initializer", type=Path)
     parser.add_argument("corpus", type=Path)
     parser.add_argument("--corpus-sha256", required=True)
+    parser.add_argument("--initializer-sha256", default="7caa16d3d730231fc7b9c2db4716e3e38736880bd4f2e016bb37987645e4900a")
     args = parser.parse_args()
     initializer = args.initializer.read_bytes()
     corpus_bytes = args.corpus.read_bytes()
-    if hashlib.sha256(initializer).hexdigest() != "7caa16d3d730231fc7b9c2db4716e3e38736880bd4f2e016bb37987645e4900a":
+    if hashlib.sha256(initializer).hexdigest() != args.initializer_sha256:
         raise ValueError("Initializer pin mismatch")
     if hashlib.sha256(corpus_bytes).hexdigest() != args.corpus_sha256:
         raise ValueError("Corpus pin mismatch")

@@ -519,8 +519,16 @@ sanitize: sanitize-decision-assets
 
 # Explicit pinned SDK/runtime inputs; neither CI nor this rule downloads a model.
 DECISION_WORKER_SOURCES = engines/decision/main.cpp engines/decision/transport.cpp engines/decision/request.cpp engines/decision/text_evidence.cpp engines/decision/native_text.cpp engines/decision/ort_nli.cpp
-DECISION_WORKER_HEADERS = $(DECISION_REQUEST_HEADERS) engines/decision/transport.h engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/tokenizer/tokenizer.h engines/json.h
+DECISION_WORKER_HEADERS = $(DECISION_REQUEST_HEADERS) engines/decision/transport.h engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/ort_runtime.h engines/decision/tokenizer/tokenizer.h engines/json.h
 DECISION_ORT_RPATH ?= $(if $(filter Darwin,$(shell uname -s)),@loader_path,$$ORIGIN)
+DECISION_IMAGE_ORT_SOURCES = tests/test_decision_image_ort_real.cpp engines/decision/ort_image.cpp
+DECISION_IMAGE_ORT_HEADERS = engines/decision/ort_image.h engines/decision/ort_runtime.h engines/json.h src/sha256.h
+build/test-decision-image-ort-real: Makefile $(DECISION_IMAGE_ORT_SOURCES) $(DECISION_IMAGE_ORT_HEADERS) | build
+	test -d "$(DECISION_ORT_INCLUDE)" && test -f "$(DECISION_ORT_LIBRARY)"
+	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -Isrc -I"$(DECISION_ORT_INCLUDE)" $(DECISION_IMAGE_ORT_SOURCES) "$(DECISION_ORT_LIBRARY)" -Xlinker -rpath -Xlinker '$(DECISION_ORT_RPATH)' -o $@
+build/test-decision-image-ort-real-sanitize: Makefile $(DECISION_IMAGE_ORT_SOURCES) $(DECISION_IMAGE_ORT_HEADERS) | build
+	test -d "$(DECISION_ORT_INCLUDE)" && test -f "$(DECISION_ORT_LIBRARY)"
+	$(CXX) -O1 -g -std=c++20 -Wall -Wextra -Werror -Wpedantic -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iengines -Isrc -I"$(DECISION_ORT_INCLUDE)" $(DECISION_IMAGE_ORT_SOURCES) "$(DECISION_ORT_LIBRARY)" -Xlinker -rpath -Xlinker '$(DECISION_ORT_RPATH)' -o $@
 build/samosa-decision-engine: Makefile $(DECISION_WORKER_SOURCES) $(DECISION_WORKER_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
 	test -d "$(DECISION_ORT_INCLUDE)" && test -f "$(DECISION_ORT_LIBRARY)"
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -I"$(DECISION_ORT_INCLUDE)" $(DECISION_WORKER_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" "$(DECISION_ORT_LIBRARY)" $(DECISION_RUST_LIBS) -Xlinker -rpath -Xlinker '$(DECISION_ORT_RPATH)' -o $@

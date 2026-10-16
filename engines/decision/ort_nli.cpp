@@ -1,43 +1,20 @@
 #include "ort_nli.h"
-#define ORT_API_MANUAL_INIT
-#include <onnxruntime_cxx_api.h>
+#include "ort_runtime.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstring>
-#include <mutex>
 #include <stdexcept>
 
 namespace samosa::decision {
-namespace {
-void initialize() {
-  static std::once_flag once;
-  std::call_once(once, [] {
-    const auto* base = OrtGetApiBase();
-    const auto* api = base ? base->GetApi(ORT_API_VERSION) : nullptr;
-    if (!api) throw std::runtime_error("unsupported_onnx_runtime_api");
-    Ort::InitApi(api);
-  });
-}
-Ort::Env environment() {
-  initialize();
-  return Ort::Env(ORT_LOGGING_LEVEL_WARNING, "samosa-decision-nli");
-}
-bool failure(std::string* error, const char* message) {
-  if (error) *error = std::string(message).substr(0, 4096);
-  return false;
-}
-}  // namespace
+using runtime::failure;
 
 struct OrtNli::Impl {
   Ort::Env env;
   Ort::SessionOptions options;
   Ort::Session session{nullptr};
-  explicit Impl(const std::string& path) : env(environment()) {
-    options.SetIntraOpNumThreads(4);
-    options.SetInterOpNumThreads(1);
-    options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
-    options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_BASIC);
+  explicit Impl(const std::string& path) : env(runtime::environment()) {
+    runtime::configure(options);
     // CPU is the default provider; do not opt into CoreML/CUDA or write an
     // optimized graph beside the immutable input model.
     session = Ort::Session(env, path.c_str(), options);
