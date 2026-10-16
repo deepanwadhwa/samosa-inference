@@ -5,7 +5,14 @@ This checklist owns Inference completion; Sources closure does not close these
 gates. Existing S02–S13 documents describe qualified subsets and remain evidence.
 No area is closed by a fixture, a descriptor, or a file move alone.
 
-## 1. Provider and modality integration — complete (2026-10-14)
+## 1. Provider and modality integration — original modalities qualified; OpenDecision gap
+
+The original modality set was qualified on 2026-10-14. The subsequently
+identified OpenDecision text/image requirement reopens provider integration;
+area 1 is not fully complete for the expanded inventory. See
+[OpenDecision integration](OPENDECISION_INTEGRATION.md). Finish the in-flight
+Molmo2 installation qualification, then close this prerequisite before further
+installation acceptance or lifecycle implementation.
 
 Reuse the existing native text, EmbeddingGemma2, T5 summary, Whisper,
 VisionPsy and Molmo2 implementations and their public contracts. Audit native
@@ -93,11 +100,14 @@ Work proceeds one completed prerequisite at a time. The seven area requirements
 above remain intact; downstream work is not a reason to leave a satisfied
 upstream contract permanently open. Reuse the already implemented foundations.
 
-1. Provider contract and native adapters: complete; evidence is in
-   `PROVIDER_INTEGRATION_AUDIT.md`.
+1. Provider contract and original native adapters: qualified; evidence is in
+   `PROVIDER_INTEGRATION_AUDIT.md`. Newly identified OpenDecision text/image
+   inference remains an open prerequisite, documented above.
 2. Model acquisition and installation: the only active implementation area.
-   Finish its catalogs, supported package compatibility, resumable/recoverable
-   installation and qualified production entries before moving to lifecycle.
+   Finish the in-flight Molmo2 qualification, then the newly identified
+   OpenDecision provider prerequisite. Finish catalogs, supported package
+   compatibility, resumable/recoverable installation and qualified production
+   entries before moving to lifecycle.
 3. Engine lifecycle/readiness builds on installed, verified packages.
 4. Resource scheduling/admission builds on owned engine lifecycle.
 5. Generation/streaming/session recovery builds on lifecycle and scheduling.
