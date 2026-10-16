@@ -7,7 +7,9 @@ inputs and writes typed result JSON. Embedded NUL is preserved; no untrusted
 JSON is passed to the model bridge's small internal parser.
 
 This is an engine building block, not a registered public inference endpoint.
-The framed engine transport and common provider controls remain required.
+The [framed engine transport](OPENDECISION_WORKER_PROTOCOL.md) now preserves
+these requests through a persistent native worker. Common provider controls
+and public registration remain required.
 
 Every request contains `method`. Unknown root fields and duplicate request or
 criteria keys are rejected. Candidate objects retain insertion order, which
@@ -49,9 +51,9 @@ The sanitizer target instruments C++ code, not the release Rust archive.
 On macOS ARM64, six Rust tests passed and both normal and ASan/UBSan C++ runs
 passed 29 checks. Coverage includes all methods, candidate order, exact typed
 result shapes, structured state, embedded NUL, strict refusal and preservation
-of previous output after inference failure. Linux and the full shared suites
-for this request-layer change remain pending. The preceding structured-state
-revision passed the full shared suites on macOS and Ubuntu ARM64.
+of previous output after inference failure. The request-layer revision passed
+the full shared suites on macOS and Ubuntu ARM64. Subsequent worker/transport
+changes retain their separate qualification gates.
 
 ## Fresh-model JSON round trip
 

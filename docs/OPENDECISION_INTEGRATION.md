@@ -151,5 +151,7 @@ difference approximately `0.000583839`. Native state rendering additionally
 passed 25,651 Python differential and ABI checks. The strict
 [typed JSON request/result layer](OPENDECISION_TYPED_REQUESTS.md) now passes
 all ten fresh-model cases on macOS in isolated normal and sanitizer runs,
-including exact result shapes and token matrices. Engine protocol and public
-service integration remain open; no public decision provider is advertised.
+including exact result shapes and token matrices. The
+[persistent worker protocol](OPENDECISION_WORKER_PROTOCOL.md) also passed all
+ten cases, request-error recovery and clean EOF in normal and sanitizer builds.
+Public service integration remains open; no public decision provider is advertised.

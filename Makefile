@@ -489,6 +489,30 @@ sanitize-decision-request: $(DECISION_TOKENIZER_ARCHIVE) | build
 test: test-decision-request
 sanitize: sanitize-decision-request
 
+DECISION_TRANSPORT_SOURCES = engines/decision/transport.cpp engines/decision/request.cpp engines/decision/text_evidence.cpp tests/decision_transport_fixture.cpp
+.PHONY: test-decision-transport sanitize-decision-transport
+build/decision-worker-main.o: engines/decision/main.cpp engines/decision/native_text.h engines/decision/request.h engines/decision/transport.h | build
+	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -c engines/decision/main.cpp -o $@
+build/decision-transport-fixture: $(DECISION_TRANSPORT_SOURCES) $(DECISION_REQUEST_HEADERS) engines/decision/transport.h $(DECISION_TOKENIZER_ARCHIVE) | build
+	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines $(DECISION_TRANSPORT_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" $(DECISION_RUST_LIBS) -o $@
+test-decision-transport: build/decision-transport-fixture build/decision-worker-main.o
+	python3 tests/test_decision_transport.py ./build/decision-transport-fixture
+sanitize-decision-transport: $(DECISION_TOKENIZER_ARCHIVE) | build
+	$(CXX) -O1 -g -std=c++20 -Wall -Wextra -Werror -Wpedantic -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iengines $(DECISION_TRANSPORT_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" $(DECISION_RUST_LIBS) -o build/decision-transport-fixture-sanitize
+	python3 tests/test_decision_transport.py ./build/decision-transport-fixture-sanitize
+test: test-decision-transport
+sanitize: sanitize-decision-transport
+
+# Explicit pinned SDK/runtime inputs; neither CI nor this rule downloads a model.
+DECISION_WORKER_SOURCES = engines/decision/main.cpp engines/decision/transport.cpp engines/decision/request.cpp engines/decision/text_evidence.cpp engines/decision/native_text.cpp engines/decision/ort_nli.cpp
+DECISION_WORKER_HEADERS = $(DECISION_REQUEST_HEADERS) engines/decision/transport.h engines/decision/native_text.h engines/decision/ort_nli.h engines/decision/tokenizer/tokenizer.h engines/json.h
+build/samosa-decision-engine: $(DECISION_WORKER_SOURCES) $(DECISION_WORKER_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
+	test -d "$(DECISION_ORT_INCLUDE)" && test -f "$(DECISION_ORT_LIBRARY)"
+	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -I"$(DECISION_ORT_INCLUDE)" $(DECISION_WORKER_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" "$(DECISION_ORT_LIBRARY)" $(DECISION_RUST_LIBS) -Xlinker -rpath -Xlinker "$(dir $(DECISION_ORT_LIBRARY))" -o $@
+build/samosa-decision-engine-sanitize: $(DECISION_WORKER_SOURCES) $(DECISION_WORKER_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
+	test -d "$(DECISION_ORT_INCLUDE)" && test -f "$(DECISION_ORT_LIBRARY)"
+	$(CXX) -O1 -g -std=c++20 -Wall -Wextra -Werror -Wpedantic -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iengines -I"$(DECISION_ORT_INCLUDE)" $(DECISION_WORKER_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" "$(DECISION_ORT_LIBRARY)" $(DECISION_RUST_LIBS) -Xlinker -rpath -Xlinker "$(dir $(DECISION_ORT_LIBRARY))" -o $@
+
 .PHONY: test-speech-public sanitize-speech-public
 test-speech-public: build/samosa-inference-providers build/test-speech-worker build/speech-worker-fixture.so
 	python3 tests/test_speech_public.py $(abspath build/samosa-inference-providers) $(abspath build/test-speech-worker) $(abspath build/speech-worker-fixture.so)
