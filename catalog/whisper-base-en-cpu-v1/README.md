@@ -1,8 +1,8 @@
-# Whisper base.en CPU distribution candidate
+# Whisper base.en CPU distribution
 
-This entry is prepared for exact-package qualification and distribution. It is
-not an installed provider or a readiness declaration. The proposed release URL
-is not evidence that its assets have been published.
+This entry passed exact-package and published-URL qualification. Its runtime
+assets are in the [package prerelease](https://github.com/deepanwadhwa/samosa-inference/releases/tag/inference-packages-2026-10-17.1).
+It does not qualify the full Inference module or declare a loaded provider ready.
 
 The six-file package has index SHA-256
 `abcfffb782ee315d2cf2d5a7074f727dde53a8da031bf0e70937a48dfe10e06d`
@@ -12,7 +12,7 @@ Deployment metadata says macOS14.0; actual execution evidence is macOS26.5.1
 ARM64 only. Linux model execution is not qualified.
 
 - `catalog.json` pins the complete index, recipe and declared platform.
-- `sources.json` binds upstream and proposed release URLs to that index.
+- `sources.json` binds upstream and published release URLs to that index.
 - `host-policy.json` records independent runtime/model pins and redirect hosts.
 - `payload/` contains only the descriptor, provenance and license notices.
 - `index.json` also names the engine and model; those binaries are deliberately
@@ -37,8 +37,8 @@ are included and hash-pinned in provenance.
 App provisioning must copy the catalog and source configuration into its owned
 private configuration with mode0600; the native setup loader refuses ordinary
 world-readable checkout configuration. Public requests select only the provider
-identity. Publication, cold installation from the actual upstream/release URLs,
-and the remaining area2 gates still need their own recorded evidence.
+identity. The remaining full area2 gates and other provider distributions remain
+open.
 
 The exact six-file package passed the shared per-file HTTPS setup gate and2441
 actual Sources-to-Whisper checks in each of normal and sanitizer-equipped modes.
@@ -53,3 +53,14 @@ original input SHA-256
 `927b006bef03f0c5b2430f5ddfa20629ea8fcabf1f0b422403f5143159e8eeb5`.
 All temporary installation cache/payload directories were removed. Preparation
 retains about40KiB of metadata and no new weight/engine copy.
+
+`tests/whisper_distribution_remote.py` additionally passes normal and sanitizer
+host runs against the published GitHub and immutable Hugging Face URLs. It starts
+with an empty private cache, verifies every installed file's size/hash and single
+link, runs2441 native transcription checks, deletes source configuration, then
+resumes/removes/reinstalls from verified cache and removes the final payload.
+Both exclusive workspaces are removed. Exact executable/configuration pins are
+in `remote-normal.json` and `remote-sanitize.json`; logs remain at
+`/private/tmp/samosa-whisper-published-{normal,sanitize}.log`. The runtime assets
+were also downloaded from the staged release API and checked by size/SHA-256
+before publication. No model weight was uploaded to GitHub.

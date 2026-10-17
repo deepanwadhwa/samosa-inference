@@ -1,0 +1,15 @@
+{
+  "catalog_sha256": "3fbd99028a437e64c99a3e3c32d136fc7f9291c68eb108ab70823f858fcb8617",
+  "executables": {
+    "harness": "7787c4ce0b14a5bf326f283e2138dc7de9ee9b97c41925b1196a6d48c8a78b69",
+    "public": "e6a336da54b73cf3c448a3a935e8cbaa5d8d7b2de99045518cd8ddbc645f883c",
+    "setup": "ec32b47ec6e49ffb3667e44ff973a3642f56f65008b149837db8b063dcd0d1fa",
+    "sources": "f86927751718b2438c27bbab130d22f06449f02988403f7b853be023d0889b21"
+  },
+  "format": "samosa.inference.whisper-remote-qualification.v1",
+  "index_sha256": "abcfffb782ee315d2cf2d5a7074f727dde53a8da031bf0e70937a48dfe10e06d",
+  "input_sha256": "927b006bef03f0c5b2430f5ddfa20629ea8fcabf1f0b422403f5143159e8eeb5",
+  "sources_sha256": "0fefa7b65f2c8809abfc6dc28cb4264b5b99e9aac917a503640d59d1e38e7668",
+  "status": "passed",
+  "temporary_installation_removed": true
+}

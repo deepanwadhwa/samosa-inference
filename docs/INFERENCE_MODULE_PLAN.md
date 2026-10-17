@@ -37,6 +37,14 @@ Do not introduce a shipped Python runtime.
 
 ## 2. Model acquisition and installation — active, production acceptance pending
 
+The first published distribution entry, [Whisper base.en CPU](../catalog/whisper-base-en-cpu-v1),
+passes cold installation from its actual GitHub/Hugging Face URLs, exact installed
+transcription, cache-only reuse/removal and cleanup in normal/SAN macOS ARM64
+hosts. OpenDecision text/image fresh-install normal/SAN qualification is also
+complete; [exact reports](qualification/decision-installed-macos-arm64) retain
+their pins. These close those package slices only. Other provider distributions
+and remaining full area2 acceptance stay open;1/7 areas remain complete.
+
 - Assemble trusted catalogs over the existing verified artifact, HTTPS download
   and setup primitives; pin full engine/model packages and provenance.
 - Qualify credentials, redirects, quota, resumable interruption, corrupt partial

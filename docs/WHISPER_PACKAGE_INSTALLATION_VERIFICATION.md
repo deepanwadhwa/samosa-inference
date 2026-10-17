@@ -68,3 +68,15 @@ exact prepared-input identity, 2672 ms input duration, timed transcript coverage
 uncertainty, owner operations and offline replay/cache behavior. The candidate is
 qualification evidence, not a published production artifact catalog or a claim
 of lifecycle readiness.
+
+## Published distribution
+
+The [six-file distribution](../catalog/whisper-base-en-cpu-v1) adds pinned MIT
+notices and distribution provenance around the same independently qualified CPU
+engine/model. Both normal and sanitizer-equipped hosts pass the exact six-file
+setup/actual-model gate, then independently pass cold installation from the
+published GitHub runtime and immutable Hugging Face model URLs. Each actual
+inference run again passes2441 checks; cache-only resume/removal/reinstallation
+and exclusive workspace cleanup also pass. The entry retains exact indexes,
+runtime/model/configuration/executable pins and remote qualification receipts.
+This closes Whisper's distribution slice, not all of area2 or lifecycle readiness.
