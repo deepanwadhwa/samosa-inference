@@ -25,9 +25,10 @@ verification against the qualified Cargo.lock checksums. The lock and per-file
 notice inventory are included. Notice collection uses Python3.11+ as release
 QA tooling only; it installs nothing and performs no network/model download.
 
-The exact16-file normal setup/inference gate passes20 actual public cases,
-including retry/routing/refusal and aggregate input limits. Sanitizer-equipped
-host qualification is running; it must pass before publication. Original
+The exact16-file normal and sanitizer-equipped setup/inference gates pass20 actual
+public cases per mode, including retry/routing/refusal and aggregate input limits.
+Exact host/harness/log pins are in `qualification.json`. Staging verification and
+cold published-URL qualification remain required before this entry closes. Original
 five-file runtime/model qualification does not substitute for this final package.
 Logs are `/private/tmp/samosa-decision-distribution-image-{normal,sanitize}.log`.
 Installation does not imply loaded lifecycle readiness or full area2 completion.

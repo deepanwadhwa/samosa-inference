@@ -27,7 +27,8 @@ QA tooling only; it installs nothing and performs no network/model download.
 
 The exact16-file normal and sanitizer-equipped setup/inference gates pass10 actual
 public cases per mode, including retry/routing/refusal and aggregate input limits.
-The combined release still waits for image sanitizer qualification before publication. Original
+Exact host/harness/log pins are in `qualification.json`. Staging verification and
+cold published-URL qualification remain required before this entry closes. Original
 five-file runtime/model qualification does not substitute for this final package.
 Logs are `/private/tmp/samosa-decision-distribution-text-{normal,sanitize}.log`.
 Installation does not imply loaded lifecycle readiness or full area2 completion.
