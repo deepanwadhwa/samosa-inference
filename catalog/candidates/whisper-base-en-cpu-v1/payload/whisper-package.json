@@ -1,0 +1,1 @@
+{"engine":"whisper-cli","format":"samosa.inference.whisper-package.v1","model":"ggml-base.en.bin","profile":"base.en-f16","runtime_revision":"f049fff95a089aa9969deb009cdd4892b3e74916"}

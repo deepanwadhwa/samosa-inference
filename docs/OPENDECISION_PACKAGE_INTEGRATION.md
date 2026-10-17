@@ -220,3 +220,33 @@ model and runtime release URLs representable without republishing unchanged mode
 weights. It does not qualify or publish production entries. The original App
 catalog includes placeholder speech artifacts and Molmo2 without artifact URLs;
 those declarations cannot substitute for qualified distribution sources.
+
+## Final installed text/image candidate
+
+All four serial gates completed successfully with the fixed worker at0a65512,
+SHA256 `cc2266a25773068d462628de69a53b8e1f8ddd7c3735b5ea0ebab940bef362b4`.
+Both normal and sanitizer-equipped setup/public hosts pass text ten-case and
+image twenty-case actual-model inference from fresh installed inodes, including
+the new aggregate/template `context_limit` refusals. Maximum result errors remain
+0.000583839146 (text) and0.0000595896272 (image). The release worker/ORT runtime
+itself is not sanitizer instrumented. These are macOS ARM64 model results.
+
+| Profile | Files | Payload bytes | Index SHA-256 |
+| --- | --- | --- | --- |
+| Text | 5 | 913287471 | `48e54565034f620467be77ea509e2c86f56d12021147b0e8c3cf20c8b55d4ea2` |
+| Image | 5 | 1551839816 | `7c00ad006dc0e23a45ee2cf1d578449d6631cf300670795338b60c7626b23909` |
+
+Exact source/reference/engine/runtime/model/tokenizer/setup/public pins are
+retained in the four [qualification reports](qualification/decision-installed-macos-arm64).
+The sanitizer setup was rebuilt between the serial text and image gates; each
+report records its own executable hash. Executables were snapshotted before
+each gate, so later development rebuilds did not replace running gate binaries.
+Logs/reports remain at `/private/tmp/samosa-decision-installed-final-{text,image}-{normal,sanitize}.{log,json}`.
+The orchestrator exited0, each gate verified retained sources again, and each
+exclusive temporary cache/payload workspace was removed before its final PASS.
+No source-layout weight copies were created.
+
+Hosted runs38978217444 atd0fab1b and38978547048 at30fe3b1 both passed. This proves
+the credential/per-file-source integration checks on their hosted platforms;
+it is separate from actual-model macOS execution. Production catalog publication
+and the remaining full area2 requirements remain open.

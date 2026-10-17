@@ -1,0 +1,19 @@
+{
+  "asset_pins": {
+    "decision-engine": "cc2266a25773068d462628de69a53b8e1f8ddd7c3735b5ea0ebab940bef362b4",
+    "libonnxruntime.1.27.0.dylib": "5b4c4df69e6d1bc10eb0d08da525b11faf8365a0a78cc597a5cc57926330a9ca",
+    "model.onnx": "dd3301b3310117bc09f6e8e1e10af9bab98fdc38d6c41e907ba148d1938fb73b",
+    "tokenizer.json": "9846872af4d6df792f3931d68b65394370948d3cf80fa8974743a006facd351e"
+  },
+  "files": 5,
+  "format": "samosa.inference.decision-installed-qualification.v1",
+  "index_sha256": "7c00ad006dc0e23a45ee2cf1d578449d6631cf300670795338b60c7626b23909",
+  "payload_bytes": 1551839816,
+  "profile": "image",
+  "public_sha256": "e98607e27f507bb0f99434a1b8076c34dcc64ef9423fa7f94a4d6966ef185c7d",
+  "reference_sha256": "ca1a8222ba9eb10b33648f5f1cca18b1aa61e0d493daf006dca530603fdc2ee6",
+  "runtime_revision": "0a65512ed366e84f9f52b4f62de7ef0f879dd80e",
+  "setup_sha256": "143d6d46fd765486b1d548800d0b6a82b906b73c809b699e0779063a6d74e666",
+  "source_inventory_sha256": "7672b919504d0994431402890a7bcc51e06f7fef5122c36e0f9ec338da973733",
+  "status": "passed"
+}
