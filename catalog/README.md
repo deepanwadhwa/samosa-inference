@@ -1,6 +1,6 @@
 # Qualified provider distributions
 
-Five catalog entries pass cold installation from published URLs, actual-model
+Eight catalog entries pass cold installation from published URLs, actual-model
 inference, cache-only reuse/removal and cleanup in normal and sanitizer-equipped
 macOS ARM64 hosts:
 
@@ -8,6 +8,9 @@ macOS ARM64 hosts:
 - [Native T5 summary CPU](t5-summary-cpu-v1):1347 actual summary checks per mode.
 - [EmbeddingGemma 2 CPU](embeddinggemma2-cpu-v1):768-dimensional normalized vectors,
   4/4 paraphrase rankings, context refusal, managed/registry parity and shutdown.
+- [VisionPsy native](visionpsy-native-v1):15882 bounded heading-recognition checks per mode.
+- [Pocket speech CPU](pocket-speech-cpu-v1):265 actual synthesis/PCM streaming checks per mode.
+- [Kokoro speech CPU](kokoro-speech-cpu-v1):583 actual synthesis/PCM streaming checks per mode.
 - [OpenDecision text CPU](opendecision-text-cpu-v1):10 actual public cases per mode.
 - [OpenDecision image CPU](opendecision-image-cpu-v1):20 actual public cases per mode.
 

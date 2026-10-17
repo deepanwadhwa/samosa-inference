@@ -1,0 +1,4 @@
+VisionPsy Nano460M MLX BF16: retained converted model, unchanged.
+Model source and converted cards declare Apache2.0; full cards and license are included.
+Existing independent native engine and colocated MLX kernels; dependency licenses and stb_image dual notice included.
+Actual quality evidence is the existing bounded heading-recognition fixture, not general visual accuracy.

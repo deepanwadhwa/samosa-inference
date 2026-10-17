@@ -1,0 +1,25 @@
+{
+  "execution_os": "26.5.1",
+  "format": "samosa.inference.kokoro-distribution-qualification.v1",
+  "index_sha256": "612248e08181e1e7c77c7471cc9622f95b313e840be9871533deaadfb12ff7c7",
+  "minimum_os": "15.5",
+  "modes": {
+    "normal": {
+      "checks": 583,
+      "harness_sha256": "b4461326de692371e67c9cfcf298597123367b63f14b5fde77d2be1bd96d35ca",
+      "log_sha256": "36062ad76d0538b1695f53e70f484b6f99284d4eeaa039e7d85de0e1af7897fa",
+      "public_sha256": "81cb857837808dee66a55e5137a422b11a626869e91f719fe40dc25e91a4ae3a",
+      "setup_sha256": "ec32b47ec6e49ffb3667e44ff973a3642f56f65008b149837db8b063dcd0d1fa",
+      "status": "passed"
+    },
+    "sanitize": {
+      "checks": 583,
+      "harness_sha256": "b4461326de692371e67c9cfcf298597123367b63f14b5fde77d2be1bd96d35ca",
+      "log_sha256": "39e537f50701c114ce296364a7c7bfcaef4ac11c6dfd4773019f88f92ba8fa6c",
+      "public_sha256": "e98607e27f507bb0f99434a1b8076c34dcc64ef9423fa7f94a4d6966ef185c7d",
+      "setup_sha256": "b3dc41729f375c96629d21dae4c2ec8ca71e0961cf0a3561371a4ed0be741f9d",
+      "status": "passed"
+    }
+  },
+  "platform": "macos-arm64"
+}

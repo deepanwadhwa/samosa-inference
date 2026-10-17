@@ -106,3 +106,16 @@ runtime-free replay. The engine/model/kernel/index pins are unchanged.
 The host was macOS 26.5.1 arm64; engine and MLX remain release builds. This
 regression verifies the changed transport against the actual pinned engine;
 it does not broaden the fixture's recognition or platform claims.
+
+## Published distribution
+
+The [17-file distribution](../catalog/visionpsy-native-v1) reuses the same
+independent native engine, kernel and model pins, adding complete notices and
+source/model cards. Both exact-package normal/sanitizer HTTPS gates and both
+actual published-URL cold-install gates pass, each with 15882 existing public
+heading checks. Native cache-only reuse/removal/reinstall and cleanup pass.
+Only metadata is retained in the repository; the unchanged weights use the App
+catalog's existing immutable upstream URL. Runtime upload uses temporary symlink
+aliases and streams originals without new weight copies or hardlinks.
+This qualifies VisionPsy's production distribution on macOS26.5.1 arm64, not all
+of component2, another platform or engine lifecycle readiness.

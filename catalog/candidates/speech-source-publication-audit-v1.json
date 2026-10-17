@@ -1,0 +1,30 @@
+{
+  "build_scope": "Source graph and version binding inspection; no byte-identical rebuild or wider platform execution claim",
+  "dependency_inspection": "Core links kaldi-native-fbank, kaldi-decoder/kaldifst/openfst/Eigen, simple-sentencepiece, piper-phonemize/eSpeak/UCD, ONNX Runtime; kissfft, JSON and hclust sources included",
+  "format": "samosa.inference.speech-source-publication-audit.v1",
+  "library_sha256": "c8d9e266ab5de81372e9d1a275b4d42c4bace1e55e7359ab1227de5914fd21e1",
+  "ort_source": {
+    "format": "samosa.inference.ort-corresponding-source.v1",
+    "source_bytes": 285714570,
+    "source_sha256": "b41d09905a3c2f3a25709d1dcce8ef3942a4c2799d1046f74be7b6bbebc45e6a",
+    "source_url": "https://codeload.github.com/microsoft/onnxruntime/tar.gz/refs/tags/v1.27.0",
+    "version": "1.27.0",
+    "version_and_build_script_verified": true
+  },
+  "published_sources": {
+    "onnxruntime-1.27.0-source.tar.gz": {
+      "http_status": 200,
+      "url": "https://github.com/deepanwadhwa/samosa-inference/releases/download/inference-speech-packages-2026-10-17.1/onnxruntime-1.27.0-source.tar.gz"
+    },
+    "speech-corresponding-sources-v1.tar.gz": {
+      "http_status": 200,
+      "url": "https://github.com/deepanwadhwa/samosa-inference/releases/download/inference-speech-packages-2026-10-17.1/speech-corresponding-sources-v1.tar.gz"
+    }
+  },
+  "sherpa_revision": "142807252687d81b40d6315f23470a1512a00de3",
+  "source_bundle_sha256": "42b582ec9ec9812567a2888909cd0cbd13f251f431fb7d6d4a655f2bee4a4656",
+  "source_git_prefix": "14280725",
+  "source_scope": "Static speech dependency sources bundled; full ORT source separately staged; upstream CMake scripts and licenses retained",
+  "staged_asset_hashes_verified": true,
+  "version": "1.13.4"
+}

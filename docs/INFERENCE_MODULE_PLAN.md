@@ -46,8 +46,13 @@ fresh-install normal/SAN qualification and cold published-URL qualification are
 complete for the final16-file [text](../catalog/opendecision-text-cpu-v1) and
 [image](../catalog/opendecision-image-cpu-v1) packages, including fetched pinned
 QA fixtures and cleanup. Exact receipts retain their pins. These close those
-package slices only. Other provider distributions
-and remaining full area2 acceptance stay open;1/7 areas remain complete.
+package slices only. The final17-file [VisionPsy](../catalog/visionpsy-native-v1),
+27-file [Pocket](../catalog/pocket-speech-cpu-v1) and375-file
+[Kokoro](../catalog/kokoro-speech-cpu-v1) distributions also pass exact installed
+and cold published-URL normal/SAN gates, actual inference, cache-only reuse and
+cleanup. Speech source assets and notices are published alongside object code.
+General text/Molmo distributions and remaining full area2 acceptance stay open;
+1/7 areas remain complete.
 
 - Assemble trusted catalogs over the existing verified artifact, HTTPS download
   and setup primitives; pin full engine/model packages and provenance.

@@ -1,0 +1,5 @@
+Native pocket speech using Sherpa-ONNX1.13.4 and ONNX Runtime1.27.0.
+Runtime includes GPL-3.0 eSpeak components; source locations/build rules are in CORRESPONDING-SOURCES.json.
+Original model LICENSE/README are preserved. Pocket README contains a non-commercial caution while its bundled LICENSE says CC BY4.0; neither is silently rewritten.
+Pocket voice-zero references are CC0; the complete pinned voice source card is included for that profile.
+No model/voice bytes are modified. Unused C++/unversioned runtime libraries and unrelated sample WAVs are omitted.

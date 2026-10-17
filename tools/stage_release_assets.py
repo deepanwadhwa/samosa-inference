@@ -9,6 +9,8 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import tempfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from distribution_candidate import digest
 
 
@@ -29,9 +31,13 @@ def main():
         source = Path(artifact['source'])
         assert name == Path(name).name and not name.startswith('.') and len(name) <= 255
         assert len(checksum) == 64 and all(c in '0123456789abcdef' for c in checksum)
-        assert name not in expected and source.is_file() and 0 < source.stat().st_size < 2147483648
+        assert source.is_file() and 0 < source.stat().st_size < 2147483648
         assert digest(source) == checksum
-        expected[name] = dict(source=str(source), sha256=checksum, bytes=source.stat().st_size)
+        artifact = dict(source=str(source), sha256=checksum, bytes=source.stat().st_size)
+        if name in expected:
+            assert (expected[name]['sha256'], expected[name]['bytes']) == (checksum, artifact['bytes'])
+        else:
+            expected[name] = artifact
     assert expected and len(expected) <= 1000
 
     def observe():
@@ -55,30 +61,58 @@ def main():
             subprocess.run(['gh', 'api', '--method', 'DELETE', endpoint], check=True)
             continue
         assert asset['size'] == expected[name]['bytes']
-        rename(asset, name)
+        if asset["name"] != name:
+            rename(asset, name)
         present.add(name)
-    for name, artifact in expected.items():
-        if name in present:
-            continue
-        subprocess.run(['gh', 'release', 'upload', args.release, artifact['source'] + '#' + name], check=True)
-        matches = [asset for asset in observe() if asset['label'] == name]
-        assert len(matches) == 1 and matches[0]['state'] == 'uploaded' and matches[0]['size'] == artifact['bytes']
-        rename(matches[0], name)
-        present.add(name)
+    missing = [name for name in expected if name not in present]
+    if missing:
+        # A symlink supplies the exact remote basename without copying model
+        # bytes or creating another hardlink to the retained source inode.
+        with tempfile.TemporaryDirectory(prefix='samosa-release-aliases-') as temporary:
+            aliases = {}
+            for name in missing:
+                alias = Path(temporary) / name
+                alias.symlink_to(Path(expected[name]['source']).resolve())
+                aliases[name] = str(alias) + '#' + name
+            # Verify gh's basename handling on one small real asset before
+            # batching. The label still permits recovery of a partial upload.
+            first = min(missing, key=lambda name: expected[name]['bytes'])
+            subprocess.run(['gh', 'release', 'upload', args.release, aliases[first]], check=True)
+            probe = [asset for asset in observe() if asset['name'] == first or asset['label'] == first]
+            assert len(probe) == 1 and probe[0]['state'] == 'uploaded'
+            assert probe[0]['name'] == first and probe[0]['size'] == expected[first]['bytes']
+            remaining = [aliases[name] for name in missing if name != first]
+            if remaining:
+                subprocess.run(['gh', 'release', 'upload', args.release, *remaining], check=True)
 
     staged = observe()
     assert {asset['name'] for asset in staged} == set(expected)
-    for number, asset in enumerate(staged, 1):
+    def verify(asset):
         artifact = expected[asset['name']]
+        assert asset['state'] == 'uploaded' and asset['size'] == artifact['bytes']
         endpoint = asset['apiUrl'].removeprefix('https://api.github.com/')
         child = subprocess.Popen(['gh', 'api', '-H', 'Accept: application/octet-stream', endpoint], stdout=subprocess.PIPE)
         checksum = hashlib.sha256()
         size = 0
-        for chunk in iter(lambda: child.stdout.read(65536), b''):
-            checksum.update(chunk)
-            size += len(chunk)
-        assert child.wait() == 0 and size == artifact['bytes'] and checksum.hexdigest() == artifact['sha256']
-        print('PASS staged asset ' + str(number) + '/' + str(len(staged)), flush=True)
+        try:
+            for chunk in iter(lambda: child.stdout.read(65536), b''):
+                checksum.update(chunk)
+                size += len(chunk)
+                assert size <= artifact['bytes']
+            assert child.wait() == 0 and size == artifact['bytes'] and checksum.hexdigest() == artifact['sha256']
+        finally:
+            child.stdout.close()
+            if child.poll() is None:
+                child.kill()
+            child.wait()
+        return asset['name']
+
+    with ThreadPoolExecutor(max_workers=4) as workers:
+        futures = [workers.submit(verify, asset) for asset in staged]
+        for number, future in enumerate(as_completed(futures), 1):
+            name = future.result()
+            print('PASS staged asset ' + str(number) + '/' + str(len(staged)) + ' ' + name, flush=True)
+    assert {asset['name'] for asset in observe()} == set(expected)
     print('PASS complete draft names, sizes and downloaded SHA-256 hashes; release remains draft', flush=True)
 
 

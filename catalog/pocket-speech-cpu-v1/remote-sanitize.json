@@ -1,0 +1,13 @@
+{
+  "catalog_sha256": "cb0bfe270a84b7f3dc850d3ca503468d07e4b4d6990b32eebd3aa800cdbf923e",
+  "executables": {
+    "harness": "b4461326de692371e67c9cfcf298597123367b63f14b5fde77d2be1bd96d35ca",
+    "public": "e98607e27f507bb0f99434a1b8076c34dcc64ef9423fa7f94a4d6966ef185c7d",
+    "setup": "b3dc41729f375c96629d21dae4c2ec8ca71e0961cf0a3561371a4ed0be741f9d"
+  },
+  "format": "samosa.inference.speech-pocket-remote-qualification.v1",
+  "index_sha256": "022eb7848df4d8c8a00f7eeb4ba4214f186296914246a94811e021a60586a3aa",
+  "sources_sha256": "c67b70215c4c40b110aead662eb1af3d89ac585aa8de6d6fce535ebace2917ea",
+  "status": "passed",
+  "temporary_installation_removed": true
+}

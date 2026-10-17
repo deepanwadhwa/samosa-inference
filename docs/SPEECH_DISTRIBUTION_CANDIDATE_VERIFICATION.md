@@ -41,8 +41,9 @@ Candidate metadata directories occupy less than 1 MiB each; native test cache an
 installed payloads are temporary and removed by the shared test's finally block.
 
 These are local candidate results, not published-URL qualification or Linux model
-execution. Speech publication, complete corresponding-source packaging review,
-and published-URL tests remain open. Component 2 is not complete.
+execution. Source review and publication are recorded in
+[SPEECH_SOURCE_PUBLICATION_AUDIT.md](SPEECH_SOURCE_PUBLICATION_AUDIT.md).
+Cold published-URL qualification is recorded below. Component 2 is not complete.
 
 ## Complete notice candidates and remote QA tooling
 
@@ -72,7 +73,8 @@ hashes were independently read back from the generated bundle and matched.
 
 The archives and bundle remain outside the repository. The bundle does not
 establish byte-identical reproduction or automatically certify dependency
-completeness; final source/build closure remains a publication gate.
+completeness by itself; the completed source graph review and published source
+assets are recorded in [the publication audit](SPEECH_SOURCE_PUBLICATION_AUDIT.md).
 
 Revised candidates add these notices inside the native closed tree:
 
@@ -85,4 +87,29 @@ Both exact v2 candidates pass normal and sanitizer native HTTPS setup and
 actual public synthesis/streaming gates: 265 Pocket checks and 583 Kokoro checks
 per mode. Cache-only reinstall/removal and temporary cleanup also pass. Logs:
 `/private/tmp/samosa-{pocket,kokoro}-distribution-v2-{normal,sanitize}.log`.
-No speech release has been published and full component 2 remains open.
+The speech prerelease is published and both exact cold remote qualification
+modes pass for both packages. Full component 2 remains open.
+
+## Published-URL qualification
+
+Both [Pocket](../catalog/pocket-speech-cpu-v1) and
+[Kokoro](../catalog/kokoro-speech-cpu-v1) pass cold native installation from their
+actual published URLs, exact installed hashes, all existing public synthesis/PCM
+streaming/range/replay checks (265 Pocket and 583 Kokoro checks per mode), native
+cache-only resume/removal/reinstall and temporary cleanup in normal and sanitizer
+host builds. The final v2 package indexes and model/runtime pins are unchanged.
+
+The initial remote Pocket run correctly refused `artifact_changed`: this QA tool
+created its temporary root through macOS's `/var` alias, while the existing speech
+verifier requires its canonical `/private/var` path. Resolving only the tool's own
+new temporary directory fixed the QA configuration. Native path/identity guards
+were preserved. The first failure log remains at
+`/private/tmp/samosa-pocket-published-normal-first-failure.log`; passing logs are
+`/private/tmp/samosa-{pocket,kokoro}-published-{normal,sanitize}.log`.
+
+All392 speech release assets and all16 VisionPsy release assets passed streaming
+download-back hashes before publication. The existing uploader now uses temporary
+symlink aliases to supply exact content-addressed remote names, batches uploads,
+deduplicates identical pinned assets and bounds verification to four workers.
+This creates neither model copies nor hardlinks. Both releases exercised the
+same uploader; source downloads are publicly accessible without credentials.

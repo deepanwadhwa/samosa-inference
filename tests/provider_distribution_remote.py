@@ -112,10 +112,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for key in ('candidate', 'setup', 'public', 'harness', 'report'):
         parser.add_argument('--' + key, type=Path, required=True)
-    parser.add_argument('--profile', choices=('whisper', 't5', 'embedding', 'decision-text', 'decision-image', 'speech-pocket', 'speech-kokoro'), default='whisper')
+    parser.add_argument('--profile', choices=('whisper', 't5', 'embedding', 'decision-text', 'decision-image', 'speech-pocket', 'speech-kokoro', 'vision'), default='whisper')
     parser.add_argument('--speech-quality-profile', type=Path)
     parser.add_argument('--sources', type=Path)
     parser.add_argument('--audio', type=Path)
+    parser.add_argument('--image', type=Path)
     parser.add_argument('--managed', type=Path)
     parser.add_argument('--offline', type=Path)
     parser.add_argument('--decision-reference', type=Path)
@@ -135,6 +136,9 @@ def main():
     speech = args.profile.startswith('speech-')
     if bool(args.speech_quality_profile) != (args.profile == 'speech-kokoro'):
         parser.error('Kokoro requires its pinned quality profile; other profiles do not use it')
+    vision = args.profile == 'vision'
+    if bool(args.image) != vision:
+        parser.error('VisionPsy requires its pinned image fixture; other profiles do not use it')
     decision = args.profile.startswith('decision-')
     if (decision and bool(args.decision_reference) == args.fetch_decision_reference) or (
             not decision and (args.decision_reference or args.fetch_decision_reference)):
@@ -143,6 +147,8 @@ def main():
     index = json.loads((candidate / 'index.json').read_text())
     catalog = json.loads((candidate / 'catalog.json').read_text())
     policy = json.loads((candidate / 'host-policy.json').read_text())
+    if vision:
+        assert index['recipe'] == 'visionpsy-package-v1'
     if speech:
         assert args.profile == 'speech-' + policy['kind'] and index['recipe'] == 'sherpa-speech-package-v1'
     if decision:
@@ -152,6 +158,8 @@ def main():
     binaries = ('setup', 'public', 'harness', 'sources') if args.profile == 'whisper' else ('setup', 'public', 'harness')
     if args.profile == 'embedding':
         binaries += ('managed', 'offline')
+    if args.image:
+        assert digest(args.image) == '1c4497cbf9e9b55b61d2f2103814adfb37d64d16083945f4b7f880f46e762c43'
     if args.audio:
         assert digest(args.audio) == '927b006bef03f0c5b2430f5ddfa20629ea8fcabf1f0b422403f5143159e8eeb5'
     result = dict(format='samosa.inference.' + args.profile + '-remote-qualification.v1', index_sha256=entry['sha256'],
@@ -164,6 +172,8 @@ def main():
         assert quality['manifest_sha256'] == policy['manifest_sha256']
         assert quality['kind'].lower() == policy['kind']
         result['quality_profile_sha256'] = digest(args.speech_quality_profile)
+    if args.image:
+        result['input_sha256'] = digest(args.image)
     if args.audio:
         result['input_sha256'] = digest(args.audio)
     if decision:
@@ -171,7 +181,16 @@ def main():
             assert digest(args.decision_reference) == policy['reference_sha256']
         result['reference_sha256'] = policy['reference_sha256']
     with tempfile.TemporaryDirectory(prefix='samosa-' + args.profile + '-remote-') as temporary:
-        base = Path(temporary)
+        # The existing speech verifier requires a canonical owned root. macOS
+        # exposes TemporaryDirectory through /var -> /private/var. Normalize
+        # only this newly created QA directory; retain all native path guards.
+        base = Path(temporary).resolve()
+        image = None
+        if args.image:
+            image = base / 'input.ppm'
+            shutil.copyfile(args.image, image)
+            image.chmod(0o400)
+            assert digest(image) == result['input_sha256']
         speech_quality_profile = None
         if args.speech_quality_profile:
             speech_quality_profile = base / 'speech-quality-profile.json'
@@ -216,6 +235,10 @@ def main():
         if args.profile == 'whisper':
             common += ['--whisper-runtime-revision', policy['runtime_revision'], '--whisper-profile', policy['profile'],
                        '--whisper-engine-sha256', policy['engine_sha256'], '--whisper-model-sha256', policy['model_sha256']]
+        elif vision:
+            common += ['--vision-engine-sha256', policy['engine_sha256'], '--vision-config-sha256', policy['config_sha256'],
+                       '--vision-tokenizer-sha256', policy['tokenizer_sha256'], '--vision-weights-sha256', policy['weights_sha256'],
+                       '--vision-kernels-sha256', policy['kernels_sha256']]
         elif decision:
             common += ['--decision-profile', policy['profile'], '--decision-runtime-revision', policy['runtime_revision'],
                        '--decision-engine-sha256', policy['engine_sha256'], '--decision-runtime-sha256', policy['runtime_sha256'],
@@ -257,6 +280,9 @@ def main():
             if args.speech_quality_profile:
                 command.append(str(speech_quality_profile))
             command.append('--stream')
+        elif vision:
+            command = [str(snapshots['harness']), str(snapshots['public']), str(payload / engine['name']),
+                       str(payload / 'model'), str(image)]
         elif decision:
             names = ['decision-engine', 'libonnxruntime.1.27.0.dylib', 'model.onnx', 'tokenizer.json']
             entries = {file['name']: file for file in index['files']}

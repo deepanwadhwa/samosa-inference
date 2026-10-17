@@ -1,0 +1,14 @@
+{
+  "catalog_sha256": "bfea705d9eb9cea9de3a2bc6a980f0778464350e2cc270ca85c56ba5ee41754a",
+  "executables": {
+    "harness": "b4461326de692371e67c9cfcf298597123367b63f14b5fde77d2be1bd96d35ca",
+    "public": "e98607e27f507bb0f99434a1b8076c34dcc64ef9423fa7f94a4d6966ef185c7d",
+    "setup": "b3dc41729f375c96629d21dae4c2ec8ca71e0961cf0a3561371a4ed0be741f9d"
+  },
+  "format": "samosa.inference.speech-kokoro-remote-qualification.v1",
+  "index_sha256": "612248e08181e1e7c77c7471cc9622f95b313e840be9871533deaadfb12ff7c7",
+  "quality_profile_sha256": "9d1581b2afab2931a1457b39e860bbdaacbbb280015a6237d7ec9ec6d36ad3cb",
+  "sources_sha256": "285eca9ff7b2152aba2e1def3826633e84a9b5a4c397c480d969ddc57bee1ab1",
+  "status": "passed",
+  "temporary_installation_removed": true
+}

@@ -1,5 +1,5 @@
 {
-  "dependency_completeness": "pending final publication audit",
+  "dependency_completeness": "Static speech source graph reviewed; full ORT source supplied separately alongside object-code assets",
   "inventory_sha256": "f3f3cd93fa6cdbebb4e0a8228247276c970d22d6b3618c6aafc113afe1e824d5",
   "notice_bytes": 378609,
   "notices_sha256": "70d02ac824f60eabf1e59ee738779fd011fc2f07e10e9373a90226f5f57c7e63",
@@ -7,5 +7,6 @@
   "source_archives": 13,
   "source_bundle_bytes": 54620401,
   "source_bundle_sha256": "42b582ec9ec9812567a2888909cd0cbd13f251f431fb7d6d4a655f2bee4a4656",
+  "source_publication_audit": "speech-source-publication-audit-v1.json",
   "sources": 13
 }
