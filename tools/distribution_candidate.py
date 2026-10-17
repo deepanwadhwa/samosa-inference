@@ -20,7 +20,7 @@ def write(path, value):
 
 
 def prepare(*, output, release_url, paths, expected, engine, model, recipe,
-            provider, license_notice, metadata, policy, upstream=None, minimum_os='14.0'):
+            provider, license_notice, metadata, policy, upstream=None, minimum_os='14.0', roles=None):
     """Validate separately pinned inputs and write metadata in an exclusive root.
 
     Engine/model bytes stay in their original files. Only metadata is copied.
@@ -30,9 +30,16 @@ def prepare(*, output, release_url, paths, expected, engine, model, recipe,
     if url.scheme != 'https' or not url.hostname or url.username or url.password or url.query or url.fragment or release_url.endswith('/'):
         raise ValueError('release URL must be an HTTPS asset prefix without credentials, query, fragment or trailing slash')
     inputs = dict(paths)
+    file_roles = {name: 'engine' if name == engine else 'model' if name == model else 'metadata' for name in inputs}
+    file_roles.update(roles or {})
     if set(inputs) != set(expected) or engine not in inputs or model not in inputs:
         raise ValueError('every source requires its own expected SHA-256')
+    if set(file_roles) != set(inputs) or file_roles[engine] != 'engine' or file_roles[model] != 'model' or any(
+            role not in ('engine', 'library', 'model', 'data', 'metadata') for role in file_roles.values()):
+        raise ValueError('invalid package roles')
     for name, path in inputs.items():
+        if Path(name).is_absolute() or '..' in Path(name).parts or len(name) > 255:
+            raise ValueError('invalid package source name')
         if not path.is_absolute() or path.is_symlink() or not path.is_file():
             raise ValueError('inputs must be absolute regular files')
         if digest(path) != expected[name]:
@@ -44,7 +51,8 @@ def prepare(*, output, release_url, paths, expected, engine, model, recipe,
         payload.mkdir(mode=0o700)
         paths = dict(inputs)
         for name, source in inputs.items():
-            if name not in (engine, model):
+            if file_roles[name] == 'metadata':
+                (payload / name).parent.mkdir(mode=0o700, parents=True, exist_ok=True)
                 shutil.copyfile(source, payload / name)
                 (payload / name).chmod(0o400)
                 paths[name] = payload / name
@@ -58,7 +66,8 @@ def prepare(*, output, release_url, paths, expected, engine, model, recipe,
             else:
                 write(path, value)
             paths[name] = path
-        files = [dict(name=name, role='engine' if name == engine else 'model' if name == model else 'metadata',
+            file_roles[name] = 'metadata'
+        files = [dict(name=name, role=file_roles[name],
                       bytes=path.stat().st_size, sha256=digest(path)) for name, path in sorted(paths.items())]
         index = base / 'index.json'
         write(index, dict(format='samosa.inference.package.v1', platform='macos-arm64', minimum_os=minimum_os, recipe=recipe, files=files))

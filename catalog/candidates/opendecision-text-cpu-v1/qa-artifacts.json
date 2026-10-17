@@ -1,0 +1,9 @@
+{
+  "files": [],
+  "format": "samosa.inference.decision-reference-distribution.v1",
+  "reference": {
+    "bytes": 359785,
+    "name": "f2c54e4d1be67059c184b9a2326b1b7b96ee7b1de02b6efcaeef5cbf3951dc11",
+    "sha256": "f2c54e4d1be67059c184b9a2326b1b7b96ee7b1de02b6efcaeef5cbf3951dc11"
+  }
+}

@@ -1,0 +1,8 @@
+OpenDecision native image decisions; original reference revision cbd0b50db42bba6975f342de1789fb3c8f2dc670.
+The Samosa sidecar and OpenDecision reference use Apache-2.0; full license included.
+The original model card, licensing and training-data notes are preserved in MODEL-CARD.md.
+Modified deployment files: model exported to float32 ONNX and tokenizer prepared for native execution.
+These already-qualified converted files are reused without new conversion or retraining.
+ONNX Runtime MIT license and upstream third-party notices are included.
+Locked Rust dependency source notices include vendored COPYING/LICENSE/NOTICE files.
+The image implementation consumes prepared RGB/RGBA; file decoding belongs to Sources.

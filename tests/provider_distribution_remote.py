@@ -26,11 +26,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for key in ('candidate', 'setup', 'public', 'harness', 'report'):
         parser.add_argument('--' + key, type=Path, required=True)
-    parser.add_argument('--profile', choices=('whisper', 't5', 'embedding'), default='whisper')
+    parser.add_argument('--profile', choices=('whisper', 't5', 'embedding', 'decision-text', 'decision-image'), default='whisper')
     parser.add_argument('--sources', type=Path)
     parser.add_argument('--audio', type=Path)
     parser.add_argument('--managed', type=Path)
     parser.add_argument('--offline', type=Path)
+    parser.add_argument('--decision-reference', type=Path)
+    parser.add_argument('--fetch-decision-reference', action='store_true', help='Fetch pinned QA reference/frames from the same release; never model installation')
     args = parser.parse_args()
     if args.report.exists():
         parser.error('report must not already exist')
@@ -42,10 +44,16 @@ def main():
         parser.error('embedding requires managed and offline native adapters')
     if args.profile != 'embedding' and (args.managed or args.offline):
         parser.error('managed/offline adapters are embedding configuration')
+    decision = args.profile.startswith('decision-')
+    if (decision and bool(args.decision_reference) == args.fetch_decision_reference) or (
+            not decision and (args.decision_reference or args.fetch_decision_reference)):
+        parser.error('decision profiles require exactly one pinned reference report')
     candidate = args.candidate.resolve()
     index = json.loads((candidate / 'index.json').read_text())
     catalog = json.loads((candidate / 'catalog.json').read_text())
     policy = json.loads((candidate / 'host-policy.json').read_text())
+    if decision:
+        assert args.profile == 'decision-' + policy['profile'] and index['recipe'] == 'opendecision-package-v1'
     entry, = catalog['entries']
     assert digest(candidate / 'index.json') == entry['sha256']
     binaries = ('setup', 'public', 'harness', 'sources') if args.profile == 'whisper' else ('setup', 'public', 'harness')
@@ -60,8 +68,31 @@ def main():
                   status='not_executed')
     if args.audio:
         result['input_sha256'] = digest(args.audio)
+    if decision:
+        if args.decision_reference:
+            assert digest(args.decision_reference) == policy['reference_sha256']
+        result['reference_sha256'] = policy['reference_sha256']
     with tempfile.TemporaryDirectory(prefix='samosa-' + args.profile + '-remote-') as temporary:
         base = Path(temporary)
+        decision_reference = args.decision_reference
+        if decision and args.fetch_decision_reference:
+            # Only small QA fixtures use curl. The package, engine, library,
+            # tokenizer and model still go through native setup below.
+            artifacts = json.loads((candidate / 'qa-artifacts.json').read_text())
+            assert artifacts['reference']['sha256'] == policy['reference_sha256']
+            reference_root = base / 'reference'
+            reference_root.mkdir(mode=0o700)
+            for artifact in [artifacts['reference'], *artifacts['files']]:
+                name = artifact['name']
+                assert Path(name).name == name and not name.startswith('.') and 0 < artifact['bytes'] <= 1048576
+                destination = reference_root / name
+                with destination.open('xb'):
+                    pass
+                subprocess.run(['curl', '--fail', '--silent', '--show-error', '--location', '--proto', '=https',
+                                '--proto-redir', '=https', '--max-time', '60', '--max-filesize', str(artifact['bytes']),
+                                '--output', str(destination), entry['url'].rsplit('/', 1)[0] + '/' + name], check=True)
+                assert destination.stat().st_size == artifact['bytes'] and digest(destination) == artifact['sha256']
+            decision_reference = reference_root / artifacts['reference']['name']
         snapshots = {}
         for key in binaries:
             snapshots[key] = base / key
@@ -81,6 +112,10 @@ def main():
         if args.profile == 'whisper':
             common += ['--whisper-runtime-revision', policy['runtime_revision'], '--whisper-profile', policy['profile'],
                        '--whisper-engine-sha256', policy['engine_sha256'], '--whisper-model-sha256', policy['model_sha256']]
+        elif decision:
+            common += ['--decision-profile', policy['profile'], '--decision-runtime-revision', policy['runtime_revision'],
+                       '--decision-engine-sha256', policy['engine_sha256'], '--decision-runtime-sha256', policy['runtime_sha256'],
+                       '--decision-model-sha256', policy['model_sha256'], '--decision-tokenizer-sha256', policy['tokenizer_sha256']]
         else:
             common += ['--llama-runtime-revision', policy['runtime_revision'], '--llama-kind', policy['kind'],
                        '--llama-architecture', policy['architecture'], '--llama-engine-sha256', policy['engine_sha256']]
@@ -105,7 +140,19 @@ def main():
             assert path.stat().st_nlink == 1 and path.stat().st_size == file['bytes'] and digest(path) == file['sha256']
         engine = next(file for file in index['files'] if file['role'] == 'engine')
         model = next(file for file in index['files'] if file['role'] == 'model')
-        if args.profile == 'embedding':
+        if decision:
+            names = ['decision-engine', 'libonnxruntime.1.27.0.dylib', 'model.onnx', 'tokenizer.json']
+            entries = {file['name']: file for file in index['files']}
+            inventory = dict(root=str(payload / 'assets'), files=[dict(name=name,
+                             bytes=entries['assets/' + name]['bytes'], sha256=entries['assets/' + name]['sha256']) for name in names])
+            inventory_path = base / 'decision-inventory.json'
+            inventory_path.write_text(json.dumps(inventory, sort_keys=True) + '\n')
+            command = [sys.executable, str(snapshots['harness']), str(snapshots['public']), str(inventory_path),
+                       str(decision_reference.resolve()), '--inventory-pin', digest(inventory_path),
+                       '--reference-pin', policy['reference_sha256']]
+            if policy['profile'] == 'image':
+                command += ['--image']
+        elif args.profile == 'embedding':
             command = [sys.executable, str(snapshots['harness']), '--registry-binary', str(snapshots['public']),
                        '--binary', str(snapshots['managed']), '--offline-binary', str(snapshots['offline']),
                        '--engine', str(payload / engine['name']), '--model', str(payload / model['name']),

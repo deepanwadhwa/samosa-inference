@@ -1,0 +1,40 @@
+{
+  "files": [
+    {
+      "bytes": 1536,
+      "name": "10e348a0fdeefc94e8d70936ac0705bfc0a1d1ba64ae94c59ae04b7d7402209f.rgb",
+      "sha256": "10e348a0fdeefc94e8d70936ac0705bfc0a1d1ba64ae94c59ae04b7d7402209f"
+    },
+    {
+      "bytes": 234069,
+      "name": "5eac95acd9817f69777adaef7a0cc62f632b81ba3d261eb75865fd2fe8def169.rgb",
+      "sha256": "5eac95acd9817f69777adaef7a0cc62f632b81ba3d261eb75865fd2fe8def169"
+    },
+    {
+      "bytes": 786432,
+      "name": "985a69768156970d0173ce49ed2a3220e2f36fb49251d04a3bad5ee912081e60.rgb",
+      "sha256": "985a69768156970d0173ce49ed2a3220e2f36fb49251d04a3bad5ee912081e60"
+    },
+    {
+      "bytes": 150528,
+      "name": "9fec6ffbf66db069c4d189b7ed76e7237f6c2c2c76586cf3a5e6394dc9741b6f.rgb",
+      "sha256": "9fec6ffbf66db069c4d189b7ed76e7237f6c2c2c76586cf3a5e6394dc9741b6f"
+    },
+    {
+      "bytes": 150528,
+      "name": "ae57d049c37fbbf91f4595bb27cf43ef0ed08db17503bbd3a4eb3d18f203fa5a.rgb",
+      "sha256": "ae57d049c37fbbf91f4595bb27cf43ef0ed08db17503bbd3a4eb3d18f203fa5a"
+    },
+    {
+      "bytes": 2109,
+      "name": "dd3812ffbb349f3ffc7fa4494fdce9520cdc48f1d2811444c99e54ab4453ff56.rgb",
+      "sha256": "dd3812ffbb349f3ffc7fa4494fdce9520cdc48f1d2811444c99e54ab4453ff56"
+    }
+  ],
+  "format": "samosa.inference.decision-reference-distribution.v1",
+  "reference": {
+    "bytes": 459231,
+    "name": "ca1a8222ba9eb10b33648f5f1cca18b1aa61e0d493daf006dca530603fdc2ee6",
+    "sha256": "ca1a8222ba9eb10b33648f5f1cca18b1aa61e0d493daf006dca530603fdc2ee6"
+  }
+}
