@@ -20,7 +20,7 @@ def write(path, value):
 
 
 def prepare(*, output, release_url, paths, expected, engine, model, recipe,
-            provider, license_notice, metadata, policy, upstream=None):
+            provider, license_notice, metadata, policy, upstream=None, minimum_os='14.0'):
     """Validate separately pinned inputs and write metadata in an exclusive root.
 
     Engine/model bytes stay in their original files. Only metadata is copied.
@@ -61,10 +61,10 @@ def prepare(*, output, release_url, paths, expected, engine, model, recipe,
         files = [dict(name=name, role='engine' if name == engine else 'model' if name == model else 'metadata',
                       bytes=path.stat().st_size, sha256=digest(path)) for name, path in sorted(paths.items())]
         index = base / 'index.json'
-        write(index, dict(format='samosa.inference.package.v1', platform='macos-arm64', minimum_os='14.0', recipe=recipe, files=files))
+        write(index, dict(format='samosa.inference.package.v1', platform='macos-arm64', minimum_os=minimum_os, recipe=recipe, files=files))
         pin = digest(index)
         entry = dict(id=provider, version='1', url=release_url + '/' + pin, license=license_notice,
-                     platform='macos-arm64', minimum_os='14.0', runtime='system-runtime-v1', recipe=recipe,
+                     platform='macos-arm64', minimum_os=minimum_os, runtime='system-runtime-v1', recipe=recipe,
                      sha256=pin, size=index.stat().st_size)
         write(base / 'catalog.json', dict(catalog_version=1, revision=provider + '-v1', entries=[entry]))
         upstream = upstream or {}

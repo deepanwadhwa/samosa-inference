@@ -64,9 +64,15 @@ parser.add_argument("--sources-cli")
 parser.add_argument("--audio")
 parser.add_argument("--summary-cli", help="Optional actual T5 provider CLI qualification")
 parser.add_argument("--summary-test", help="Actual-model summary harness; used with --summary-cli")
+parser.add_argument("--embedding-managed-cli")
+parser.add_argument("--embedding-offline-cli")
+parser.add_argument("--embedding-registry-cli")
+parser.add_argument("--embedding-test")
 args = parser.parse_args()
 assert bool(args.summary_cli) == bool(args.summary_test)
 assert not args.summary_cli or args.kind == "summary"
+embedding_quality = (args.embedding_managed_cli, args.embedding_offline_cli, args.embedding_registry_cli, args.embedding_test)
+assert not any(embedding_quality) or (all(embedding_quality) and args.kind == "embedding")
 body = Path(args.index).read_bytes()
 assert hashlib.sha256(body).hexdigest() == args.pin
 index = json.loads(body)
@@ -408,6 +414,17 @@ try:
         run_stage("actual whisper inference", [os.path.abspath(args.whisper_test), os.path.abspath(args.whisper_cli),
                         os.path.abspath(args.sources_cli), str(installed_engine), str(package / "payload" / model["name"]),
                         os.path.abspath(args.audio)], check=True, timeout=600)
+    if args.embedding_test:
+        model = next(file for file in index["files"] if file["role"] == "model")
+        run_stage("actual installed embedding inference", [sys.executable, os.path.abspath(args.embedding_test),
+                  "--registry-binary", os.path.abspath(args.embedding_registry_cli),
+                  "--binary", os.path.abspath(args.embedding_managed_cli),
+                  "--offline-binary", os.path.abspath(args.embedding_offline_cli),
+                  "--engine", str(installed_engine), "--model", str(package / "payload" / model["name"]),
+                  "--model-sha256", model["sha256"], "--runtime-revision", args.revision,
+                  "--output", str(base / "embedding-quality")], check=True, timeout=900)
+        assert json.loads((base / "embedding-quality" / "embedding.json").read_text()) == json.loads(
+            (package / "payload" / "embedding-recipe.json").read_text())
     print(f"PASS {'OpenDecision' if is_decision else ('Molmo' if is_molmo else ('VisionPsy' if is_vision else ('Whisper' if is_whisper else 'llama')))} setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
 finally:
     if server is not None:

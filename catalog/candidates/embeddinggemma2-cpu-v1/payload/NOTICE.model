@@ -1,0 +1,8 @@
+EmbeddingGemma 2 by Google DeepMind, converted to GGUF Q8_0 by ggml-org.
+Both pinned upstream model cards declare Apache-2.0 and are included unchanged.
+Converted repository revision: bfcd298762cc34d0357ece5ebdd31791a3a374d8
+Original Google model revision: 914f7f89142e33e77833254d9c9b90c3cef7303b
+The converter repository .src_sha binds the original model revision.
+Samosa uses the existing converted text model unchanged; no new quantization.
+Native llama.cpp engine is MIT licensed; full notice is included.
+The package does not contain vision/audio projectors or qualify media embeddings.

@@ -1,0 +1,1 @@
+{"architecture":"gemma-embedding2","engine":"llama-server","format":"samosa.inference.llama-package.v1","kind":"embedding","model":"model.gguf","runtime_revision":"4fbc76dec51d0add466f0210855c0596589b60d4"}

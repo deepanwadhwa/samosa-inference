@@ -11,6 +11,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import sys
 
 
 def digest(path):
@@ -25,16 +26,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for key in ('candidate', 'setup', 'public', 'harness', 'report'):
         parser.add_argument('--' + key, type=Path, required=True)
-    parser.add_argument('--profile', choices=('whisper', 't5'), default='whisper')
+    parser.add_argument('--profile', choices=('whisper', 't5', 'embedding'), default='whisper')
     parser.add_argument('--sources', type=Path)
     parser.add_argument('--audio', type=Path)
+    parser.add_argument('--managed', type=Path)
+    parser.add_argument('--offline', type=Path)
     args = parser.parse_args()
     if args.report.exists():
         parser.error('report must not already exist')
     if args.profile == 'whisper' and (not args.sources or not args.audio):
         parser.error('Whisper requires Sources and the pinned audio fixture')
-    if args.profile == 't5' and (args.sources or args.audio):
-        parser.error('T5 uses its native summary fixtures')
+    if args.profile != 'whisper' and (args.sources or args.audio):
+        parser.error('only Whisper uses Sources/audio fixtures')
+    if args.profile == 'embedding' and (not args.managed or not args.offline):
+        parser.error('embedding requires managed and offline native adapters')
+    if args.profile != 'embedding' and (args.managed or args.offline):
+        parser.error('managed/offline adapters are embedding configuration')
     candidate = args.candidate.resolve()
     index = json.loads((candidate / 'index.json').read_text())
     catalog = json.loads((candidate / 'catalog.json').read_text())
@@ -42,6 +49,8 @@ def main():
     entry, = catalog['entries']
     assert digest(candidate / 'index.json') == entry['sha256']
     binaries = ('setup', 'public', 'harness', 'sources') if args.profile == 'whisper' else ('setup', 'public', 'harness')
+    if args.profile == 'embedding':
+        binaries += ('managed', 'offline')
     if args.audio:
         assert digest(args.audio) == '927b006bef03f0c5b2430f5ddfa20629ea8fcabf1f0b422403f5143159e8eeb5'
     result = dict(format='samosa.inference.' + args.profile + '-remote-qualification.v1', index_sha256=entry['sha256'],
@@ -96,13 +105,23 @@ def main():
             assert path.stat().st_nlink == 1 and path.stat().st_size == file['bytes'] and digest(path) == file['sha256']
         engine = next(file for file in index['files'] if file['role'] == 'engine')
         model = next(file for file in index['files'] if file['role'] == 'model')
-        command = [str(snapshots['harness']), str(snapshots['public'])]
-        if args.profile == 'whisper':
-            command += [str(snapshots['sources'])]
-        command += [str(payload / engine['name']), str(payload / model['name'])]
-        if args.audio:
-            command += [str(args.audio.resolve())]
-        subprocess.run(command, check=True, timeout=600)
+        if args.profile == 'embedding':
+            command = [sys.executable, str(snapshots['harness']), '--registry-binary', str(snapshots['public']),
+                       '--binary', str(snapshots['managed']), '--offline-binary', str(snapshots['offline']),
+                       '--engine', str(payload / engine['name']), '--model', str(payload / model['name']),
+                       '--model-sha256', model['sha256'], '--runtime-revision', policy['runtime_revision'],
+                       '--output', str(base / 'embedding-quality')]
+        else:
+            command = [str(snapshots['harness']), str(snapshots['public'])]
+            if args.profile == 'whisper':
+                command += [str(snapshots['sources'])]
+            command += [str(payload / engine['name']), str(payload / model['name'])]
+            if args.audio:
+                command += [str(args.audio.resolve())]
+        subprocess.run(command, check=True, timeout=900)
+        if args.profile == 'embedding':
+            assert json.loads((base / 'embedding-quality' / 'embedding.json').read_text()) == json.loads(
+                (payload / 'embedding-recipe.json').read_text())
         # Remove source configuration: subsequent operations must use the verified
         # native cache and cannot acquire a missing payload from a remote source.
         (base / 'sources.json').unlink()

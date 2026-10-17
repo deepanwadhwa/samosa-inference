@@ -1,0 +1,29 @@
+{
+  "dimensions": 768,
+  "execution_os": "26.5.1",
+  "format": "samosa.inference.embedding-distribution-qualification.v1",
+  "index_sha256": "fb11fc6c5885830282cc8e0d03d12dfbf7ceae0202bd4fb97c369d1af382a3ea",
+  "minimum_os": "26.0",
+  "modes": {
+    "normal": {
+      "harness_sha256": "bc1193e5c590762ffbdbe71aa38ba23b2d788915ecfe22f26aa070121efde075",
+      "log_sha256": "cfef0a6addb6058db464b302b6df31e64728ad8dc608a1c1c986f7873620ada0",
+      "managed_sha256": "934c85708d9bbab6887f546b36b3fd54f4695f9ab80eb34d327414868326a30f",
+      "offline_sha256": "332be8b5c5a195ac48e8dc1bbdb2caf661bc063858687d90b8d1ab4d782c8464",
+      "registry_sha256": "81cb857837808dee66a55e5137a422b11a626869e91f719fe40dc25e91a4ae3a",
+      "setup_sha256": "ec32b47ec6e49ffb3667e44ff973a3642f56f65008b149837db8b063dcd0d1fa",
+      "status": "passed"
+    },
+    "sanitize": {
+      "harness_sha256": "bc1193e5c590762ffbdbe71aa38ba23b2d788915ecfe22f26aa070121efde075",
+      "log_sha256": "e6013a9d48fabd934e7bb64ffdf61ab2ac4111d738992011053d188745c0244a",
+      "managed_sha256": "9d0367c96b7814350f7edcdadc19dcfb8e0bf46f0569e003813de2a81f9a33ab",
+      "offline_sha256": "0251090f703f15f71b5161e2f49592c509c82588e96c8627313762503f1363b7",
+      "registry_sha256": "e98607e27f507bb0f99434a1b8076c34dcc64ef9423fa7f94a4d6966ef185c7d",
+      "setup_sha256": "b3dc41729f375c96629d21dae4c2ec8ca71e0961cf0a3561371a4ed0be741f9d",
+      "status": "passed"
+    }
+  },
+  "paraphrase_rankings": "4/4",
+  "platform": "macos-arm64"
+}
