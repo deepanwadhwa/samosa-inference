@@ -1,0 +1,8 @@
+Falconsai/text_summarization, pinned revision 6e505f907968c4a9360773ff57885cdc6dca4bfd.
+Upstream model card declares Apache-2.0; the complete card and license are included.
+Source: https://huggingface.co/Falconsai/text_summarization/tree/6e505f907968c4a9360773ff57885cdc6dca4bfd
+Modified for Samosa: converted original safetensors to GGUF Q8_0.
+This distribution reuses the already-qualified converted model without additional conversion.
+The Samosa native sidecar is distributed under Apache-2.0; see LICENSE.Samosa.
+Native T5 sidecar adapts the MIT-licensed llama.cpp encoder/decoder example,
+linked against pinned Prism; the ggml authors notice is included in LICENSE.Prism.
