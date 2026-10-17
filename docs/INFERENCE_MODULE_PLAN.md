@@ -37,8 +37,9 @@ Do not introduce a shipped Python runtime.
 
 ## 2. Model acquisition and installation — active, production acceptance pending
 
-The published [Whisper base.en CPU](../catalog/whisper-base-en-cpu-v1) and
-[native T5 summary CPU](../catalog/t5-summary-cpu-v1) entries pass cold installation
+The published [Whisper base.en CPU](../catalog/whisper-base-en-cpu-v1),
+[native T5 summary CPU](../catalog/t5-summary-cpu-v1) and
+[EmbeddingGemma 2 CPU](../catalog/embeddinggemma2-cpu-v1) entries pass cold installation
 from their actual distribution URLs, exact installed inference, cache-only
 reuse/removal and cleanup in normal/SAN macOS ARM64 hosts. OpenDecision text/image
 fresh-install normal/SAN qualification is also

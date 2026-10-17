@@ -1,11 +1,13 @@
 # Qualified provider distributions
 
-Two catalog entries pass cold installation from published URLs, actual-model
+Three catalog entries pass cold installation from published URLs, actual-model
 inference, cache-only reuse/removal and cleanup in normal and sanitizer-equipped
 macOS ARM64 hosts:
 
 - [Whisper base.en CPU](whisper-base-en-cpu-v1):2441 actual transcription checks per mode.
 - [Native T5 summary CPU](t5-summary-cpu-v1):1347 actual summary checks per mode.
+- [EmbeddingGemma 2 CPU](embeddinggemma2-cpu-v1):768-dimensional normalized vectors,
+  4/4 paraphrase rankings, context refusal, managed/registry parity and shutdown.
 
 Other provider distributions, full Inference component2 and the final module
 release remain incomplete.

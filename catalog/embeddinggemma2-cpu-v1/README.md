@@ -1,4 +1,4 @@
-# EmbeddingGemma 2 CPU distribution candidate
+# EmbeddingGemma 2 CPU distribution
 
 This reuses the existing pinned static CPU llama-server and retained Q8_0 text
 model through the original GGUF installer, managed owner/activation controls and
@@ -33,8 +33,22 @@ single/stream parity, replay after shutdown without credentials and clean engine
 shutdown. Exact host/harness/log hashes are in `qualification.json`; logs remain
 at `/private/tmp/samosa-embedding-distribution-{normal,sanitize}.log`.
 
-The installed embedding recipe is separately pinned metadata; the published-URL
-gate also compares it with the actual managed harness configuration. Installation
-is not loaded readiness. Proposed release URLs are not publication evidence;
-full area2 and other provider distributions remain open. App-owned provisioning
-must copy catalog/source configuration into private files before native setup.
+The [package prerelease](https://github.com/deepanwadhwa/samosa-inference/releases/tag/inference-embedding-package-2026-10-17.1)
+contains ten non-model runtime/metadata/index assets, all downloaded back and
+checked by name, size and SHA-256 before publication. The model stays upstream.
+Both normal and sanitizer-equipped remote gates pass cold acquisition from the
+real URLs, exact installed file verification, actual vector/managed/registry
+checks, cache-only reuse/removal and exclusive workspace cleanup. The installed
+recipe is compared with the actual managed harness configuration. Exact
+configuration/executable pins are in `remote-normal.json` and
+`remote-sanitize.json`; logs remain at
+`/private/tmp/samosa-embedding-published-{normal,sanitize}.log`.
+
+The shared setup fixture suite passes normal/SAN on macOS ARM64 and Ubuntu ARM64;
+logs are `/private/tmp/samosa-embedding-setup-regression-{macos,linux}.log`. Those
+are controls/platform checks, not Linux embedding model execution. The minimum-OS
+preparation extension reproduces all published Whisper/T5 bytes unchanged.
+Installation is not loaded readiness. Full area2 and other distributions remain
+open. App-owned provisioning must copy catalog/source configuration into private
+files before native setup. Preparation retains about84KiB of metadata, with no
+retained new model or engine copy.
