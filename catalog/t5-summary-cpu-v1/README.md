@@ -1,4 +1,4 @@
-# Native T5 summary distribution candidate
+# Native T5 summary distribution
 
 The existing independently built CPU engine and qualified Q8_0 model are reused
 with the `llama-gguf-package-v1` summary/T5 host policy. This adds no model
@@ -12,8 +12,9 @@ The nine-file index is
 with69393904 payload bytes. Only metadata is stored here; engine/model binaries
 are absent from the source repository. The build tool reads retained binaries in
 place and prepares a content-addressed release asset list without copying weights.
-The previously converted GGUF needs a distribution host; the proposed release
-will upload it directly from its retained source file.
+The previously converted GGUF is hosted in the
+[package prerelease](https://github.com/deepanwadhwa/samosa-inference/releases/tag/inference-t5-package-2026-10-17.1),
+uploaded directly from its retained source file without a local staging copy.
 
 The pinned [upstream model card](https://huggingface.co/Falconsai/text_summarization/blob/6e505f907968c4a9360773ff57885cdc6dca4bfd/README.md)
 declares Apache-2.0. Its complete original card, Apache model license, explicit
@@ -36,5 +37,14 @@ removal and cache-only reinstall. Logs are
 executable and log pins are in `qualification.json`. The shared preparation
 reproduces every published Whisper metadata byte unchanged, and the shared remote
 gate again passes Whisper's real published install/transcription/cache/cleanup.
-The proposed release URLs are not evidence of publication. Other distributions,
-full area2 acceptance and final module release remain open.
+All ten staged assets (nine files and the index) were downloaded back and checked
+by size/SHA-256 before publication. The shared published-provider gate additionally
+passes cold installation from the actual release URLs, exact installed file
+verification,1347 actual summary checks per normal/SAN mode, cache-only
+resume/removal/reinstall and exclusive temporary workspace cleanup. Exact
+configuration/host executable pins are in `remote-normal.json` and
+`remote-sanitize.json`; logs remain at
+`/private/tmp/samosa-t5-published-{normal,sanitize}.log`. No model/engine binaries
+or retained installation cache were added to this source repository. Preparation
+retains about76KiB of metadata. Other distributions, full area2 acceptance and
+the final module release remain open.

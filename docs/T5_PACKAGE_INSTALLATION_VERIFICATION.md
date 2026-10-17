@@ -74,3 +74,17 @@ Original Chat/runtime/model assets were not edited.
 No actual Linux, macOS 14 execution, other architecture, loaded readiness or
 production distribution catalog is established by this local qualification.
 Installation remains the active component; lifecycle work is still pending.
+
+## Published distribution
+
+The [nine-file distribution](../catalog/t5-summary-cpu-v1) adds complete model,
+sidecar and dependency notices around the same independently qualified CPU
+engine/model. Exact-package per-file HTTPS setup and actual summaries pass in
+both host modes. The shared published-provider gate then independently passes
+cold acquisition from the actual release URLs, exact installed hashes/sizes,
+1347 summary checks per mode, cache-only resume/removal/reinstall and cleanup.
+Both remote receipts retain exact configuration and host-executable pins.
+The source repository contains metadata only; release upload streams the retained
+converted model directly from its existing file. No additional conversion or
+retained weight copy is created. Actual execution remains macOS26.5.1 ARM64 only;
+this closes T5's distribution slice, not full area2 or lifecycle readiness.

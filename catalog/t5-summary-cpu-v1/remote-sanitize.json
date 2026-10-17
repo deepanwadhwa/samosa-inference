@@ -1,0 +1,13 @@
+{
+  "catalog_sha256": "cc4c83f72b7cfcc9defd8341fa78d101a8c6de8fb48136071875487fba13f7d8",
+  "executables": {
+    "harness": "67e96a08d10ea5c0dd34c57c6aac9f4048b6fbcd8d3c920f3b76509c244475cf",
+    "public": "6cce1a32173768c4dfa8e3ea8a9ae97a86a449ead4f550d82381aa16b234861c",
+    "setup": "b3dc41729f375c96629d21dae4c2ec8ca71e0961cf0a3561371a4ed0be741f9d"
+  },
+  "format": "samosa.inference.t5-remote-qualification.v1",
+  "index_sha256": "8632d0fb41f034e46925e586a83b10ce347d7d0cf5e8bc7ee641922afc760458",
+  "sources_sha256": "ffda4a98ed2347c4bff3639aa5558654ebfcb937f2a5a454f30d800f3ffea70d",
+  "status": "passed",
+  "temporary_installation_removed": true
+}

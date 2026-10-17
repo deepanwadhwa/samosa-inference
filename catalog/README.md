@@ -1,9 +1,14 @@
 # Qualified provider distributions
 
-[Whisper base.en CPU](whisper-base-en-cpu-v1) is the first qualified catalog
-entry. Its native installation and actual transcription pass from the published
-runtime/model URLs in normal and sanitizer-equipped macOS ARM64 hosts. Full
-Inference component2 and the final module release remain incomplete.
+Two catalog entries pass cold installation from published URLs, actual-model
+inference, cache-only reuse/removal and cleanup in normal and sanitizer-equipped
+macOS ARM64 hosts:
+
+- [Whisper base.en CPU](whisper-base-en-cpu-v1):2441 actual transcription checks per mode.
+- [Native T5 summary CPU](t5-summary-cpu-v1):1347 actual summary checks per mode.
+
+Other provider distributions, full Inference component2 and the final module
+release remain incomplete.
 
 Each entry contains a complete pinned index, host-provisioned catalog/source
 configuration, independent runtime/model policy, notices/provenance and exact
