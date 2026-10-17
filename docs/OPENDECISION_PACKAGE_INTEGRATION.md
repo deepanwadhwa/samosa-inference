@@ -250,3 +250,38 @@ Hosted runs38978217444 atd0fab1b and38978547048 at30fe3b1 both passed. This prov
 the credential/per-file-source integration checks on their hosted platforms;
 it is separate from actual-model macOS execution. Production catalog publication
 and the remaining full area2 requirements remain open.
+
+## Published final16-file distributions
+
+Both [text](../catalog/opendecision-text-cpu-v1) and
+[image](../catalog/opendecision-image-cpu-v1) distributions now pass all four
+exact-package gates and all four cold published-URL gates in normal and
+sanitizer-equipped hosts. Ten text and twenty image cases pass per mode, with
+the same numerical error bounds and aggregate context-limit controls. Remote
+qualification fetches the original hash-pinned reference reports and synthetic
+prepared RGB frames from the release; model/runtime installation remains native.
+Every installed file is checked by size/hash/single-link identity, followed by
+cache-only reuse/removal/reinstallation and exclusive workspace cleanup.
+
+Text index is `3ef083607a32e6dbfe1a5529301f41c9f78abc6fb21b2e1dc3486adec373553c`
+(914475719 bytes); image index is
+`c60f43cd0c75a3c260aca393a7b935d94c00e1ac7c628d850be2148b906605a3`
+(1553020444 bytes). Their closed execution directories retain the original four
+files. Complete model/reference/runtime/sidecar notices, source-asset inventory,
+Cargo.lock and77 checksum-verified dependency notice sets are outside those
+directories. The worker deployment minimum26.0 is enforced; actual execution
+evidence remains macOS26.5.1 ARM64, without a Linux/older-macOS claim. The worker
+and ORT release binaries themselves are not sanitizer instrumented.
+
+All34 deduplicated runtime/model/QA assets passed name/size/download-back SHA-256
+verification before publication. The initial combined upload used gh labels as
+filenames and stopped on duplicate basenames. The draft-only resumable staging
+tool corrects names individually, preserves unexpected assets by refusing them,
+and verifies the complete set before success. The final release was published
+only after staging and all installed model gates passed. Converted weights were
+streamed from retained sources, without staging copies or source-repository
+weight files. Exact installed/remote receipts are retained with both entries;
+logs are `/private/tmp/samosa-decision-distribution-{text,image}-{normal,sanitize}.log`
+and `/private/tmp/samosa-decision-published-{text,image}-{normal,sanitize}.log`.
+Hosted source95acba0 passed run39042877641. Other distributions and full area2
+acceptance remain open;1/7 areas are complete.

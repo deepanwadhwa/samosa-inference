@@ -1,0 +1,14 @@
+{
+  "catalog_sha256": "b0b5e943c4bbf04b3484f7054d4d52edc86409507d98e68d843d0541bf8d05de",
+  "executables": {
+    "harness": "6831ae5f7a67f87daa7924fd963982144e95600463998eb9f44a411e55e55155",
+    "public": "e98607e27f507bb0f99434a1b8076c34dcc64ef9423fa7f94a4d6966ef185c7d",
+    "setup": "b3dc41729f375c96629d21dae4c2ec8ca71e0961cf0a3561371a4ed0be741f9d"
+  },
+  "format": "samosa.inference.decision-image-remote-qualification.v1",
+  "index_sha256": "c60f43cd0c75a3c260aca393a7b935d94c00e1ac7c628d850be2148b906605a3",
+  "reference_sha256": "ca1a8222ba9eb10b33648f5f1cca18b1aa61e0d493daf006dca530603fdc2ee6",
+  "sources_sha256": "f10fbc6ce5836e6a5f48c8bdd6fc9cde3006b64dce47a5cb2482a74d4fc3205a",
+  "status": "passed",
+  "temporary_installation_removed": true
+}

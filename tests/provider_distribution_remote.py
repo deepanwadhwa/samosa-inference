@@ -12,6 +12,92 @@ import shutil
 import subprocess
 import tempfile
 import sys
+import os
+import signal
+import time
+
+
+def exercise_install_recovery(common, online, base, index, provider, call):
+    """Observe/kill only this test's live installer, then reuse native resume."""
+    model = max((file for file in index['files'] if file['role'] == 'model'), key=lambda file: file['bytes'])
+    checkpoint = base / 'cache' / model['sha256'] / 'remote-checkpoint'
+    stage = checkpoint.with_name('stage')
+    child = subprocess.Popen(common + online, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True, start_new_session=True)
+    child.stdin.write(json.dumps(dict(contract_version=1, op='provider_install', provider_id=provider)))
+    child.stdin.close()
+    child.stdin = None
+    try:
+        deadline = time.monotonic() + 300
+        retained = 0
+        while child.poll() is None and time.monotonic() < deadline:
+            try:
+                records = checkpoint.read_bytes()
+                retained = stage.stat().st_size
+            except FileNotFoundError:
+                time.sleep(0.01)
+                continue
+            valid = []
+            if len(records) == 288:
+                for offset in (0, 144):
+                    record = records[offset:offset + 144]
+                    if hashlib.sha256(record[:80]).hexdigest().encode() == record[80:]:
+                        length = int(record[:16], 16)
+                        if 1048576 <= length <= retained < model['bytes']:
+                            valid.append((length, record[16:80].decode()))
+            if valid:
+                child.send_signal(signal.SIGSTOP)
+                pid, status = os.waitpid(child.pid, os.WUNTRACED)
+                assert pid == child.pid and os.WIFSTOPPED(status)
+                break
+            time.sleep(0.01)
+        else:
+            raise AssertionError('No live partial production checkpoint observed before installer exit/deadline')
+        prefix, expected_prefix = max(valid)
+        identity = stage.stat()
+        assert prefix <= identity.st_size < model['bytes'] and identity.st_nlink == 1
+        checksum = hashlib.sha256()
+        with stage.open('rb') as source:
+            remaining = prefix
+            while remaining:
+                chunk = source.read(min(65536, remaining))
+                assert chunk
+                checksum.update(chunk)
+                remaining -= len(chunk)
+        assert checksum.hexdigest() == expected_prefix
+        busy = call('provider_install', online, errors={'artifact_busy', 'package_assembly_busy'})
+        child.kill()
+        assert child.wait(timeout=15) == -signal.SIGKILL
+        child.communicate(timeout=15)
+        assert (stage.stat().st_dev, stage.stat().st_ino) == (identity.st_dev, identity.st_ino)
+        with os.fdopen(os.open(stage, os.O_RDWR | os.O_NOFOLLOW), 'r+b') as source:
+            held = os.fstat(source.fileno())
+            assert (held.st_dev, held.st_ino) == (identity.st_dev, identity.st_ino)
+            original = source.read(1)
+            assert original
+            altered = bytes([original[0] ^ 1])
+            source.seek(0)
+            source.write(altered)
+            source.flush()
+            os.fsync(source.fileno())
+        corrupt = call('provider_resume', online, errors={'artifact_checkpoint_mismatch'})
+        assert (stage.stat().st_dev, stage.stat().st_ino, stage.stat().st_size) == (identity.st_dev, identity.st_ino, identity.st_size)
+        with os.fdopen(os.open(stage, os.O_RDWR | os.O_NOFOLLOW), 'r+b') as source:
+            held = os.fstat(source.fileno())
+            assert (held.st_dev, held.st_ino) == (identity.st_dev, identity.st_ino)
+            assert source.read(1) == altered
+            source.seek(0)
+            source.write(original)
+            source.flush()
+            os.fsync(source.fileno())
+        call('provider_resume', online)
+        return dict(killed_owned_installer=True, verified_checkpoint_bytes=prefix,
+                    retained_bytes=identity.st_size, concurrent_refusal=busy['error']['code'],
+                    corrupt_prefix_refusal=corrupt['error']['code'], resumed=True)
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.communicate(timeout=15)
 
 
 def digest(path):
@@ -33,6 +119,7 @@ def main():
     parser.add_argument('--offline', type=Path)
     parser.add_argument('--decision-reference', type=Path)
     parser.add_argument('--fetch-decision-reference', action='store_true', help='Fetch pinned QA reference/frames from the same release; never model installation')
+    parser.add_argument('--exercise-resume', action='store_true', help='Kill this owned installer at a production checkpoint and test contention/corrupt-prefix recovery')
     args = parser.parse_args()
     if args.report.exists():
         parser.error('report must not already exist')
@@ -120,19 +207,26 @@ def main():
             common += ['--llama-runtime-revision', policy['runtime_revision'], '--llama-kind', policy['kind'],
                        '--llama-architecture', policy['architecture'], '--llama-engine-sha256', policy['engine_sha256']]
 
-        def call(op, flags=(), expected='installed_verified'):
+        def call(op, flags=(), expected='installed_verified', errors=None):
             print('BEGIN remote ' + op, flush=True)
             completed = subprocess.run(common + list(flags), input=json.dumps(dict(contract_version=1, op=op, provider_id=entry['id'])),
                                        text=True, capture_output=True, timeout=900)
             assert 'AddressSanitizer' not in completed.stderr and 'runtime error:' not in completed.stderr, completed.stderr
             receipt = json.loads(completed.stdout)
-            assert completed.returncode == 0 and receipt['status'] == expected and receipt['readiness'] == 'unqualified', receipt
+            if errors:
+                assert completed.returncode == 1 and receipt['error']['code'] in errors, receipt
+            else:
+                assert completed.returncode == 0 and receipt['status'] == expected and receipt['readiness'] == 'unqualified', receipt
             print('PASS remote ' + op, flush=True)
+            return receipt
 
         online = ['--file-sources', str(base / 'sources.json')]
         for host in policy['redirect_hosts']:
             online += ['--redirect-host', host]
-        call('provider_install', online)
+        if args.exercise_resume:
+            result['recovery'] = exercise_install_recovery(common, online, base, index, entry['id'], call)
+        else:
+            call('provider_install', online)
         call('provider_status')
         payload = base / 'package' / 'payload'
         for file in index['files']:

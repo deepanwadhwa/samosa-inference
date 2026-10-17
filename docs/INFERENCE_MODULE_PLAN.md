@@ -42,9 +42,11 @@ The published [Whisper base.en CPU](../catalog/whisper-base-en-cpu-v1),
 [EmbeddingGemma 2 CPU](../catalog/embeddinggemma2-cpu-v1) entries pass cold installation
 from their actual distribution URLs, exact installed inference, cache-only
 reuse/removal and cleanup in normal/SAN macOS ARM64 hosts. OpenDecision text/image
-fresh-install normal/SAN qualification is also
-complete; [exact reports](qualification/decision-installed-macos-arm64) retain
-their pins. These close those package slices only. Other provider distributions
+fresh-install normal/SAN qualification and cold published-URL qualification are
+complete for the final16-file [text](../catalog/opendecision-text-cpu-v1) and
+[image](../catalog/opendecision-image-cpu-v1) packages, including fetched pinned
+QA fixtures and cleanup. Exact receipts retain their pins. These close those
+package slices only. Other provider distributions
 and remaining full area2 acceptance stay open;1/7 areas remain complete.
 
 - Assemble trusted catalogs over the existing verified artifact, HTTPS download
@@ -54,6 +56,12 @@ and remaining full area2 acceptance stay open;1/7 areas remain complete.
 - Enforce package architecture, minimum OS, loader/backend compatibility and
   declared native dependencies before activation; installation alone is not ready.
 - Publish production catalog entries only after their actual package gates pass.
+
+Actual published embedding acquisition additionally passes owned-installer
+SIGKILL recovery, concurrent-install refusal, corrupt committed-prefix refusal
+and restored-prefix resume in normal/SAN hosts, followed by vector qualification,
+cache-only reuse and cleanup. [Exact evidence](EMBEDDING_PACKAGE_INSTALLATION_VERIFICATION.md#real-url-crash-contention-and-corrupt-prefix-recovery)
+complements the existing controlled credential/redirect/quota/recovery gates.
 
 ## 3. Engine lifecycle and readiness — pending
 

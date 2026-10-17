@@ -1,0 +1,23 @@
+{
+  "catalog_sha256": "5c41cb273c4a0197ced1c191ba6d744cd301bd155a66a35584a650b5a9c3856a",
+  "executables": {
+    "harness": "bc1193e5c590762ffbdbe71aa38ba23b2d788915ecfe22f26aa070121efde075",
+    "managed": "934c85708d9bbab6887f546b36b3fd54f4695f9ab80eb34d327414868326a30f",
+    "offline": "332be8b5c5a195ac48e8dc1bbdb2caf661bc063858687d90b8d1ab4d782c8464",
+    "public": "81cb857837808dee66a55e5137a422b11a626869e91f719fe40dc25e91a4ae3a",
+    "setup": "ec32b47ec6e49ffb3667e44ff973a3642f56f65008b149837db8b063dcd0d1fa"
+  },
+  "format": "samosa.inference.embedding-remote-qualification.v1",
+  "index_sha256": "fb11fc6c5885830282cc8e0d03d12dfbf7ceae0202bd4fb97c369d1af382a3ea",
+  "recovery": {
+    "concurrent_refusal": "artifact_busy",
+    "corrupt_prefix_refusal": "artifact_checkpoint_mismatch",
+    "killed_owned_installer": true,
+    "resumed": true,
+    "retained_bytes": 1326375,
+    "verified_checkpoint_bytes": 1064375
+  },
+  "sources_sha256": "a22571df24382655319e56e7fc95bb3df6e40191b9206bde3e2dea358967f520",
+  "status": "passed",
+  "temporary_installation_removed": true
+}

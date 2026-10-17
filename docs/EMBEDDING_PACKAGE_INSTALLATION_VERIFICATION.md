@@ -43,3 +43,29 @@ published Whisper/T5 metadata bytes unchanged. The existing full setup suite
 also passes normal/SAN on macOS/Linux. Those fixture controls do not establish
 Linux model execution. This closes embedding's distribution slice only; area2,
 loaded lifecycle readiness and the remaining full goal stay open.
+
+## Real-URL crash, contention and corrupt-prefix recovery
+
+The shared remote gate's optional `--exercise-resume` passes normal and
+sanitizer-equipped hosts against the real published model/runtime sources. It
+starts a new native installer in an exclusive temporary workspace, observes a
+checksummed production checkpoint of at least1MiB, stops only that live child and
+independently verifies the recorded prefix. A second public install refuses with
+`artifact_busy`. Observed SIGKILL termination releases the original install lease.
+
+Changing one committed byte in that owned temporary stage causes native resume
+to refuse with `artifact_checkpoint_mismatch`; inode, size and corrupt contents
+remain preserved. Restoring that byte permits native resume, full pinned
+installation and the existing768-dimensional/4-of-4 ranking/provenance/replay/
+shutdown gate. Cache-only removal/reinstallation and workspace cleanup also pass.
+The retained stage includes a tail beyond the durable checkpoint, exercising
+the native retained-tail protocol against the real service. This proves verified
+recovery, without asserting a measured network-byte saving.
+
+Exact checkpoint/retained counts, refusal codes, source/index/host-executable pins
+and cleanup outcomes are retained in the entry's `remote-recovery-normal.json`
+and `remote-recovery-sanitize.json`. Logs remain at
+`/private/tmp/samosa-embedding-remote-recovery-{normal,sanitize}.log`. The test
+changes only its newly created private cache stage; original model files remain
+untouched. This strengthens the shared acquisition gate, not all provider
+distribution or lifecycle acceptance.

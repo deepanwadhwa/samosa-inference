@@ -1,9 +1,9 @@
-# Native OpenDecision text distribution candidate
+# Native OpenDecision image distribution
 
 This uses the existing native OpenDecision worker, original prepared tokenizer,
 qualified float32 ONNX graph and ONNX Runtime1.27.0. No model conversion,
 Python inference runtime or alternate installer is introduced. The16-file package
-has index SHA-256 `3ef083607a32e6dbfe1a5529301f41c9f78abc6fb21b2e1dc3486adec373553c` and914475719
+has index SHA-256 `c60f43cd0c75a3c260aca393a7b935d94c00e1ac7c628d850be2148b906605a3` and1553020444
 payload bytes. Its closed `assets/` execution directory has exactly the original
 four files. Metadata/notices are outside that directory. Preparation copies only
 metadata; model, tokenizer, library and worker files remain at retained sources.
@@ -25,21 +25,26 @@ verification against the qualified Cargo.lock checksums. The lock and per-file
 notice inventory are included. Notice collection uses Python3.11+ as release
 QA tooling only; it installs nothing and performs no network/model download.
 
-The exact16-file normal and sanitizer-equipped setup/inference gates pass10 actual
+The exact16-file normal and sanitizer-equipped setup/inference gates pass20 actual
 public cases per mode, including retry/routing/refusal and aggregate input limits.
-Exact host/harness/log pins are in `qualification.json`. Staging verification and
-cold published-URL qualification remain required before this entry closes. Original
+Exact host/harness/log pins are in `qualification.json`. All34 combined release
+assets passed staging download-back verification. Both
+normal and sanitizer-equipped real-URL gates also pass, including fetched pinned
+reference/RGB fixtures, exact installed file verification, public inference,
+cache-only reuse/removal and cleanup. Remote receipts are in `remote-normal.json`
+and `remote-sanitize.json`; logs remain at
+`/private/tmp/samosa-decision-published-image-{normal,sanitize}.log`. Original
 five-file runtime/model qualification does not substitute for this final package.
-Logs are `/private/tmp/samosa-decision-distribution-text-{normal,sanitize}.log`.
+Logs are `/private/tmp/samosa-decision-distribution-image-{normal,sanitize}.log`.
 Installation does not imply loaded lifecycle readiness or full area2 completion.
 
 `qa-artifacts.json` pins the original reference report and any synthetic prepared
 RGB frames for independent public qualification. They contain no private machine
-paths. Reference SHA-256 is `f2c54e4d1be67059c184b9a2326b1b7b96ee7b1de02b6efcaeef5cbf3951dc11`. Supplemental QA
+paths. Reference SHA-256 is `ca1a8222ba9eb10b33648f5f1cca18b1aa61e0d493daf006dca530603fdc2ee6`. Supplemental QA
 artifacts are separate release assets, not installed model/runtime files. The
 shared remote gate can fetch those small pinned fixtures; all actual package and
 model acquisition still uses native setup. The model graph is uploaded directly
 from its retained file, with no local staging copy. Both converted graphs are
 below GitHub's documented2GiB per-asset bound; one combined release deduplicates
-common worker/library/notice assets by SHA-256. Proposed URLs do not yet prove
-publication. Other distributions and all remaining full goal requirements stay open.
+common worker/library/notice assets by SHA-256. The [combined package prerelease](https://github.com/deepanwadhwa/samosa-inference/releases/tag/inference-decision-packages-2026-10-17.1)
+is published and qualified through those actual URLs. Other distributions and all remaining full goal requirements stay open.
