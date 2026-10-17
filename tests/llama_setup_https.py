@@ -44,7 +44,9 @@ parser.add_argument("--decision-reference")
 parser.add_argument("--decision-reference-pin")
 parser.add_argument("--kind")
 parser.add_argument("--architecture")
-parser.add_argument("--engine-pin", required=True)
+parser.add_argument("--engine-pin")
+parser.add_argument("--speech-registry-cli")
+parser.add_argument("--speech-quality-profile")
 parser.add_argument("--config-pin")
 parser.add_argument("--tokenizer-pin")
 parser.add_argument("--weights-pin")
@@ -76,13 +78,19 @@ assert not any(embedding_quality) or (all(embedding_quality) and args.kind == "e
 body = Path(args.index).read_bytes()
 assert hashlib.sha256(body).hexdigest() == args.pin
 index = json.loads(body)
-assert index["recipe"] in ("llama-gguf-package-v1", "whisper-ggml-package-v1", "visionpsy-package-v1", "molmo2-mlx-package-v1", "opendecision-package-v1")
+assert index["recipe"] in ("llama-gguf-package-v1", "whisper-ggml-package-v1", "visionpsy-package-v1", "molmo2-mlx-package-v1", "opendecision-package-v1", "sherpa-speech-package-v1")
+is_speech = index["recipe"] == "sherpa-speech-package-v1"
+assert args.engine_pin or is_speech
+assert not args.speech_registry_cli or (is_speech and args.manifest_pin)
+assert not args.speech_quality_profile or args.speech_registry_cli
 is_decision = index["recipe"] == "opendecision-package-v1"
 is_whisper = index["recipe"] == "whisper-ggml-package-v1"
 is_vision = index["recipe"] == "visionpsy-package-v1"
 is_molmo = index["recipe"] == "molmo2-mlx-package-v1"
 assert not args.reject_model or is_molmo
-if is_decision:
+if is_speech:
+    assert args.manifest_pin
+elif is_decision:
     assert args.decision_profile and args.revision and args.runtime_pin and args.model_pin and args.tokenizer_pin
 else:
     assert (args.manifest_pin and args.kernels_pin) if is_molmo else ((args.config_pin and args.tokenizer_pin and args.weights_pin and args.kernels_pin) if is_vision else (args.revision and ((args.profile and args.model_pin) if is_whisper else (args.kind and args.architecture))))
@@ -197,7 +205,9 @@ try:
     acquisition = (["--file-sources", str(sources_file)] if args.per_file_sources else
                    digest_auth + ["--digest-endpoint", endpoint])
     reservations = ["--reservation-directory", str(pool), "--copy-ceiling", str(total), "--reservation-ceiling", str(total), "--reservation-capacity", "1"]
-    if is_decision:
+    if is_speech:
+        policy = []
+    elif is_decision:
         policy = ["--decision-profile", args.decision_profile, "--decision-runtime-revision", args.revision,
                   "--decision-engine-sha256", args.engine_pin, "--decision-runtime-sha256", args.runtime_pin,
                   "--decision-model-sha256", args.model_pin, "--decision-tokenizer-sha256", args.tokenizer_pin]
@@ -233,7 +243,7 @@ try:
             assert result.returncode == 0 and receipt["status"] == expected_status and receipt["readiness"] == "unqualified", receipt
         return receipt
 
-    for flags, supported in (([], False), (policy, True)):
+    for flags, supported in (((policy, True),) if is_speech else (([], False), (policy, True))):
         discovery = subprocess.run(config + flags,
                                    input=json.dumps(dict(contract_version=1, op="provider_catalog")),
                                    text=True, capture_output=True, timeout=15)
@@ -248,7 +258,8 @@ try:
     if is_decision:
         duplicate = subprocess.run(config + policy + policy[-2:], input="{}", text=True, capture_output=True, timeout=15)
         assert duplicate.returncode == 2 and not duplicate.stdout
-    call("provider_install", reservations, error=runtime_error)
+    if not is_speech:
+        call("provider_install", reservations, error=runtime_error)
     assert not requests and not (package / "assemble.lock").exists() and not (base / "cache").exists()
     if args.per_file_sources:
         conflicting = subprocess.run(config + acquisition + ["--digest-endpoint", endpoint], input="{}", text=True, capture_output=True, timeout=15)
@@ -313,22 +324,23 @@ try:
         catalog_key.unlink()
         payload_key.unlink()
     sources_file.unlink()
-    installed_engine = package / "payload" / next(f["name"] for f in index["files"] if f["role"] == "engine")
+    installed_engine = package / "payload" / next(f["name"] for f in index["files"] if f["role"] == ("library" if is_speech else "engine"))
     identity = installed_engine.stat()
-    assert identity.st_mode & 0o777 == 0o500
-    wrong = policy.copy()
-    if is_decision:
-        wrong[wrong.index("--decision-engine-sha256") + 1] = "0" * 64
-    elif is_molmo:
-        wrong[wrong.index("--molmo-engine-sha256") + 1] = "0" * 64
-    elif is_vision:
-        wrong[wrong.index("--vision-engine-sha256") + 1] = "0" * 64
-    elif is_whisper:
-        wrong[wrong.index("--whisper-runtime-revision") + 1] = "0" * 40
-    else:
-        wrong[wrong.index("--llama-kind") + 1] = "text" if args.kind == "embedding" else "embedding"
-    call("provider_resume", reservations + wrong, error=runtime_error)
-    assert (package / "complete").is_file() and installed_engine.stat().st_ino == identity.st_ino
+    assert identity.st_mode & 0o777 == (0o400 if is_speech else 0o500)
+    if not is_speech:
+        wrong = policy.copy()
+        if is_decision:
+            wrong[wrong.index("--decision-engine-sha256") + 1] = "0" * 64
+        elif is_molmo:
+            wrong[wrong.index("--molmo-engine-sha256") + 1] = "0" * 64
+        elif is_vision:
+            wrong[wrong.index("--vision-engine-sha256") + 1] = "0" * 64
+        elif is_whisper:
+            wrong[wrong.index("--whisper-runtime-revision") + 1] = "0" * 40
+        else:
+            wrong[wrong.index("--llama-kind") + 1] = "text" if args.kind == "embedding" else "embedding"
+        call("provider_resume", reservations + wrong, error=runtime_error)
+        assert (package / "complete").is_file() and installed_engine.stat().st_ino == identity.st_ino
     if is_decision:
         for flag, code in (("--decision-runtime-sha256",runtime_error),("--decision-model-sha256","unqualified_decision_package_model"),("--decision-tokenizer-sha256","unqualified_decision_package_model")):
             wrong_model = policy.copy()
@@ -374,6 +386,15 @@ try:
     call("provider_remove", reservations, expected_status="removed")
     call("provider_install", reservations + policy)
     assert (package / "complete").is_file() and sorted(requests) == sorted(payloads)
+    if args.speech_registry_cli:
+        installed_manifest = package / "payload" / "manifest.json"
+        assert hashlib.sha256(installed_manifest.read_bytes()).hexdigest() == args.manifest_pin
+        command = [sys.executable, str(Path(__file__).with_name("test_speech_public_real.py")),
+                   os.path.abspath(args.speech_registry_cli), str(package / "payload"), args.manifest_pin]
+        if args.speech_quality_profile:
+            command.append(os.path.abspath(args.speech_quality_profile))
+        command.append("--stream")
+        run_stage("actual installed speech and PCM streaming", command, check=True, timeout=1800)
     if args.decision_cli:
         public = base / 'decision-public'
         shutil.copyfile(os.path.abspath(args.decision_cli),public)
@@ -425,7 +446,7 @@ try:
                   "--output", str(base / "embedding-quality")], check=True, timeout=900)
         assert json.loads((base / "embedding-quality" / "embedding.json").read_text()) == json.loads(
             (package / "payload" / "embedding-recipe.json").read_text())
-    print(f"PASS {'OpenDecision' if is_decision else ('Molmo' if is_molmo else ('VisionPsy' if is_vision else ('Whisper' if is_whisper else 'llama')))} setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
+    print(f"PASS {'Sherpa speech' if is_speech else ('OpenDecision' if is_decision else ('Molmo' if is_molmo else ('VisionPsy' if is_vision else ('Whisper' if is_whisper else 'llama'))))} setup HTTPS: {len(index['files'])} files; {total} bytes; index {args.pin}; policy/TLS refusal, publication, last-good preservation, offline status/resume, completed/incomplete catalog removal and cache-only reinstall")
 finally:
     if server is not None:
         if thread is not None and thread.is_alive():

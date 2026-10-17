@@ -32,9 +32,9 @@ def prepare(*, output, release_url, paths, expected, engine, model, recipe,
     inputs = dict(paths)
     file_roles = {name: 'engine' if name == engine else 'model' if name == model else 'metadata' for name in inputs}
     file_roles.update(roles or {})
-    if set(inputs) != set(expected) or engine not in inputs or model not in inputs:
+    if set(inputs) != set(expected) or (engine is not None and engine not in inputs) or model not in inputs:
         raise ValueError('every source requires its own expected SHA-256')
-    if set(file_roles) != set(inputs) or file_roles[engine] != 'engine' or file_roles[model] != 'model' or any(
+    if set(file_roles) != set(inputs) or (engine is not None and file_roles[engine] != 'engine') or file_roles[model] != 'model' or any(
             role not in ('engine', 'library', 'model', 'data', 'metadata') for role in file_roles.values()):
         raise ValueError('invalid package roles')
     for name, path in inputs.items():
