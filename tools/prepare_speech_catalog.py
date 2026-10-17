@@ -52,6 +52,8 @@ def main():
                        'model' if file['role'].startswith('pocket_') and name.endswith('.onnx') or file['role'] == 'kokoro_model' else 'data')
         keep.append(copy.deepcopy(file))
     notice_inputs = {
+        'SPEECH-SOURCE-NOTICES.txt': '70d02ac824f60eabf1e59ee738779fd011fc2f07e10e9373a90226f5f57c7e63',
+        'SPEECH-SOURCE-NOTICES.json': 'f3f3cd93fa6cdbebb4e0a8228247276c970d22d6b3618c6aafc113afe1e824d5',
         'LICENSE.Sherpa': 'cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30',
         'LICENSE.onnxruntime': '2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c',
         'ORT-THIRD-PARTY-NOTICES.txt': '0e07b95f3a8d6230037707c5c4a2b554d12c4cb67369669ac255635528ffcee2',

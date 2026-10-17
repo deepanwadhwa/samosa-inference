@@ -43,3 +43,46 @@ installed payloads are temporary and removed by the shared test's finally block.
 These are local candidate results, not published-URL qualification or Linux model
 execution. Speech publication, complete corresponding-source packaging review,
 and published-URL tests remain open. Component 2 is not complete.
+
+## Complete notice candidates and remote QA tooling
+
+The shared `provider_distribution_remote.py` gate now accepts `speech-pocket`
+and `speech-kokoro`, calls the existing public speech harness with `--stream`,
+and retains native cold installation, per-file hashes, cache-only reuse and
+cleanup. Speech has a library-only runtime, so no fake engine executable or
+llama policy is introduced. Kokoro requires a manifest-bound quality profile;
+the gate snapshots that profile before execution. Actual speech published-URL
+qualification remains pending. A real published T5 regression run passes 1347
+summary checks and the existing cache/removal gates after this extension.
+
+`collect_speech_source_notices.py` reuses the release helper's hashing and metadata
+serialization. It reads retained, separately pinned source archives without
+extracting them or downloading dependencies. Its input inventory is
+[`speech-source-inventory-v1.json`](../catalog/candidates/speech-source-inventory-v1.json).
+The collector records every LICENSE/COPYING/NOTICE file and builds a source-only
+bundle containing original archives and build directions. All 13 enclosed archive
+hashes were independently read back from the generated bundle and matched.
+
+- Combined notices: 378609 bytes, SHA-256
+  `70d02ac824f60eabf1e59ee738779fd011fc2f07e10e9373a90226f5f57c7e63`.
+- Notice inventory SHA-256:
+  `f3f3cd93fa6cdbebb4e0a8228247276c970d22d6b3618c6aafc113afe1e824d5`.
+- Source bundle: 54620401 bytes, SHA-256
+  `42b582ec9ec9812567a2888909cd0cbd13f251f431fb7d6d4a655f2bee4a4656`.
+
+The archives and bundle remain outside the repository. The bundle does not
+establish byte-identical reproduction or automatically certify dependency
+completeness; final source/build closure remains a publication gate.
+
+Revised candidates add these notices inside the native closed tree:
+
+| Candidate | Files | Payload bytes | Index SHA-256 |
+| --- | ---: | ---: | --- |
+| Pocket v2 | 27 | 232717382 | `022eb7848df4d8c8a00f7eeb4ba4214f186296914246a94811e021a60586a3aa` |
+| Kokoro v2 | 375 | 190948102 | `612248e08181e1e7c77c7471cc9622f95b313e840be9871533deaadfb12ff7c7` |
+
+Both exact v2 candidates pass normal and sanitizer native HTTPS setup and
+actual public synthesis/streaming gates: 265 Pocket checks and 583 Kokoro checks
+per mode. Cache-only reinstall/removal and temporary cleanup also pass. Logs:
+`/private/tmp/samosa-{pocket,kokoro}-distribution-v2-{normal,sanitize}.log`.
+No speech release has been published and full component 2 remains open.

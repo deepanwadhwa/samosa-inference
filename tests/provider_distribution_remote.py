@@ -112,7 +112,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for key in ('candidate', 'setup', 'public', 'harness', 'report'):
         parser.add_argument('--' + key, type=Path, required=True)
-    parser.add_argument('--profile', choices=('whisper', 't5', 'embedding', 'decision-text', 'decision-image'), default='whisper')
+    parser.add_argument('--profile', choices=('whisper', 't5', 'embedding', 'decision-text', 'decision-image', 'speech-pocket', 'speech-kokoro'), default='whisper')
+    parser.add_argument('--speech-quality-profile', type=Path)
     parser.add_argument('--sources', type=Path)
     parser.add_argument('--audio', type=Path)
     parser.add_argument('--managed', type=Path)
@@ -131,6 +132,9 @@ def main():
         parser.error('embedding requires managed and offline native adapters')
     if args.profile != 'embedding' and (args.managed or args.offline):
         parser.error('managed/offline adapters are embedding configuration')
+    speech = args.profile.startswith('speech-')
+    if bool(args.speech_quality_profile) != (args.profile == 'speech-kokoro'):
+        parser.error('Kokoro requires its pinned quality profile; other profiles do not use it')
     decision = args.profile.startswith('decision-')
     if (decision and bool(args.decision_reference) == args.fetch_decision_reference) or (
             not decision and (args.decision_reference or args.fetch_decision_reference)):
@@ -139,6 +143,8 @@ def main():
     index = json.loads((candidate / 'index.json').read_text())
     catalog = json.loads((candidate / 'catalog.json').read_text())
     policy = json.loads((candidate / 'host-policy.json').read_text())
+    if speech:
+        assert args.profile == 'speech-' + policy['kind'] and index['recipe'] == 'sherpa-speech-package-v1'
     if decision:
         assert args.profile == 'decision-' + policy['profile'] and index['recipe'] == 'opendecision-package-v1'
     entry, = catalog['entries']
@@ -153,6 +159,11 @@ def main():
                   sources_sha256=digest(candidate / 'sources.json'),
                   executables={key: digest(getattr(args, key)) for key in binaries},
                   status='not_executed')
+    if args.speech_quality_profile:
+        quality = json.loads(args.speech_quality_profile.read_text())
+        assert quality['manifest_sha256'] == policy['manifest_sha256']
+        assert quality['kind'].lower() == policy['kind']
+        result['quality_profile_sha256'] = digest(args.speech_quality_profile)
     if args.audio:
         result['input_sha256'] = digest(args.audio)
     if decision:
@@ -161,6 +172,12 @@ def main():
         result['reference_sha256'] = policy['reference_sha256']
     with tempfile.TemporaryDirectory(prefix='samosa-' + args.profile + '-remote-') as temporary:
         base = Path(temporary)
+        speech_quality_profile = None
+        if args.speech_quality_profile:
+            speech_quality_profile = base / 'speech-quality-profile.json'
+            shutil.copyfile(args.speech_quality_profile, speech_quality_profile)
+            speech_quality_profile.chmod(0o400)
+            assert digest(speech_quality_profile) == result['quality_profile_sha256']
         decision_reference = args.decision_reference
         if decision and args.fetch_decision_reference:
             # Only small QA fixtures use curl. The package, engine, library,
@@ -203,7 +220,7 @@ def main():
             common += ['--decision-profile', policy['profile'], '--decision-runtime-revision', policy['runtime_revision'],
                        '--decision-engine-sha256', policy['engine_sha256'], '--decision-runtime-sha256', policy['runtime_sha256'],
                        '--decision-model-sha256', policy['model_sha256'], '--decision-tokenizer-sha256', policy['tokenizer_sha256']]
-        else:
+        elif not speech:
             common += ['--llama-runtime-revision', policy['runtime_revision'], '--llama-kind', policy['kind'],
                        '--llama-architecture', policy['architecture'], '--llama-engine-sha256', policy['engine_sha256']]
 
@@ -232,9 +249,15 @@ def main():
         for file in index['files']:
             path = payload / file['name']
             assert path.stat().st_nlink == 1 and path.stat().st_size == file['bytes'] and digest(path) == file['sha256']
-        engine = next(file for file in index['files'] if file['role'] == 'engine')
+        engine = None if speech else next(file for file in index['files'] if file['role'] == 'engine')
         model = next(file for file in index['files'] if file['role'] == 'model')
-        if decision:
+        if speech:
+            assert digest(payload / 'manifest.json') == policy['manifest_sha256']
+            command = [sys.executable, str(snapshots['harness']), str(snapshots['public']), str(payload), policy['manifest_sha256']]
+            if args.speech_quality_profile:
+                command.append(str(speech_quality_profile))
+            command.append('--stream')
+        elif decision:
             names = ['decision-engine', 'libonnxruntime.1.27.0.dylib', 'model.onnx', 'tokenizer.json']
             entries = {file['name']: file for file in index['files']}
             inventory = dict(root=str(payload / 'assets'), files=[dict(name=name,
