@@ -32,12 +32,14 @@ records the scope. No synthetic fixture is counted as model quality.
 
 Pending before closing component2:
 
-- Finish the seven-file Ornith text candidate's exact installed normal/SAN
-  managed/registry quality, cancellation, owner isolation, shutdown and offline
-  replay gates, then cold published-URL qualification.
-- Finish Molmo2's source-backed distribution staging and cold published-URL
-  normal/SAN video and common-registry checks. Its new37-file exact installed
-  package already passes both modes and 524671 bounded temporal checks each.
+- Finish Ornith text cold published-URL qualification. Its exact seven-file
+  installed package passes normal/SAN managed/registry quality, cancellation,
+  owner isolation, shutdown and exact offline replay gates.
+- Finish Molmo2 cold published-URL normal/SAN video and common-registry checks.
+  All38 unique assets were verified before publication; its new37-file exact
+  installed package already passes both modes and524671 bounded temporal checks
+  each. Both text and Molmo prereleases are now public; production catalog entries
+  wait for these remaining cold remote receipts.
 - Recheck this full requirement/evidence map against the resulting current
   implementation, exact receipts and final independent CI revision. Any missing
   requirement remains open rather than being inferred from unrelated green tests.

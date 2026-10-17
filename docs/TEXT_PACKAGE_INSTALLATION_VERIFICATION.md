@@ -22,11 +22,12 @@ MIT native-runtime notice accompanies the package.
 The shared HTTPS installer gate now invokes the existing `managed_native.sh`
 against the freshly installed engine/model, with the existing registry and
 offline adapters. It preserves the complete acquisition/refusal/recovery/removal
-checks before actual model execution. The normal candidate gate passes, including
+checks before actual model execution. Both normal and sanitizer candidate gates pass, including
 native token count24, arithmetic answer4, observed active cancellation, survivor,
 owner-scoped status, foreign-owner refusal, FIFO EOF shutdown, private credential
-cleanup and exact runtime-free offline replay. Sanitizer candidate execution and
-cold published-URL qualification remain pending. The underlying engine itself is
+cleanup and exact runtime-free offline replay. The seven unique release assets
+passed download-back hashes before publication. Cold published-URL qualification
+is running; its production catalog entry remains pending. The underlying engine itself is
 a release build.
 
 Logs: `/private/tmp/samosa-text-distribution-v1-{normal,sanitize}.log`.
