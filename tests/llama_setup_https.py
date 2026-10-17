@@ -70,11 +70,17 @@ parser.add_argument("--embedding-managed-cli")
 parser.add_argument("--embedding-offline-cli")
 parser.add_argument("--embedding-registry-cli")
 parser.add_argument("--embedding-test")
+parser.add_argument("--text-managed-cli")
+parser.add_argument("--text-offline-cli")
+parser.add_argument("--text-registry-cli")
+parser.add_argument("--text-test")
 args = parser.parse_args()
 assert bool(args.summary_cli) == bool(args.summary_test)
 assert not args.summary_cli or args.kind == "summary"
 embedding_quality = (args.embedding_managed_cli, args.embedding_offline_cli, args.embedding_registry_cli, args.embedding_test)
 assert not any(embedding_quality) or (all(embedding_quality) and args.kind == "embedding")
+text_quality = (args.text_managed_cli, args.text_offline_cli, args.text_registry_cli, args.text_test)
+assert not any(text_quality) or (all(text_quality) and args.kind == "text")
 body = Path(args.index).read_bytes()
 assert hashlib.sha256(body).hexdigest() == args.pin
 index = json.loads(body)
@@ -422,6 +428,15 @@ try:
         run_stage("actual summary inference", [os.path.abspath(args.summary_test), os.path.abspath(args.summary_cli),
                         str(installed_engine), str(package / "payload" / model["name"])],
                        check=True, timeout=600)
+    if args.text_test:
+        model = next(file for file in index["files"] if file["role"] == "model")
+        environment = os.environ.copy()
+        environment["SAMOSA_TEST_REGISTRY_BINARY"] = os.path.abspath(args.text_registry_cli)
+        environment["SAMOSA_TEST_OFFLINE_BINARY"] = os.path.abspath(args.text_offline_cli)
+        run_stage("actual installed text lifecycle and registry", ["sh", os.path.abspath(args.text_test),
+                  os.path.abspath(args.text_managed_cli), str(installed_engine), args.engine_pin,
+                  str(installed_engine.stat().st_size), str(package / "payload" / model["name"]),
+                  model["sha256"], str(model["bytes"])], env=environment, check=True, timeout=1200)
     if args.temporal_cli:
         run_stage("actual temporal inference", [os.path.abspath(args.temporal_test), os.path.abspath(args.temporal_cli),
                         str(installed_engine), str(package / "payload" / "model"), str(base / "actual-temporal")],

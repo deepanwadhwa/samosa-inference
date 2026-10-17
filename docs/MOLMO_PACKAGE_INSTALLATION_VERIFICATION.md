@@ -238,3 +238,26 @@ macOS 26.5.1 arm64. No earlier macOS or Linux model execution is established.
 Original Chat assets were preserved; temporary installed copies were removed by
 the successful harness. Production catalog/distribution and the OpenDecision
 provider/package prerequisite remain open before component 2 can close.
+
+## Production distribution candidate
+
+`tools/prepare_molmo_catalog.py` reads the retained native manifest, all existing
+small converted shards, corrected independent engine and colocated kernels in
+place. It reuses common release metadata preparation without copying or
+repacking weights. Full original upstream card, standard Apache2.0 terms,
+conversion provenance, native dependency licenses and stb_image notice accompany
+the existing model/engine descriptor.
+
+The37-file candidate has3553820519 payload bytes and index
+`ea12e2c91353f0098e846bace435d69830a53e85b8c5f7596f1ca9abfeefff6a`.
+The engine/kernel/native-manifest pins above are unchanged. Exact installed
+normal/SAN full HTTPS gates pass, with524671 existing actual temporal checks per
+mode, including foreign-owner refusal and exact runtime-free replay. These are
+bounded two-frame ordering checks, not a general video benchmark. Logs:
+`/private/tmp/samosa-molmo-distribution-v1-{normal,sanitize}.log`.
+
+All38 unique release assets passed streaming download-back hashes before
+publication. Existing small shards fit the current uploader; no new splitting,
+archive unpacker, downloader or inference implementation is introduced. The
+prerelease is published; cold published-URL/common-registry qualification and the
+production catalog entry remain pending. Actual scope is macOS26.5.1 arm64 only.

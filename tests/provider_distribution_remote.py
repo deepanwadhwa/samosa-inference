@@ -112,7 +112,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for key in ('candidate', 'setup', 'public', 'harness', 'report'):
         parser.add_argument('--' + key, type=Path, required=True)
-    parser.add_argument('--profile', choices=('whisper', 't5', 'embedding', 'decision-text', 'decision-image', 'speech-pocket', 'speech-kokoro', 'vision'), default='whisper')
+    parser.add_argument('--profile', choices=('whisper', 't5', 'embedding', 'decision-text', 'decision-image', 'speech-pocket', 'speech-kokoro', 'vision', 'molmo', 'text'), default='whisper')
     parser.add_argument('--speech-quality-profile', type=Path)
     parser.add_argument('--sources', type=Path)
     parser.add_argument('--audio', type=Path)
@@ -129,13 +129,15 @@ def main():
         parser.error('Whisper requires Sources and the pinned audio fixture')
     if args.profile != 'whisper' and (args.sources or args.audio):
         parser.error('only Whisper uses Sources/audio fixtures')
-    if args.profile == 'embedding' and (not args.managed or not args.offline):
-        parser.error('embedding requires managed and offline native adapters')
-    if args.profile != 'embedding' and (args.managed or args.offline):
-        parser.error('managed/offline adapters are embedding configuration')
+    if args.profile in ('embedding', 'text') and (not args.managed or not args.offline):
+        parser.error('text and embedding require managed and offline native adapters')
+    if args.profile not in ('embedding', 'text') and (args.managed or args.offline):
+        parser.error('managed/offline adapters are text or embedding configuration')
     speech = args.profile.startswith('speech-')
     if bool(args.speech_quality_profile) != (args.profile == 'speech-kokoro'):
         parser.error('Kokoro requires its pinned quality profile; other profiles do not use it')
+    molmo = args.profile == 'molmo'
+    text = args.profile == 'text'
     vision = args.profile == 'vision'
     if bool(args.image) != vision:
         parser.error('VisionPsy requires its pinned image fixture; other profiles do not use it')
@@ -147,6 +149,10 @@ def main():
     index = json.loads((candidate / 'index.json').read_text())
     catalog = json.loads((candidate / 'catalog.json').read_text())
     policy = json.loads((candidate / 'host-policy.json').read_text())
+    if molmo:
+        assert index['recipe'] == 'molmo2-mlx-package-v1'
+    if text:
+        assert index['recipe'] == 'llama-gguf-package-v1' and policy['kind'] == 'text'
     if vision:
         assert index['recipe'] == 'visionpsy-package-v1'
     if speech:
@@ -156,7 +162,7 @@ def main():
     entry, = catalog['entries']
     assert digest(candidate / 'index.json') == entry['sha256']
     binaries = ('setup', 'public', 'harness', 'sources') if args.profile == 'whisper' else ('setup', 'public', 'harness')
-    if args.profile == 'embedding':
+    if args.profile in ('embedding', 'text'):
         binaries += ('managed', 'offline')
     if args.image:
         assert digest(args.image) == '1c4497cbf9e9b55b61d2f2103814adfb37d64d16083945f4b7f880f46e762c43'
@@ -235,6 +241,9 @@ def main():
         if args.profile == 'whisper':
             common += ['--whisper-runtime-revision', policy['runtime_revision'], '--whisper-profile', policy['profile'],
                        '--whisper-engine-sha256', policy['engine_sha256'], '--whisper-model-sha256', policy['model_sha256']]
+        elif molmo:
+            common += ['--molmo-engine-sha256', policy['engine_sha256'], '--molmo-kernels-sha256', policy['kernels_sha256'],
+                       '--molmo-manifest-sha256', policy['manifest_sha256']]
         elif vision:
             common += ['--vision-engine-sha256', policy['engine_sha256'], '--vision-config-sha256', policy['config_sha256'],
                        '--vision-tokenizer-sha256', policy['tokenizer_sha256'], '--vision-weights-sha256', policy['weights_sha256'],
@@ -274,7 +283,17 @@ def main():
             assert path.stat().st_nlink == 1 and path.stat().st_size == file['bytes'] and digest(path) == file['sha256']
         engine = None if speech else next(file for file in index['files'] if file['role'] == 'engine')
         model = next(file for file in index['files'] if file['role'] == 'model')
-        if speech:
+        environment = os.environ.copy()
+        if text:
+            environment['SAMOSA_TEST_REGISTRY_BINARY'] = str(snapshots['public'])
+            environment['SAMOSA_TEST_OFFLINE_BINARY'] = str(snapshots['offline'])
+            command = ['sh', str(snapshots['harness']), str(snapshots['managed']), str(payload / engine['name']),
+                       engine['sha256'], str(engine['bytes']), str(payload / model['name']), model['sha256'], str(model['bytes'])]
+        elif molmo:
+            environment['SAMOSA_TEST_USE_REGISTRY'] = '1'
+            command = [str(snapshots['harness']), str(snapshots['public']), str(payload / engine['name']),
+                       str(payload / 'model'), str(base / 'temporal-quality')]
+        elif speech:
             assert digest(payload / 'manifest.json') == policy['manifest_sha256']
             command = [sys.executable, str(snapshots['harness']), str(snapshots['public']), str(payload), policy['manifest_sha256']]
             if args.speech_quality_profile:
@@ -308,7 +327,7 @@ def main():
             command += [str(payload / engine['name']), str(payload / model['name'])]
             if args.audio:
                 command += [str(args.audio.resolve())]
-        subprocess.run(command, check=True, timeout=900)
+        subprocess.run(command, env=environment, check=True, timeout=1200)
         if args.profile == 'embedding':
             assert json.loads((base / 'embedding-quality' / 'embedding.json').read_text()) == json.loads(
                 (payload / 'embedding-recipe.json').read_text())
