@@ -6,10 +6,10 @@ new algorithms, conversion/download, Docker/VM or Linux qualification.
 
 The original qwen36b.c, expert_cache.c, vision.c and private support headers
 now belong to Inference/engines. All11 copied engine/support files match the
-baseline byte-for-byte; source-audit.txt records their hashes/sizes. Existing
+baseline byte-for-byte; source-audit.txt records their hashes/sizes.
 Inherited trailing spaces in qwen36b.c/vision.c/vision.h are deliberately retained
 to keep that exact source comparison; raw command/diff evidence also stays exact.
-owner tokenizer/image headers match the parent; engines/json.h retains only
+Existing owner tokenizer/image headers match the parent; engines/json.h retains only
 the previously documented named Unicode-buffer portability adaptation.
 engines/CHAT_NOTICE preserves the complete baseline attribution notice, and
 the repository retains the Apache license.
