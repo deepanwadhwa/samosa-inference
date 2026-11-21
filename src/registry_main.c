@@ -117,7 +117,7 @@ int main(int argc,char **argv) {
     struct sigaction action={.sa_handler=stop_signal};sigemptyset(&action.sa_mask);
     sigaction(SIGTERM,&action,NULL);sigaction(SIGINT,&action,NULL);
     host.cancelled=host_cancelled;
-    for(size_t i=0;i<host.registry.count;i++)if(host.managed[i]||host.resident_summaries[i]||host.resident_speeches[i]||host.resident_decisions[i])host.providers[i].cancelled=host_cancelled;
+    for(size_t i=0;i<host.registry.count;i++)if(host.managed[i]||host.resident_summaries[i]||host.resident_speeches[i]||host.resident_decisions[i]||host.resident_visuals[i])host.providers[i].cancelled=host_cancelled;
     if(session){
         ManagedStreamConfig transport={.input=STDIN_FILENO,.output=STDOUT_FILENO,
             .dispatch=inference_registry_host_dispatch,.context=&host,

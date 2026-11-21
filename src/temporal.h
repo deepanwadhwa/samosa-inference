@@ -2,21 +2,24 @@
 #define SAMOSA_TEMPORAL_H
 #include "json.h"
 #include "llama.h"
+typedef struct TemporalInput TemporalInput;
 struct TemporalConfig {
     const char *self, *executable, *model, *executable_sha256;
     const char *manifest_sha256, *model_sha256;
+    const char *(*run)(void *,const InferenceConfig *,const TemporalInput *,char **,size_t *,size_t *);
+    void *context;
 };
 typedef struct {
     size_t timestamp_us, width, height;
     unsigned char *rgba;
     char rgba_sha256[65], prepared_sha256[65];
 } TemporalFrame;
-typedef struct {
+struct TemporalInput {
     TemporalFrame frames[16];
     size_t count, start_us, end_us, tokens;
     char *provider, *prompt;
     char input_sha256[65], prepared_sha256[65];
-} TemporalInput;
+};
 int temporal_configured(const InferenceConfig *);
 const char *temporal_input(const InferenceConfig *, const Json *,
                            TemporalInput *);

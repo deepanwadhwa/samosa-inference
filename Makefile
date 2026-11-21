@@ -1,4 +1,5 @@
 DECISION_TOKENIZER_TARGET ?= $(if $(CARGO_TARGET_DIR),$(CARGO_TARGET_DIR),engines/decision/tokenizer/target)
+.DEFAULT_GOAL := all
 DECISION_TOKENIZER_ARCHIVE = $(DECISION_TOKENIZER_TARGET)/release/libsamosa_decision_tokenizer.a
 CC ?= cc
 CPPFLAGS ?=
@@ -8,6 +9,19 @@ LIBS = -lsqlite3
 SOURCES = src/registry.c src/embedding.c src/inference.c src/sessions.c src/admission.c src/operations.c src/engine_process.c src/budget.c
 HEADERS = src/registry.h src/platform.h src/embedding.h src/inference.h src/json.h src/llama.h src/sessions.h src/admission.h src/operations.h src/sha256.h src/engine_process.h src/budget.h
 .PHONY: all test sanitize release clean native test-native sanitize-native test-admission test-operations test-artifact sanitize-artifact test-install sanitize-install test-artifacts-cli test-engine-process sanitize-engine-process test-activation sanitize-activation
+.PHONY: test-visual-host sanitize-visual-host
+VISUAL_HOST_SOURCES = src/visual_host.c src/activation.c src/engine_runtime.c src/vision.c src/temporal.c src/temporal_input.c src/temporal_package.c src/visual_assets.c src/visual_bridge.c src/artifact.c src/specialist_supervisor.c $(SOURCES)
+VISUAL_HOST_HEADERS = src/visual_host.h src/visual_assets.h src/activation.h src/vision.h src/temporal.h src/temporal_package.h src/controlled_pipe.h $(HEADERS) include/samosa_inference/specialist_supervisor.h
+build/test-visual-host: tests/test_visual_host.c tests/vision_fixture.h tests/whisper_fixture.h $(VISUAL_HOST_SOURCES) $(VISUAL_HOST_HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -DJSON_TOKENS_MAX=8192 -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -Iinclude -Isrc $< $(VISUAL_HOST_SOURCES) $(LIBS) -o $@
+build/test-visual-host-sanitize: tests/test_visual_host.c tests/vision_fixture.h tests/whisper_fixture.h $(VISUAL_HOST_SOURCES) $(VISUAL_HOST_HEADERS) | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -DJSON_TOKENS_MAX=8192 -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $< $(VISUAL_HOST_SOURCES) $(LIBS) -o $@
+test-visual-host: build/test-visual-host build/samosa-inference-providers
+	@test -n '$(TEMPORAL_METADATA)' || { echo 'configure retained TEMPORAL_METADATA'; exit 2; }
+	SAMOSA_VISUAL_REGISTRY='$(abspath build/samosa-inference-providers)' $(abspath build/test-visual-host) '$(TEMPORAL_METADATA)'
+sanitize-visual-host: build/test-visual-host-sanitize build/test-visual-host build/samosa-inference-providers-sanitize
+	@test -n '$(TEMPORAL_METADATA)' || { echo 'configure retained TEMPORAL_METADATA'; exit 2; }
+	SAMOSA_VISUAL_NATIVE_FIXTURE='$(abspath build/test-visual-host)' SAMOSA_VISUAL_REGISTRY='$(abspath build/samosa-inference-providers-sanitize)' $(abspath build/test-visual-host-sanitize) '$(TEMPORAL_METADATA)'
 .PHONY: test-remote-artifact sanitize-remote-artifact test-remote-tls test-remote-key sanitize-remote-cli
 .PHONY: test-whisper sanitize-whisper
 all: build/samosa-inference build/samosa-inference-artifacts
@@ -20,8 +34,8 @@ sanitize-registry: | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_registry.c $(SOURCES) $(LIBS) -o build/test-registry-sanitize
 	./build/test-registry-sanitize
 REGISTRY_FLAGS = -Iinclude -DSAMOSA_WITH_DECISION $(NATIVE_FLAGS) -DSAMOSA_WITH_SPEECH -DSAMOSA_WITH_WHISPER -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -DSAMOSA_WITH_SUMMARY
-REGISTRY_SOURCES = src/decision_host.c src/speech_host.c src/summary_host.c src/summary_process.c src/managed_host.c src/managed_provider.c src/activation.c src/managed_stream.c src/decision.c src/decision_assets.c src/speech.c src/audio_store.c src/speech_worker.c src/speech_session.c src/speech_runtime.c src/speech_package.c src/speech_package_loader.c src/library_runtime.c src/engine_runtime.c $(SOURCES) src/llama.c src/whisper.c src/vision.c src/visual_bridge.c src/temporal.c src/temporal_input.c src/temporal_package.c src/summary.c src/summary_protocol.c src/artifact.c
-REGISTRY_HEADERS = src/decision_host.h src/speech_host.h src/controlled_pipe.h src/speech_session.h src/summary_host.h include/samosa_inference/summary_process.h src/managed_host.h src/managed_provider.h src/activation.h src/managed_stream.h src/rgba_input.h src/decision.h src/decision_assets.h engines/decision/tokenizer/request.h engines/decision/tokenizer/tokenizer.h src/speech.h src/audio_store.h $(SPEECH_WORKER_HEADERS) $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
+REGISTRY_SOURCES = src/visual_host.c src/specialist_supervisor.c src/decision_host.c src/speech_host.c src/summary_host.c src/summary_process.c src/managed_host.c src/managed_provider.c src/activation.c src/managed_stream.c src/decision.c src/decision_assets.c src/speech.c src/audio_store.c src/speech_worker.c src/speech_session.c src/speech_runtime.c src/speech_package.c src/speech_package_loader.c src/library_runtime.c src/engine_runtime.c $(SOURCES) src/llama.c src/whisper.c src/vision.c src/visual_assets.c src/visual_bridge.c src/temporal.c src/temporal_input.c src/temporal_package.c src/summary.c src/summary_protocol.c src/artifact.c
+REGISTRY_HEADERS = src/visual_host.h src/visual_assets.h include/samosa_inference/specialist_supervisor.h src/decision_host.h src/speech_host.h src/controlled_pipe.h src/speech_session.h src/summary_host.h include/samosa_inference/summary_process.h src/managed_host.h src/managed_provider.h src/activation.h src/managed_stream.h src/rgba_input.h src/decision.h src/decision_assets.h engines/decision/tokenizer/request.h engines/decision/tokenizer/tokenizer.h src/speech.h src/audio_store.h $(SPEECH_WORKER_HEADERS) $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/visual_assets.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
 .PHONY: providers
 providers: build/samosa-inference-providers
 build/samosa-inference-providers: src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(REGISTRY_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
@@ -56,10 +70,10 @@ sanitize-summary-protocol: | build
 	./build/test-summary-protocol-sanitize
 .PHONY: vision test-vision sanitize-vision
 .PHONY: temporal
-TEMPORAL_SOURCES = src/temporal_main.c src/temporal.c src/temporal_input.c src/temporal_package.c src/visual_bridge.c src/artifact.c $(SOURCES)
-build/samosa-inference-temporal: $(TEMPORAL_SOURCES) $(HEADERS) src/temporal.h src/temporal_package.h src/vision.h src/artifact.h | build
+TEMPORAL_SOURCES = src/temporal_main.c src/temporal.c src/temporal_input.c src/temporal_package.c src/visual_assets.c src/visual_bridge.c src/artifact.c $(SOURCES)
+build/samosa-inference-temporal: $(TEMPORAL_SOURCES) $(HEADERS) src/temporal.h src/temporal_package.h src/vision.h src/visual_assets.h src/artifact.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DJSON_TOKENS_MAX=8192 -DSAMOSA_WITH_TEMPORAL $(TEMPORAL_SOURCES) $(LIBS) -o $@
-build/samosa-inference-temporal-sanitize: $(TEMPORAL_SOURCES) $(HEADERS) src/temporal.h src/temporal_package.h src/vision.h src/artifact.h | build
+build/samosa-inference-temporal-sanitize: $(TEMPORAL_SOURCES) $(HEADERS) src/temporal.h src/temporal_package.h src/vision.h src/visual_assets.h src/artifact.h | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DJSON_TOKENS_MAX=8192 -DSAMOSA_WITH_TEMPORAL -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $(TEMPORAL_SOURCES) $(LIBS) -o $@
 temporal: build/samosa-inference-temporal
 .PHONY: test-temporal-input sanitize-temporal-input
@@ -79,10 +93,10 @@ test-temporal-input: build/test-temporal-input
 sanitize-temporal-input: | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_temporal_input.c src/temporal_input.c src/temporal_package.c src/artifact.c -o build/test-temporal-input-sanitize
 	./build/test-temporal-input-sanitize
-VISION_SOURCES = src/vision_main.c src/vision.c src/visual_bridge.c src/artifact.c $(SOURCES)
-build/samosa-inference-vision: $(VISION_SOURCES) $(HEADERS) src/rgba_input.h src/vision.h src/artifact.h | build
+VISION_SOURCES = src/vision_main.c src/vision.c src/visual_assets.c src/visual_bridge.c src/artifact.c $(SOURCES)
+build/samosa-inference-vision: $(VISION_SOURCES) $(HEADERS) src/rgba_input.h src/vision.h src/visual_assets.h src/artifact.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DSAMOSA_WITH_VISION $(VISION_SOURCES) $(LIBS) -o $@
-build/samosa-inference-vision-sanitize: $(VISION_SOURCES) $(HEADERS) src/rgba_input.h src/vision.h src/artifact.h | build
+build/samosa-inference-vision-sanitize: $(VISION_SOURCES) $(HEADERS) src/rgba_input.h src/vision.h src/visual_assets.h src/artifact.h | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DSAMOSA_WITH_VISION -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $(VISION_SOURCES) $(LIBS) -o $@
 vision: build/samosa-inference-vision
 build/test-vision: tests/test_vision.c tests/vision_fixture.h tests/whisper_fixture.h src/json.h src/sha256.h | build

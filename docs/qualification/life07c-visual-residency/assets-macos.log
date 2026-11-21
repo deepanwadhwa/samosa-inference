@@ -1,0 +1,11 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_WITH_VISION src/vision_main.c src/vision.c src/visual_assets.c src/visual_bridge.c src/artifact.c src/registry.c src/embedding.c src/inference.c src/sessions.c src/admission.c src/operations.c src/engine_process.c src/budget.c -lsqlite3 -o build/samosa-inference-vision
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-vision /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/samosa-inference-vision
+PASS native public visual adapter: 661 checks; inspect/quit, alpha, input bounds, replay, identity/mutation, failure/deadline/cancel/parent death cleanup; fixture engine only
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_WITH_VISION -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer src/vision_main.c src/vision.c src/visual_assets.c src/visual_bridge.c src/artifact.c src/registry.c src/embedding.c src/inference.c src/sessions.c src/admission.c src/operations.c src/engine_process.c src/budget.c -lsqlite3 -o build/samosa-inference-vision-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-vision-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/samosa-inference-vision-sanitize
+PASS native public visual adapter: 671 checks; inspect/quit, alpha, input bounds, replay, identity/mutation, failure/deadline/cancel/parent death cleanup; fixture engine only
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DJSON_TOKENS_MAX=8192 -DSAMOSA_WITH_TEMPORAL src/temporal_main.c src/temporal.c src/temporal_input.c src/temporal_package.c src/visual_assets.c src/visual_bridge.c src/artifact.c src/registry.c src/embedding.c src/inference.c src/sessions.c src/admission.c src/operations.c src/engine_process.c src/budget.c -lsqlite3 -o build/samosa-inference-temporal
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DJSON_TOKENS_MAX=8192 -Isrc tests/test_temporal.c -o build/test-temporal
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-temporal /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/samosa-inference-temporal ''
+FAIL 227: argc == 3 && argv[0][0] == '/' && argv[1][0] == '/' && argv[2][0] == '/'
+make: *** [test-temporal] Error 1

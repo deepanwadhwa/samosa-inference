@@ -241,3 +241,31 @@ remain. The versioned private image envelope is a trusted adapter detail, never
 a public command or caller-chosen path. Old engines fail this mode's readiness;
 new candidate engines need independent distribution qualification. Full remaining
 modality lifecycle and later numbered areas stay open.
+
+## Resident visual ownership (native Mac)
+
+`image_analysis` entries may select `lifecycle: "resident-vision-v1"` plus
+`engine_size` (64–67108864) and `config_size` (1–1048576). `video_analysis`
+entries may select `lifecycle: "resident-temporal-v1"` plus the same engine size
+and `manifest_size` (1–1048576). Existing engine/model paths and all existing
+SHA-256 pins are required. These fields belong to private configuration; public
+requests continue to use provider identities and prepared pixels/frames.
+
+Loading configuration is lazy. Start reuses the existing verified activation,
+guardian and visual engine loops, then performs a bounded generation before
+committing readiness/last-good state. Ping/hello alone cannot establish readiness.
+The activation anchor (config.json or manifest.json) must meet existing private
+activation-file rules. The hash-bound bundle snapshot retains the profile and
+complete model pins. Complete model/executable verification, result identity,
+usage, timestamp/frame and observation limits are shared with one-shot adapters.
+
+Requests serialize on the owned transport with scoped cancellation/deadlines.
+Cancelling a queued request preserves the active request. An interrupted exchange
+invalidates its transport and reaps the worker; a fully completed/preflight
+interruption may retain a healthy transport. Stop, EOF and owner death use the
+existing guardian cleanup. Unconfirmed shutdown retains ownership for retry.
+Saved activation does not establish live readiness; changed artifacts refuse.
+Entries without lifecycle keep the existing one-shot profile. Mac qualification
+and limits are recorded in
+[LIFE-07c](../docs/qualification/life07c-visual-residency/README.md).
+Gateway-owned launch/routing policy has not yet switched to these registry profiles.

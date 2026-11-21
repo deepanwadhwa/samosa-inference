@@ -1,0 +1,4 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -DJSON_TOKENS_MAX=8192 -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -Iinclude -Isrc tests/test_visual_host.c src/visual_host.c src/activation.c src/engine_runtime.c src/vision.c src/temporal.c src/temporal_input.c src/temporal_package.c src/visual_assets.c src/visual_bridge.c src/artifact.c src/specialist_supervisor.c src/registry.c src/embedding.c src/inference.c src/sessions.c src/admission.c src/operations.c src/engine_process.c src/budget.c -lsqlite3 -o build/test-visual-host
+SAMOSA_VISUAL_REGISTRY='/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/samosa-inference-providers' /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-visual-host '/Users/deepanwadhwa/.samosa/models/molmo2-4b-mlx-q4-v1'
+FAIL 12: n>0
+make: *** [test-visual-host] Error 1

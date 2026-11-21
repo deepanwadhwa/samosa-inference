@@ -5,7 +5,27 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-Native Mac checkpoint, 2026-11-20: LIFE-07b moves the original Molmo2 analyze and
+Native Mac checkpoint, 2026-11-20: LIFE-07c qualifies the component's optional
+resident VisionPsy/Molmo2 owners. Shared `visual_assets.c` reuses existing
+verification, P6 preparation, commands and strict reply validation; one-shot
+adapters use those helpers too. `visual_host.c` adapts existing Activation,
+guardian workspace/duplex ownership and SamosaMmSession, with bounded native
+generation required before ready. No engine/model algorithm changed.
+Normal/SAN native owner/public-registry checks, isolated retained actual Mac
+VisionPsy heading/Molmo2 changing-input runs, fresh source-subset owner builds
+and affected original native regressions pass. No Python or Docker was invoked.
+Evidence, commands, exact source hashes and limitations:
+`qualification/life07c-visual-residency/README.md`.
+Chat's docs/EXTRACTION_GATEWAY_LIFECYCLE_AUDIT.md now records original
+gateway-owned visual/Whisper entry points, tests and concrete profile differences.
+Next LIFE-07d mechanically extracts original visual launch-profile/close glue
+through the existing public supervisor/trace boundary, then the shared Whisper
+runner. Preserve larger-image/long-video/long-audio behavior and App policy;
+component residency alone does not retire gateway-owned lifecycle.
+Full area3, areas4–7, remaining Python-tool migration, Agent/App, assembly and
+legacy retirement remain open. Older next-actions below are historical.
+
+Previous native Mac checkpoint, 2026-11-20: LIFE-07b moves the original Molmo2 analyze and
 VisionPsy inspect request/response functions into `src/specialist_protocol.c` and
 its public header. Chat delegates through explicit trace callbacks. Original
 function bodies, framing, prompts, numeric limits, Unicode/error behavior and
@@ -15,7 +35,7 @@ clean/atomic/PATH installation and guarded native HTTP/runtime-only upgrade gate
 pass. Retired the parent Python packager/selection test in favor of shell.
 See `qualification/life07b-specialist-protocol/README.md` for exact evidence and
 the earlier `qualification/life07a-specialist-owned/README.md` for owned close.
-Next LIFE-07c reuses existing vision/temporal verification, image/frame preparation,
+Historical next LIFE-07c reuses existing vision/temporal verification, image/frame preparation,
 guardian workspace/duplex ownership and real generation before public residency
 readiness. Do not rebuild the visual system or its model loops.
 Full visual lifecycle, area 3 and the wider split remain open. Older checkpoint

@@ -12,6 +12,7 @@
 #include "summary_host.h"
 #include "speech_host.h"
 #include "decision_host.h"
+#include "visual_host.h"
 #include <pthread.h>
 typedef struct {
     InferenceRegistry registry;
@@ -29,6 +30,7 @@ typedef struct {
     SummaryHost *resident_summaries[INFERENCE_PROVIDERS_MAX];
     SpeechHost *resident_speeches[INFERENCE_PROVIDERS_MAX];
     DecisionHost *resident_decisions[INFERENCE_PROVIDERS_MAX];
+    VisualHost *resident_visuals[INFERENCE_PROVIDERS_MAX];
     const char *self;
     pthread_mutex_t gate;
     int gate_initialized,users[INFERENCE_PROVIDERS_MAX];

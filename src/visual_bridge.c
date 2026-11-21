@@ -29,16 +29,17 @@ static int same(const struct stat *a, const struct stat *b) {
  * The bridge execs the engine so it remains the guardian's direct child. */
 int vision_bridge_dispatch(int argc, char **argv) {
     int captured = argc >= 2 && !strcmp(argv[1], "--vision-engine-bounded-bridge");
-    if (argc < 2 || (!captured && strcmp(argv[1], "--vision-engine-bridge")))
+    int resident = argc >= 2 && !strcmp(argv[1], "--vision-engine-resident-bridge");
+    if (argc < 2 || (!captured && !resident && strcmp(argv[1], "--vision-engine-bridge")))
         return -1;
-    if (argc != 6 || strlen(argv[3]) != 64 ||
+    if (argc != (resident ? 4 : 6) || strlen(argv[3]) != 64 ||
         strspn(argv[3], "0123456789abcdef") != 64 || argv[2][0] != '/' ||
-        argv[4][0] != '/' || argv[5][0] != '/')
+        (!resident && (argv[4][0] != '/' || argv[5][0] != '/')))
         return 2;
     int executable = open(argv[2], O_RDONLY | O_NOFOLLOW | O_NONBLOCK),
-        input = open(argv[4], O_RDONLY | O_NOFOLLOW),
-        output = open(argv[5], O_WRONLY | O_NOFOLLOW);
-    if (executable < 0 || input < 0 || output < 0)
+        input = resident ? -1 : open(argv[4], O_RDONLY | O_NOFOLLOW),
+        output = resident ? -1 : open(argv[5], O_WRONLY | O_NOFOLLOW);
+    if (executable < 0 || (!resident && (input < 0 || output < 0)))
         return 2;
     struct stat engine, a, b;
     if (fstat(executable, &engine) || !S_ISREG(engine.st_mode) ||
@@ -46,12 +47,15 @@ int vision_bridge_dispatch(int argc, char **argv) {
         (engine.st_mode & 022) || !(engine.st_mode & 0111) ||
         engine.st_size <= 0 ||
         artifact_verify(executable, (uint64_t)engine.st_size, 67108864u,
-                        argv[3]) ||
-        fstat(input, &a) || fstat(output, &b) || !S_ISREG(a.st_mode) ||
+                        argv[3]))
+        return 2;
+    if (resident && (fstat(0, &a) || fstat(1, &b) || !S_ISFIFO(a.st_mode) || !S_ISFIFO(b.st_mode)))
+        return 2;
+    if (!resident && (fstat(input, &a) || fstat(output, &b) || !S_ISREG(a.st_mode) ||
         !S_ISREG(b.st_mode) || a.st_uid != geteuid() || b.st_uid != geteuid() ||
         a.st_nlink != 1 || b.st_nlink != 1 || (a.st_mode & 077) ||
         (b.st_mode & 077) || b.st_size || dup2(input, 0) < 0 ||
-        (!captured && dup2(output, 1) < 0))
+        (!captured && dup2(output, 1) < 0)))
         return 2;
     if (input > 2)
         close(input);

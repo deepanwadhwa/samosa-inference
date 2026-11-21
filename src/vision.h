@@ -5,6 +5,9 @@
 struct VisionConfig {
     const char *self,*executable,*model,*executable_sha256;
     const char *config_sha256,*tokenizer_sha256,*weights_sha256,*model_sha256;
+    const char *(*run)(void *,const InferenceConfig *,const unsigned char *,size_t,size_t,
+                       const char *,size_t,char **,size_t *,size_t *,char [65]);
+    void *context;
 };
 /* Existing native VisionPsy inspect protocol; all paths/pins are host config. */
 void vision_model_identity(const VisionConfig *,char [65]);

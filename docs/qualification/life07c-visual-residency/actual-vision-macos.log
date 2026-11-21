@@ -1,0 +1,2 @@
+generate Describe the main color briefly.: invalid_provider_response
+FAIL 77: !error&&text&&strstr(text,expected)&&in<=131072&&out<=32

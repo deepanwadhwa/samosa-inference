@@ -6,6 +6,7 @@
 #include "engine_process.h"
 #include "sha256.h"
 #include "vision.h"
+#include "visual_assets.h"
 #include "rgba_input.h"
 #include <fcntl.h>
 #include <limits.h>
@@ -112,77 +113,12 @@ char *vision_normalized(const InferenceConfig *cfg, const Json *j) {
     free(parent);
     return body;
 }
-static const char *verify_control(void *context) { return inference_interrupted(context); }
-static const char *verify(const InferenceConfig *cfg, int fd, const char *digest, uint64_t ceiling,
-                          int executable) {
-    const char *error = inference_interrupted(cfg);
-    struct stat s;
-    if (!error &&
-        (fstat(fd, &s) || !S_ISREG(s.st_mode) || s.st_size <= 0 || s.st_nlink != 1 ||
-         s.st_uid != geteuid() || (s.st_mode & 022) || (executable && !(s.st_mode & 0111))))
-        error = "unsupported_artifact";
-    if (!error)
-        error = artifact_verify_controlled(fd, (uint64_t)s.st_size, ceiling, digest,
-                                           cfg ? verify_control : NULL, (void *)cfg);
-    if (!error)
-        error = inference_interrupted(cfg);
-    return error;
-}
-typedef struct {
-    struct stat directory, files[3];
-} ModelReceipt;
-static int same_receipt(const struct stat *a, const struct stat *b) {
-    if (a->st_dev != b->st_dev || a->st_ino != b->st_ino || a->st_size != b->st_size ||
-        a->st_mode != b->st_mode || a->st_uid != b->st_uid || a->st_nlink != b->st_nlink)
-        return 0;
-#ifdef __APPLE__
-    return a->st_mtimespec.tv_sec == b->st_mtimespec.tv_sec &&
-           a->st_mtimespec.tv_nsec == b->st_mtimespec.tv_nsec &&
-           a->st_ctimespec.tv_sec == b->st_ctimespec.tv_sec &&
-           a->st_ctimespec.tv_nsec == b->st_ctimespec.tv_nsec;
-#else
-    return a->st_mtim.tv_sec == b->st_mtim.tv_sec && a->st_mtim.tv_nsec == b->st_mtim.tv_nsec &&
-           a->st_ctim.tv_sec == b->st_ctim.tv_sec && a->st_ctim.tv_nsec == b->st_ctim.tv_nsec;
-#endif
-}
-static const char *model_verify(const InferenceConfig *cfg, int directory, ModelReceipt *receipt,
-                                int recheck) {
-    const char *names[] = {"config.json", "tokenizer.json", "model.safetensors"},
-               *pins[] = {cfg->vision->config_sha256, cfg->vision->tokenizer_sha256,
-                          cfg->vision->weights_sha256};
-    const uint64_t limits[] = {1048576u, 8388608u, 8589934592ull};
-    struct stat before, after, named;
-    if (fstat(directory, &before) || lstat(cfg->vision->model, &named))
-        return "artifact_unavailable";
-    if (!same_receipt(&before, &named) || (recheck && !same_receipt(&before, &receipt->directory)))
-        return "artifact_changed";
-    for (size_t i = 0; i < 3; i++) {
-        int fd = openat(directory, names[i], O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
-        if (fd < 0)
-            return "artifact_unavailable";
-        struct stat file;
-        const char *error = fstat(fd, &file) ? "artifact_unavailable" : NULL;
-        if (!error && recheck && !same_receipt(&file, &receipt->files[i]))
-            error = "artifact_changed";
-        if (!error)
-            error = verify(cfg, fd, pins[i], limits[i], 0);
-        if (!error && (fstat(fd, &after) || !same_receipt(&file, &after)))
-            error = "artifact_changed";
-        close(fd);
-        if (error)
-            return error;
-        if (!recheck)
-            receipt->files[i] = file;
-    }
-    if (fstat(directory, &after) || !same_receipt(&before, &after))
-        return "artifact_changed";
-    if (!recheck)
-        receipt->directory = before;
-    return NULL;
-}
 static const char *run(const InferenceConfig *cfg, const unsigned char *rgba, size_t width,
                        size_t height, const char *prompt, size_t tokens, char **observation,
                        size_t *input_tokens, size_t *output_tokens, char prepared[65]) {
+    if (cfg->vision->run)
+        return cfg->vision->run(cfg->vision->context, cfg, rgba, width, height,
+                                prompt, tokens, observation, input_tokens, output_tokens, prepared);
     const VisionConfig *v = cfg->vision;
     int lease = -1, model = -1, executable = -1, directory = -1, result_fd = -1;
     const char *error = inference_interrupted(cfg);
@@ -196,14 +132,14 @@ static const char *run(const InferenceConfig *cfg, const unsigned char *rgba, si
         else if (fstat(model, &s) || s.st_uid != geteuid() || (s.st_mode & 022))
             error = "unsupported_artifact";
     }
-    ModelReceipt receipt = {0};
+    VisionModelReceipt receipt = {0};
     if (!error)
-        error = model_verify(cfg, model, &receipt, 0);
+        error = vision_model_verify(cfg, model, &receipt, 0);
     struct stat executable_receipt = {0};
     if (!error) {
         executable = open(v->executable, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
         error = executable < 0 ? "artifact_unavailable"
-                               : verify(cfg, executable, v->executable_sha256, 67108864u, 1);
+                               : vision_file_verify(cfg, executable, v->executable_sha256, 67108864u, 1);
     }
     if (!error && fstat(executable, &executable_receipt))
         error = "artifact_unavailable";
@@ -213,23 +149,8 @@ static const char *run(const InferenceConfig *cfg, const unsigned char *rgba, si
     char *ppm = NULL, *arguments = NULL;
     size_t ppm_bytes = 0;
     if (!error) {
-        FILE *f = open_memstream(&ppm, &ppm_bytes);
-        if (!f)
-            error = "resource_limit";
-        else {
-            fprintf(f, "P6\n%zu %zu\n255\n", width, height);
-            for (size_t i = 0; i < width * height; i++)
-                for (size_t c = 0; c < 3; c++) {
-                    unsigned alpha = rgba[i * 4 + 3], value = ((unsigned)rgba[i * 4 + c] * alpha +
-                                                               255u * (255u - alpha) + 127u) /
-                                                              255u;
-                    fputc((int)value, f);
-                }
-            if (fclose(f))
-                error = "resource_limit";
-            else
-                hash_bytes(ppm, ppm_bytes, prepared);
-        }
+        ppm = vision_ppm(rgba, width, height, &ppm_bytes, prepared);
+        if (!ppm) error = "resource_limit";
     }
     if (!error) {
         created = mkdtemp(workspace) != NULL;
@@ -273,12 +194,11 @@ static const char *run(const InferenceConfig *cfg, const unsigned char *rgba, si
                 close(fd);
             error = "engine_io_failed";
         } else {
-            fprintf(f, "{\"command\":\"inspect\",\"id\":\"%s\",\"image_path\":", input_digest);
-            json_quote(f, image, strlen(image));
-            fputs(",\"prompt\":", f);
-            json_quote(f, prompt, strlen(prompt));
-            fprintf(f, ",\"max_tokens\":%zu,\"max_side_len\":512}\n{\"command\":\"quit\"}\n",
-                    tokens);
+            size_t bytes = 0;
+            char *payload = vision_command(image, input_digest, prompt, tokens, &bytes);
+            if (!payload) error = "resource_limit";
+            else { fwrite(payload, 1, bytes, f); fputs("\n{\"command\":\"quit\"}\n", f); }
+            free(payload);
             if (fclose(f))
                 error = "engine_io_failed";
         }
@@ -352,15 +272,15 @@ static const char *run(const InferenceConfig *cfg, const unsigned char *rgba, si
     if (!error)
         error = inference_interrupted(cfg);
     if (!error)
-        error = model_verify(cfg, model, &receipt, 1);
+        error = vision_model_verify(cfg, model, &receipt, 1);
     if (!error) {
         struct stat retained, named;
         if (fstat(executable, &retained) || lstat(v->executable, &named) ||
-            !same_receipt(&retained, &executable_receipt) || !same_receipt(&retained, &named))
+            !visual_same_receipt(&retained, &executable_receipt) || !visual_same_receipt(&retained, &named))
             error = "artifact_changed";
     }
     if (!error)
-        error = verify(cfg, executable, v->executable_sha256, 67108864u, 1);
+        error = vision_file_verify(cfg, executable, v->executable_sha256, 67108864u, 1);
     char *body = NULL;
     if (!error) {
         struct stat s;
@@ -395,28 +315,17 @@ static const char *run(const InferenceConfig *cfg, const unsigned char *rgba, si
             error = "invalid_provider_response";
         else {
             *line = 0;
-            Json j, q;
-            char *status = NULL, *id = NULL, *bye = NULL, *quit_status = NULL;
-            if (!json_parse(&j, body, strlen(body)) || !json_parse(&q, line + 1, strlen(line + 1)))
-                error = "invalid_provider_response";
+            Json q;
+            char *bye = NULL, *quit_status = NULL;
+            if (!json_parse(&q, line + 1, strlen(line + 1))) error = "invalid_provider_response";
             else {
-                status = json_string(&j, json_get(&j, 0, "status"));
-                id = json_string(&j, json_get(&j, 0, "id"));
                 bye = json_string(&q, json_get(&q, 0, "message"));
                 quit_status = json_string(&q, json_get(&q, 0, "status"));
-                *observation = json_string(&j, json_get(&j, 0, "observation"));
-                if (!status || strcmp(status, "ok") || !id || strcmp(id, input_digest) || !bye ||
-                    strcmp(bye, "bye") || !quit_status || strcmp(quit_status, "ok") ||
-                    !*observation || !**observation || strlen(*observation) > 16384 ||
-                    !json_uint(&j, json_get(&j, 0, "prompt_tokens"), input_tokens) ||
-                    !json_uint(&j, json_get(&j, 0, "generated_tokens"), output_tokens) ||
-                    *input_tokens > 131072 || *output_tokens > tokens)
+                if (!bye || strcmp(bye, "bye") || !quit_status || strcmp(quit_status, "ok"))
                     error = "invalid_provider_response";
+                else error = vision_result(body, input_digest, tokens, observation, input_tokens, output_tokens);
             }
-            free(status);
-            free(id);
-            free(bye);
-            free(quit_status);
+            free(bye); free(quit_status);
         }
     }
     free(body);

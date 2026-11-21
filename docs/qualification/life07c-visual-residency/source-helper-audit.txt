@@ -1,0 +1,8 @@
+Source baseline: Inference 3e9b6f1
+vision.c verify -> visual_assets.c vision_file_verify: identical body after whitespace/local helper renames
+vision.c same_receipt -> visual_assets.c visual_same_receipt: identical body after whitespace/local helper renames
+vision.c model_verify -> visual_assets.c vision_model_verify: identical body after whitespace/local helper renames
+temporal.c engine_verify -> visual_assets.c temporal_engine_verify: identical body after whitespace/local helper renames
+temporal.c write_owned -> visual_assets.c visual_write_owned: identical body after whitespace/local helper renames
+temporal.c timestamp -> visual_assets.c timestamp: identical body after whitespace/local helper renames
+temporal.c equal -> visual_assets.c equal: identical body after whitespace/local helper renames

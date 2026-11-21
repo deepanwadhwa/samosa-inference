@@ -1,5 +1,16 @@
 # Registry lifecycle ownership — LIFE-03
 
+Native Mac checkpoint, 2026-11-20: LIFE-07c adds optional resident VisionPsy and
+Molmo2 profiles by reusing the existing one-shot verification/preparation/result
+code, guardian workspace/duplex ownership and specialist transport. Public
+identity-only controls require successful native generation before readiness.
+Native normal/SAN owner and registry checks and retained actual Mac models pass;
+see [qualification](qualification/life07c-visual-residency/README.md) and the
+[profile contract](../contracts/provider-registry-v1.md#resident-visual-ownership-native-mac).
+This qualifies the component visual owner, not the gateway lifecycle cutover,
+Whisper audit, full area3, independent release or the complete repository split.
+Earlier next-actions below are historical where superseded by this entry.
+
 Checkpoint 2026-10-25: LIFE-07a is in progress. The existing SamosaMmSession
 now has additive request cancellation/deadline control for both original protocols,
 with interrupted streams invalidated and leases retained until existing close/reap.

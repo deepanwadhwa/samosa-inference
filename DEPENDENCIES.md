@@ -1,5 +1,14 @@
 # Dependencies
 
+Current direction, 2026-11-20: native Mac first; do not start Docker/VMs. No
+Python in runtime, build/test tooling or CI. Older Python harness/dependency
+descriptions below are historical migration debt, not permission to invoke them.
+LIFE-07c's visual owner and native C fixtures add only POSIX threads to existing
+libc/system SQLite dependencies. Public registry builds retain the already
+declared Rust tokenizer/libcurl/native dependencies. See
+docs/qualification/life07c-visual-residency/README.md for the exact Mac scope;
+the new owner has not been qualified on other platforms.
+
 C11 compiler and make; libc and system SQLite >=3.24 at runtime. Native C tests, no interpreter/package
 manager. JSON transport primitive is locally owned, mechanically duplicated to
 keep independent component builds; it contains no shared task/model policy.

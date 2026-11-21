@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
 #include "temporal.h"
+#include "visual_assets.h"
 #include "admission.h"
 #include "artifact.h"
 #include "budget.h"
@@ -37,55 +38,6 @@ static int same(const struct stat *a, const struct stat *b) {
            a->st_ctim.tv_nsec == b->st_ctim.tv_nsec;
 #endif
 }
-static const char *engine_verify(const InferenceConfig *cfg, int fd,
-                                 struct stat *receipt, int recheck) {
-    struct stat before, after;
-    const char *error = fstat(fd, &before) ? "artifact_unavailable" : NULL;
-    if (!error && (!S_ISREG(before.st_mode) || before.st_size <= 0 ||
-                   before.st_uid != geteuid() || before.st_nlink != 1 ||
-                   (before.st_mode & 022) || !(before.st_mode & 0111)))
-        error = "unsupported_artifact";
-    if (!error && recheck && !same(&before, receipt))
-        error = "artifact_changed";
-    if (!error)
-        error = artifact_verify_controlled(
-            fd, (uint64_t)before.st_size, 67108864u,
-            cfg->temporal->executable_sha256, interrupted, (void *)cfg);
-    if (!error && (fstat(fd, &after) || !same(&before, &after)))
-        error = "artifact_changed";
-    if (!error && !recheck)
-        *receipt = before;
-    return error;
-}
-static const char *write_owned(const InferenceConfig *cfg, int directory,
-                               const char *name, const void *body,
-                               size_t bytes) {
-    int fd =
-        openat(directory, name, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
-    if (fd < 0)
-        return "engine_io_failed";
-    const char *error = NULL;
-    size_t used = 0;
-    while (!error && used < bytes) {
-        error = inference_interrupted(cfg);
-        if (error)
-            break;
-        size_t want = bytes - used;
-        if (want > 65536)
-            want = 65536;
-        ssize_t n = write(fd, (const char *)body + used, want);
-        if (n < 0 && errno == EINTR)
-            continue;
-        if (n <= 0) {
-            error = "engine_io_failed";
-            break;
-        }
-        used += (size_t)n;
-    }
-    if (close(fd) && !error)
-        error = "engine_io_failed";
-    return error;
-}
 static char *framed_reply(const unsigned char *body, size_t bytes,
                           size_t *offset) {
     if (*offset > bytes || bytes - *offset < 4)
@@ -112,24 +64,11 @@ static int equal(const Json *j, int object, const char *key,
     free(s);
     return ok;
 }
-static int timestamp(const Json *j, int token, size_t expected) {
-    if (token < 0 || j->tokens[token].type != JT_NUMBER)
-        return 0;
-    size_t n = j->tokens[token].end - j->tokens[token].begin;
-    if (!n || n >= 64)
-        return 0;
-    char number[64];
-    memcpy(number, j->text + j->tokens[token].begin, n);
-    number[n] = 0;
-    char *end;
-    errno = 0;
-    double value = strtod(number, &end);
-    return !errno && !*end && isfinite(value) &&
-           fabs(value * 1000000.0 - (double)expected) < 0.5;
-}
 static const char *run(const InferenceConfig *cfg, const TemporalInput *input,
                        char **text, size_t *prompt_tokens,
                        size_t *generated_tokens) {
+    if (cfg->temporal->run)
+        return cfg->temporal->run(cfg->temporal->context, cfg, input, text, prompt_tokens, generated_tokens);
     int lease = -1, model = -1, engine = -1, directory = -1, result_fd = -1,
         created = 0;
     const TemporalConfig *v = cfg->temporal;
@@ -159,7 +98,7 @@ static const char *run(const InferenceConfig *cfg, const TemporalInput *input,
         engine =
             open(v->executable, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
         error = engine < 0 ? "artifact_unavailable"
-                           : engine_verify(cfg, engine, &engine_receipt, 0);
+                           : temporal_engine_verify(cfg, engine, &engine_receipt, 0);
     }
     if (!error) {
         created = mkdtemp(workspace) != NULL;
@@ -180,41 +119,12 @@ static const char *run(const InferenceConfig *cfg, const TemporalInput *input,
         if (!ppm)
             error = "resource_limit";
         else
-            error = write_owned(cfg, directory, name, ppm, bytes);
+            error = visual_write_owned(cfg, directory, name, ppm, bytes);
         free(ppm);
     }
     if (!error) {
-        FILE *out = open_memstream(&command, &command_bytes);
-        if (!out)
-            error = "resource_limit";
-        else {
-            fputs("{\"command\":\"analyze\",\"media_kind\":\"video_frames\","
-                  "\"id\":",
-                  out);
-            json_quote(out, input->input_sha256, 64);
-            fputs(",\"media_paths\":[", out);
-            for (size_t k = 0; k < input->count; k++) {
-                char path[256];
-                snprintf(path, sizeof(path), "%s/frame-%02zu.ppm", workspace,
-                         k);
-                if (k)
-                    fputc(',', out);
-                json_quote(out, path, strlen(path));
-            }
-            fputs("],\"timestamps_seconds\":[", out);
-            for (size_t k = 0; k < input->count; k++) {
-                if (k)
-                    fputc(',', out);
-                fprintf(out, "%zu.%06zu",
-                        input->frames[k].timestamp_us / 1000000,
-                        input->frames[k].timestamp_us % 1000000);
-            }
-            fputs("],\"prompt\":", out);
-            json_quote(out, input->prompt, strlen(input->prompt));
-            fprintf(out, ",\"max_tokens\":%zu}", input->tokens);
-            if (fclose(out))
-                error = "resource_limit";
-        }
+        command = temporal_command(workspace, input, &command_bytes);
+        if (!command) error = "resource_limit";
     }
     if (!error) {
         const char *quit = "{\"command\":\"quit\"}";
@@ -230,7 +140,7 @@ static const char *run(const InferenceConfig *cfg, const TemporalInput *input,
             n = htonl((uint32_t)quit_bytes);
             memcpy(framed + 4 + command_bytes, &n, 4);
             memcpy(framed + 8 + command_bytes, quit, quit_bytes);
-            error = write_owned(cfg, directory, "request.json", framed, total);
+            error = visual_write_owned(cfg, directory, "request.json", framed, total);
             free(framed);
         }
     }
@@ -318,7 +228,7 @@ static const char *run(const InferenceConfig *cfg, const TemporalInput *input,
         if (lstat(v->executable, &named) || !same(&named, &engine_receipt))
             error = "artifact_changed";
         else
-            error = engine_verify(cfg, engine, &engine_receipt, 1);
+            error = temporal_engine_verify(cfg, engine, &engine_receipt, 1);
     }
     unsigned char *body = NULL;
     size_t bytes = 0;
@@ -353,37 +263,10 @@ static const char *run(const InferenceConfig *cfg, const TemporalInput *input,
         size_t offset = 0;
         char *reply = framed_reply(body, bytes, &offset),
              *quit = framed_reply(body, bytes, &offset);
-        Json j, q;
-        if (!reply || !quit || offset != bytes ||
-            !json_parse(&j, reply, strlen(reply)) ||
-            !json_parse(&q, quit, strlen(quit)) ||
-            !equal(&j, 0, "status", "ok") ||
-            !equal(&j, 0, "id", input->input_sha256) ||
-            !equal(&q, 0, "status", "ok"))
-            error = "invalid_provider_response";
-        if (!error) {
-            size_t frames = 0, images = 1;
-            int times = json_get(&j, 0, "sample_times_seconds");
-            *text = json_string(&j, json_get(&j, 0, "observation"));
-            if (!*text || !**text || strlen(*text) > 16384 ||
-                !json_uint(&j, json_get(&j, 0, "frames"), &frames) ||
-                frames != input->count ||
-                !json_uint(&j, json_get(&j, 0, "images"), &images) || images ||
-                !json_uint(&j, json_get(&j, 0, "prompt_tokens"),
-                           prompt_tokens) ||
-                !*prompt_tokens || *prompt_tokens > 2048 ||
-                !json_uint(&j, json_get(&j, 0, "generated_tokens"),
-                           generated_tokens) ||
-                !*generated_tokens || *generated_tokens > input->tokens ||
-                times < 0 || j.tokens[times].type != JT_ARRAY ||
-                j.tokens[times].count != (int)input->count)
-                error = "invalid_provider_response";
-            size_t k = 0;
-            for (int t = times + 1; !error && t < j.tokens[times].next;
-                 t = j.tokens[t].next, k++)
-                if (!timestamp(&j, t, input->frames[k].timestamp_us))
-                    error = "invalid_provider_response";
-        }
+        Json q;
+        if (!reply || !quit || offset != bytes || !json_parse(&q, quit, strlen(quit)) ||
+            !equal(&q, 0, "status", "ok")) error = "invalid_provider_response";
+        if (!error) error = temporal_result(reply, input, text, prompt_tokens, generated_tokens);
         free(reply);
         free(quit);
     }
