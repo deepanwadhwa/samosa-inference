@@ -1,0 +1,696 @@
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference specialist
+ar rcs build/libsamosa-inference-specialist.a build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/whisper-process.o build/vision-budget.o
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C "vendor/chutni" BUILD="/Users/deepanwadhwa/Documents/samosa-chat/build/chutni" OPT="-O2 -Wno-error=implicit-function-declaration" "/Users/deepanwadhwa/Documents/samosa-chat/build/chutni/chutni-mcp"
+make[1]: `/Users/deepanwadhwa/Documents/samosa-chat/build/chutni/chutni-mcp' is up to date.
+cc -O2 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  src/samosa_gateway.c components/samosa-inference/build/libsamosa-inference-specialist.a src/samosa_evidence.c src/samosa_html.c -o build/samosa-gateway 
+cc -O2 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  tests/fake_openai_backend.c -o build/test_fake_openai_backend
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference test-specialist-supervisor
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_multimodal_supervisor.c build/libsamosa-inference-specialist.a -o build/test-specialist-supervisor
+./build/test-specialist-supervisor /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+multimodal supervisor: PASS
+cp components/samosa-inference/build/fake-multimodal-helper build/fake-multimodal-helper
+SAMOSA_COMPILED_GATEWAY=./build/samosa-gateway \
+	SAMOSA_FAKE_BACKEND=./build/test_fake_openai_backend \
+	SAMOSA_FAKE_MM_HELPER=./build/fake-multimodal-helper \
+	sh tests/test_molmo2_gateway.sh
+molmo2 gateway: PASS
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference test-vision-engine-components MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++"
+c++ -std=c++20 -O2 -Wall -Wextra -I"/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" -I"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -Iengines tests/test_visionpsy_components.cpp engines/visionpsy/visionpsy_model.cpp -o build/test-visionpsy-components -L"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -lmlx /Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/jaccl/libjaccl.a -framework Foundation -framework Metal -framework Accelerate -lc++
+In file included from tests/test_visionpsy_components.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:10:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from tests/test_visionpsy_components.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:12:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/dtype.h:9:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/complex.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/half_types.h:32:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+4 warnings generated.
+In file included from engines/visionpsy/visionpsy_model.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:10:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from engines/visionpsy/visionpsy_model.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:12:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/dtype.h:9:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/complex.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/half_types.h:32:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+In file included from engines/visionpsy/visionpsy_model.cpp:7:
+engines/visionpsy/../tok.h:302:12: warning: unused function 'tok_id_of' [-Wunused-function]
+  302 | static int tok_id_of(Tok *T, const char *content){
+      |            ^~~~~~~~~
+5 warnings generated.
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[2](array.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[4](device.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[5](dtype.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[6](dtype_utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[9](fast.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[10](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[11](ops.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[13](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[15](scheduler.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[16](stream.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[17](transforms.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[18](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[19](linalg.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[20](broadcasting.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[21](compiled.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[22](common.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[23](load.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[25](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[26](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[27](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[28](device_info.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[29](arg_reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[30](binary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[31](conv.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[32](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[34](eig.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[35](eigh.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[36](encoder.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[37](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[38](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[39](matmul.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[40](cblas.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[41](masked_mm.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[42](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[43](quantized.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[44](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[45](scan.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[46](select.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[47](softmax.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[48](logsumexp.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[49](sort.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[50](threefry.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[51](indexing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[52](luf.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[53](qrf.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[54](svd.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[55](inverse.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[56](cholesky.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[57](unary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[58](eval.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[60](bnns.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[71](load.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[72](safetensors.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[74](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[78](reduce_utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[79](scatter.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[80](masked_scatter.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[81](gather.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[82](gather_front.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[83](gather_axis.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[84](scatter_axis.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[85](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[86](nojit_kernels.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[87](allocator.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[88](binary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[89](device_info.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[91](conv.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[92](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[95](device.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[96](event.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[97](eval.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[98](fence.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[99](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[100](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[101](indexing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[102](logsumexp.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[103](matmul.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[104](scaled_dot_product_attention.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[105](metal.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[106](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[107](quantized.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[108](normalization.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[109](rope.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[110](scan.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[111](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[112](softmax.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[113](sort.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[114](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[115](ternary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[116](unary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[117](resident.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[118](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[119](no_cuda.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[120](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[121](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[122](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+METAL_PATH="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/mlx/backend/metal/kernels" ./build/test-visionpsy-components
+Testing pixel-shuffle projector tensor shapes...
+Pixel-shuffle test: PASS
+Testing aspect-preserving DynamicResize and tile generation...
+DynamicResize and tiling test: PASS
+Testing decompression safety limits...
+Decompression safety test: PASS
+All VisionPsy component tests passed!
+cp components/samosa-inference/build/test-visionpsy-components build/test-visionpsy-components
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference vision-engine MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++"
+c++ -std=c++20 -O2 -Wall -Wextra -I"/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" -I"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -Iengines engines/visionpsy/samosa_visionpsy.cpp engines/visionpsy/visionpsy_model.cpp -o build/samosa-visionpsy -L"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -lmlx /Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/jaccl/libjaccl.a -framework Foundation -framework Metal -framework Accelerate -lc++
+In file included from engines/visionpsy/samosa_visionpsy.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:10:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from engines/visionpsy/samosa_visionpsy.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:12:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/dtype.h:9:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/complex.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/half_types.h:32:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+4 warnings generated.
+In file included from engines/visionpsy/visionpsy_model.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:10:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from engines/visionpsy/visionpsy_model.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:12:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/dtype.h:9:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/complex.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/half_types.h:32:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+In file included from engines/visionpsy/visionpsy_model.cpp:7:
+engines/visionpsy/../tok.h:302:12: warning: unused function 'tok_id_of' [-Wunused-function]
+  302 | static int tok_id_of(Tok *T, const char *content){
+      |            ^~~~~~~~~
+5 warnings generated.
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[2](array.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[4](device.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[5](dtype.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[6](dtype_utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[9](fast.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[10](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[11](ops.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[13](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[15](scheduler.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[16](stream.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[17](transforms.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[18](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[19](linalg.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[20](broadcasting.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[21](compiled.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[22](common.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[23](load.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[25](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[26](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[27](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[28](device_info.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[29](arg_reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[30](binary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[31](conv.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[32](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[34](eig.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[35](eigh.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[36](encoder.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[37](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[38](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[39](matmul.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[40](cblas.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[41](masked_mm.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[42](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[43](quantized.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[44](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[45](scan.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[46](select.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[47](softmax.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[48](logsumexp.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[49](sort.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[50](threefry.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[51](indexing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[52](luf.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[53](qrf.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[54](svd.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[55](inverse.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[56](cholesky.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[57](unary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[58](eval.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[60](bnns.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[71](load.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[72](safetensors.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[74](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[78](reduce_utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[79](scatter.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[80](masked_scatter.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[81](gather.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[82](gather_front.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[83](gather_axis.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[84](scatter_axis.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[85](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[86](nojit_kernels.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[87](allocator.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[88](binary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[89](device_info.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[91](conv.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[92](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[95](device.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[96](event.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[97](eval.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[98](fence.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[99](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[100](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[101](indexing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[102](logsumexp.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[103](matmul.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[104](scaled_dot_product_attention.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[105](metal.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[106](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[107](quantized.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[108](normalization.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[109](rope.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[110](scan.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[111](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[112](softmax.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[113](sort.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[114](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[115](ternary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[116](unary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[117](resident.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[118](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[119](no_cuda.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[120](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[121](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[122](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+cp components/samosa-inference/build/samosa-visionpsy build/samosa-visionpsy
+node tests/test_visionpsy_ui.mjs
+VisionPsy download-and-continue UI fixtures: PASS
+node tests/test_developer_mode_ui.mjs
+Developer mode Settings UI fixtures: PASS
+sh tests/test_visionpsy_e2e.sh
+Building test binaries...
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference specialist
+make[2]: Nothing to be done for `specialist'.
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C "vendor/chutni" BUILD="/Users/deepanwadhwa/Documents/samosa-chat/build/chutni" OPT="-O2 -Wno-error=implicit-function-declaration" "/Users/deepanwadhwa/Documents/samosa-chat/build/chutni/chutni-mcp"
+make[2]: `/Users/deepanwadhwa/Documents/samosa-chat/build/chutni/chutni-mcp' is up to date.
+cc -O2 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  src/samosa_gateway.c components/samosa-inference/build/libsamosa-inference-specialist.a src/samosa_evidence.c src/samosa_html.c -o build/samosa-gateway 
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference vision-engine MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++"
+c++ -std=c++20 -O2 -Wall -Wextra -I"/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" -I"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -Iengines engines/visionpsy/samosa_visionpsy.cpp engines/visionpsy/visionpsy_model.cpp -o build/samosa-visionpsy -L"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -lmlx /Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/jaccl/libjaccl.a -framework Foundation -framework Metal -framework Accelerate -lc++
+In file included from engines/visionpsy/samosa_visionpsy.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:10:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from engines/visionpsy/samosa_visionpsy.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:12:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/dtype.h:9:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/complex.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/half_types.h:32:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+4 warnings generated.
+In file included from engines/visionpsy/visionpsy_model.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:10:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from engines/visionpsy/visionpsy_model.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:12:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/dtype.h:9:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/complex.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/half_types.h:32:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+In file included from engines/visionpsy/visionpsy_model.cpp:7:
+engines/visionpsy/../tok.h:302:12: warning: unused function 'tok_id_of' [-Wunused-function]
+  302 | static int tok_id_of(Tok *T, const char *content){
+      |            ^~~~~~~~~
+5 warnings generated.
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[2](array.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[4](device.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[5](dtype.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[6](dtype_utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[9](fast.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[10](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[11](ops.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[13](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[15](scheduler.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[16](stream.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[17](transforms.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[18](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[19](linalg.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[20](broadcasting.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[21](compiled.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[22](common.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[23](load.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[25](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[26](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[27](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[28](device_info.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[29](arg_reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[30](binary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[31](conv.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[32](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[34](eig.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[35](eigh.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[36](encoder.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[37](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[38](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[39](matmul.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[40](cblas.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[41](masked_mm.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[42](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[43](quantized.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[44](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[45](scan.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[46](select.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[47](softmax.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[48](logsumexp.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[49](sort.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[50](threefry.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[51](indexing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[52](luf.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[53](qrf.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[54](svd.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[55](inverse.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[56](cholesky.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[57](unary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[58](eval.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[60](bnns.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[71](load.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[72](safetensors.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[74](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[78](reduce_utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[79](scatter.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[80](masked_scatter.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[81](gather.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[82](gather_front.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[83](gather_axis.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[84](scatter_axis.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[85](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[86](nojit_kernels.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[87](allocator.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[88](binary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[89](device_info.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[91](conv.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[92](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[95](device.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[96](event.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[97](eval.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[98](fence.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[99](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[100](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[101](indexing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[102](logsumexp.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[103](matmul.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[104](scaled_dot_product_attention.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[105](metal.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[106](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[107](quantized.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[108](normalization.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[109](rope.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[110](scan.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[111](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[112](softmax.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[113](sort.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[114](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[115](ternary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[116](unary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[117](resident.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[118](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[119](no_cuda.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[120](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[121](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[122](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+cp components/samosa-inference/build/samosa-visionpsy build/samosa-visionpsy
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference test-vision-engine-components MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++"
+c++ -std=c++20 -O2 -Wall -Wextra -I"/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" -I"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -Iengines tests/test_visionpsy_components.cpp engines/visionpsy/visionpsy_model.cpp -o build/test-visionpsy-components -L"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -lmlx /Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/jaccl/libjaccl.a -framework Foundation -framework Metal -framework Accelerate -lc++
+In file included from tests/test_visionpsy_components.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:10:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from tests/test_visionpsy_components.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:12:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/dtype.h:9:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/complex.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/half_types.h:32:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+4 warnings generated.
+In file included from engines/visionpsy/visionpsy_model.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:10:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from engines/visionpsy/visionpsy_model.cpp:1:
+In file included from engines/visionpsy/visionpsy_model.h:4:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:12:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/dtype.h:9:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/complex.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/half_types.h:32:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+In file included from engines/visionpsy/visionpsy_model.cpp:7:
+engines/visionpsy/../tok.h:302:12: warning: unused function 'tok_id_of' [-Wunused-function]
+  302 | static int tok_id_of(Tok *T, const char *content){
+      |            ^~~~~~~~~
+5 warnings generated.
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[2](array.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[4](device.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[5](dtype.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[6](dtype_utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[9](fast.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[10](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[11](ops.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[13](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[15](scheduler.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[16](stream.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[17](transforms.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[18](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[19](linalg.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[20](broadcasting.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[21](compiled.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[22](common.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[23](load.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[25](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[26](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[27](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[28](device_info.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[29](arg_reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[30](binary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[31](conv.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[32](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[34](eig.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[35](eigh.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[36](encoder.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[37](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[38](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[39](matmul.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[40](cblas.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[41](masked_mm.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[42](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[43](quantized.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[44](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[45](scan.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[46](select.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[47](softmax.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[48](logsumexp.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[49](sort.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[50](threefry.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[51](indexing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[52](luf.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[53](qrf.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[54](svd.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[55](inverse.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[56](cholesky.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[57](unary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[58](eval.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[60](bnns.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[71](load.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[72](safetensors.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[74](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[78](reduce_utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[79](scatter.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[80](masked_scatter.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[81](gather.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[82](gather_front.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[83](gather_axis.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[84](scatter_axis.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[85](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[86](nojit_kernels.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[87](allocator.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[88](binary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[89](device_info.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[91](conv.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[92](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[95](device.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[96](event.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[97](eval.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[98](fence.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[99](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[100](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[101](indexing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[102](logsumexp.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[103](matmul.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[104](scaled_dot_product_attention.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[105](metal.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[106](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[107](quantized.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[108](normalization.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[109](rope.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[110](scan.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[111](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[112](softmax.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[113](sort.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[114](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[115](ternary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[116](unary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[117](resident.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[118](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[119](no_cuda.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[120](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[121](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[122](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+METAL_PATH="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/mlx/backend/metal/kernels" ./build/test-visionpsy-components
+Testing pixel-shuffle projector tensor shapes...
+Pixel-shuffle test: PASS
+Testing aspect-preserving DynamicResize and tile generation...
+DynamicResize and tiling test: PASS
+Testing decompression safety limits...
+Decompression safety test: PASS
+All VisionPsy component tests passed!
+cp components/samosa-inference/build/test-visionpsy-components build/test-visionpsy-components
+In file included from tests/fake_openai_backend.c:22:
+src/samosa_http.h:165:12: warning: unused function 'samosa_http_stream_headers' [-Wunused-function]
+  165 | static int samosa_http_stream_headers(int fd) {
+      |            ^~~~~~~~~~~~~~~~~~~~~~~~~~
+1 warning generated.
+Health capability separation: PASS
+Catalog verification: PASS
+Auxiliary model selection rejection: PASS
+Attachment uploaded: bf6e855b67618763d38f0cd8c2ab5ea9aed7b28f4475939f040e4e3ac016bedc
+Missing VisionPsy error flow: PASS
+Image OCR plus visual evidence floor: PASS
+Validated document text-only route: PASS
+VisionPsy end-to-end augmentation: PASS
+Full correlated Developer trace: PASS
+Developer mode disable and clear: PASS
+VisionPsy multi-page turn reuse: PASS
+Labelled OCR-only partial recovery: PASS
+test_visionpsy_e2e.sh: PASS

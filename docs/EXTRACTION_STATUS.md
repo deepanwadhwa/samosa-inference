@@ -5,7 +5,20 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-Native Mac checkpoint, 2026-11-21: LIFE-07f moves the existing visual memory/
+Native Mac checkpoint, 2026-11-21: LIFE-07g consolidates visual engine source/
+build ownership here. Chat delegates its Mac builds/tests with explicit existing
+MLX inputs. Original compiler/link/output/media behavior is retained; original
+VisionPsy tests and Molmo packer move unchanged. All13 engine files,4 tests and
+packer compare identical before18 parent copies (3884 lines) are retired.
+Fresh standalone native builds, original component normal/SAN and real heading
+gates, newly built actual VisionPsy/Molmo owner normal/SAN, gateway workflows
+and package/clean-install/upgrade checks pass. See
+qualification/life07g-visual-builds/README.md for exact scope and excluded attempts.
+Next: remaining primary-backend source/build/launch ownership, then guarded
+Whisper execution and shared coordination per Chat's remaining-area3 audit.
+Area3 and later areas remain open. No Python or Docker ran.
+
+Previous native Mac checkpoint, 2026-11-21: LIFE-07f moves the existing visual memory/
 thermal probes, adaptive budget, reserve and bounded reclaim wait into
 vision_budget.c/public API. Gateway retains thin stop/trace and manifest adapters;
 its pause/resume/retry policy is unchanged. Source audit,25 native normal/SAN

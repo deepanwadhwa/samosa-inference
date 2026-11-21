@@ -56,6 +56,28 @@ results are in [Whisper package evidence](../docs/WHISPER_PACKAGE_INSTALLATION_V
 
 ## VisionPsy
 
+Chat delegates its native development builds here. Supply the existing matching
+MLX checkout/build explicitly; these targets neither build MLX nor fetch models:
+
+```sh
+make vision-engine molmo2-engine molmo2-pack molmo2-model-compile \
+  test-vision-engine-components test-molmo-engine-components \
+  MLX_DIR=/absolute/mlx-checkout MLX_BUILD_DIR=/absolute/mlx-build
+```
+
+Outputs retain `build/samosa-visionpsy`, `build/samosa-molmo2`, `build/molmo2-pack`
+and the original test binary names. Use that build's
+`mlx/backend/metal/kernels/mlx.metallib` with the binaries: set `METAL_PATH` to its
+directory for development, or colocate that exact library with an isolated
+runtime. Never substitute a kernel library from a different MLX build.
+`vision-engine-real-check` compiles the unchanged original
+`tests/test_visionpsy_real.cpp` gate to `build/test-visionpsy-real`; execute it with
+`MODEL_DIR RENDERED_FIXTURE.ppm` and the same `METAL_PATH`. Chat's
+`make test-visionpsy-real VISIONPSY_MODEL_DIR=...` retains native PDF rendering
+and runs that owner test. `sanitize-molmo-engine-components` runs the original
+contract/processor tests with ASan/UBSan. Native development qualification is
+for this Mac; independent release builders below retain their pinned profiles.
+
 `visionpsy/` and the supporting `json.h`, `tok.h`, `tok_unicode.h`, and
 `stb_image.h` were copied from the existing Chat engine. The shared JSON header
 uses named Unicode decoding buffers so it compiles as standard C++ under GCC;
@@ -97,8 +119,10 @@ building VisionPsy does not build Molmo2.
 `molmo2/` reuses the existing native model, processor, model contract, media
 helpers and framed engine protocol without implementation changes. The copied
 engine includes the existing prepared `video_frames` protocol required by the
-public temporal adapter. Chat's working tree is left untouched, including its
-uncommitted prepared-frame changes. The shared engine support headers are reused
+public temporal adapter. Chat now delegates its builds/tests here and retires
+its duplicate visual engine sources. The original `tools/molmo2_pack.cpp` and
+VisionPsy component/real tests also live here without implementation changes;
+the original Molmo component tests were already present. Shared headers are reused
 from Chat, with the JSON Unicode-buffer portability change described above.
 
 ```sh

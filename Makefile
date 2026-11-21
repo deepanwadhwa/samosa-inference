@@ -833,6 +833,45 @@ sanitize-molmo-engine-components: | build
 test: test-molmo-engine-components
 sanitize: sanitize-molmo-engine-components
 
+# Original Mac development builds, using an explicitly supplied, already-built
+# MLX dependency. Release builds retain tools/build_{vision,molmo}_runtime.sh.
+# No parent source checkout, dependency rebuild or model download is required.
+MLX_DIR ?=
+MLX_BUILD_DIR ?=
+VISUAL_MLX_INCLUDE = -I"$(MLX_DIR)" -I"$(MLX_BUILD_DIR)" -Iengines
+VISUAL_MLX_JACCL = $(wildcard $(MLX_BUILD_DIR)/jaccl/libjaccl.a)
+VISUAL_MLX_LIBS = -L"$(MLX_BUILD_DIR)" -lmlx $(VISUAL_MLX_JACCL) -framework Foundation -framework Metal -framework Accelerate -lc++
+VISUAL_CXXFLAGS = -std=c++20 -O2 -Wall -Wextra
+MOLMO_CXXFLAGS = $(VISUAL_CXXFLAGS) -Wno-unused-function -Wno-unused-parameter -Wno-deprecated-copy
+ifeq ($(shell uname -s),Darwin)
+MOLMO_MEDIA_SOURCE = engines/molmo2/molmo2_media.mm
+MOLMO_MEDIA_LIBS = -framework AVFoundation -framework CoreMedia -framework CoreGraphics
+else
+MOLMO_MEDIA_SOURCE = engines/molmo2/molmo2_media_stub.cpp
+MOLMO_MEDIA_LIBS =
+endif
+.PHONY: visual-mlx-check vision-engine molmo2-engine molmo2-pack molmo2-model-compile test-vision-engine-components vision-engine-real-check
+visual-mlx-check:
+	@test "$$(uname -s)" = Darwin || { echo "visual development profile requires native macOS" >&2; exit 2; }
+	@test -f "$(MLX_DIR)/mlx/mlx.h" -a -f "$(MLX_BUILD_DIR)/libmlx.a" -a -f "$(MLX_BUILD_DIR)/mlx/backend/metal/kernels/mlx.metallib" || { echo "set MLX_DIR and MLX_BUILD_DIR to the existing native MLX source/build pair" >&2; exit 2; }
+VISION_ENGINE_SOURCES = engines/visionpsy/samosa_visionpsy.cpp engines/visionpsy/visionpsy_model.cpp
+VISION_ENGINE_HEADERS = engines/visionpsy/visionpsy_model.h engines/stb_image.h engines/json.h engines/tok.h engines/tok_unicode.h
+MOLMO_ENGINE_SOURCES = engines/molmo2/samosa_molmo2.cpp engines/molmo2/molmo2_model.cpp engines/molmo2/molmo2_processor.cpp engines/molmo2/molmo2_contract.cpp $(MOLMO_MEDIA_SOURCE)
+MOLMO_ENGINE_HEADERS = $(wildcard engines/molmo2/*.h) engines/stb_image.h engines/json.h engines/tok.h engines/tok_unicode.h
+vision-engine: $(VISION_ENGINE_SOURCES) $(VISION_ENGINE_HEADERS) visual-mlx-check | build
+	$(CXX) $(VISUAL_CXXFLAGS) $(VISUAL_MLX_INCLUDE) $(VISION_ENGINE_SOURCES) -o build/samosa-visionpsy $(VISUAL_MLX_LIBS)
+molmo2-engine: $(MOLMO_ENGINE_SOURCES) $(MOLMO_ENGINE_HEADERS) visual-mlx-check | build
+	$(CXX) $(MOLMO_CXXFLAGS) $(VISUAL_MLX_INCLUDE) $(MOLMO_ENGINE_SOURCES) -o build/samosa-molmo2 $(VISUAL_MLX_LIBS) $(MOLMO_MEDIA_LIBS)
+molmo2-pack: tools/molmo2_pack.cpp engines/molmo2/molmo2_contract.cpp $(MOLMO_CONTRACT_HEADERS) visual-mlx-check | build
+	$(CXX) $(VISUAL_CXXFLAGS) -Wno-unused-parameter -Wno-deprecated-copy $(VISUAL_MLX_INCLUDE) tools/molmo2_pack.cpp engines/molmo2/molmo2_contract.cpp -o build/molmo2-pack $(VISUAL_MLX_LIBS)
+molmo2-model-compile: engines/molmo2/molmo2_model.cpp $(MOLMO_ENGINE_HEADERS) visual-mlx-check | build
+	$(CXX) $(MOLMO_CXXFLAGS) $(VISUAL_MLX_INCLUDE) -c engines/molmo2/molmo2_model.cpp -o build/molmo2_model.o
+test-vision-engine-components: tests/test_visionpsy_components.cpp engines/visionpsy/visionpsy_model.cpp $(VISION_ENGINE_HEADERS) visual-mlx-check | build
+	$(CXX) $(VISUAL_CXXFLAGS) $(VISUAL_MLX_INCLUDE) tests/test_visionpsy_components.cpp engines/visionpsy/visionpsy_model.cpp -o build/test-visionpsy-components $(VISUAL_MLX_LIBS)
+	METAL_PATH="$(MLX_BUILD_DIR)/mlx/backend/metal/kernels" ./build/test-visionpsy-components
+vision-engine-real-check: tests/test_visionpsy_real.cpp engines/visionpsy/visionpsy_model.cpp $(VISION_ENGINE_HEADERS) visual-mlx-check | build
+	$(CXX) $(VISUAL_CXXFLAGS) $(VISUAL_MLX_INCLUDE) tests/test_visionpsy_real.cpp engines/visionpsy/visionpsy_model.cpp -o build/test-visionpsy-real $(VISUAL_MLX_LIBS)
+
 # Extend the existing decision transport fixture for public ownership/control
 # gates. Tiny fake loader dependency and dummy model bytes, never actual-model
 # evidence. Real model pins remain a separate explicit qualification runner.

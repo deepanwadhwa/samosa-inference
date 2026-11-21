@@ -1,0 +1,1 @@
+FAIL 185: (argc==2||argc==5||argc==6||death_owner)&&argv[0][0]=='/'

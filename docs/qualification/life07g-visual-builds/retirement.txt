@@ -1,0 +1,2 @@
+Retired 18 byte-identical parent files (3884 lines), after delegated builds, component tests, actual model checks and gateway integration passed.
+The parent shared json/stb_image/tok/tok_unicode headers remain used by other engines.

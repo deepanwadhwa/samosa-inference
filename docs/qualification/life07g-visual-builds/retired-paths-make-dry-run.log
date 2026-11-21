@@ -1,0 +1,67 @@
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference vision-engine MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++"
+test "$(uname -s)" = Darwin || { echo "visual development profile requires native macOS" >&2; exit 2; }
+test -f "/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h" -a -f "/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a" -a -f "/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/mlx/backend/metal/kernels/mlx.metallib" || { echo "set MLX_DIR and MLX_BUILD_DIR to the existing native MLX source/build pair" >&2; exit 2; }
+c++ -std=c++20 -O2 -Wall -Wextra -I"/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" -I"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -Iengines engines/visionpsy/samosa_visionpsy.cpp engines/visionpsy/visionpsy_model.cpp -o build/samosa-visionpsy -L"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -lmlx /Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/jaccl/libjaccl.a -framework Foundation -framework Metal -framework Accelerate -lc++
+mkdir -p build
+cp components/samosa-inference/build/samosa-visionpsy build/samosa-visionpsy
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference test-vision-engine-components MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++"
+test "$(uname -s)" = Darwin || { echo "visual development profile requires native macOS" >&2; exit 2; }
+test -f "/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h" -a -f "/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a" -a -f "/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/mlx/backend/metal/kernels/mlx.metallib" || { echo "set MLX_DIR and MLX_BUILD_DIR to the existing native MLX source/build pair" >&2; exit 2; }
+c++ -std=c++20 -O2 -Wall -Wextra -I"/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" -I"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -Iengines tests/test_visionpsy_components.cpp engines/visionpsy/visionpsy_model.cpp -o build/test-visionpsy-components -L"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -lmlx /Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/jaccl/libjaccl.a -framework Foundation -framework Metal -framework Accelerate -lc++
+METAL_PATH="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/mlx/backend/metal/kernels" ./build/test-visionpsy-components
+mkdir -p build
+cp components/samosa-inference/build/test-visionpsy-components build/test-visionpsy-components
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test-molmo2-contract
+make[1]: `build/test-molmo2-contract' is up to date.
+mkdir -p build
+cp components/samosa-inference/build/test-molmo2-contract build/test-molmo2-contract
+build/test-molmo2-contract
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test-molmo2-processor
+make[1]: `build/test-molmo2-processor' is up to date.
+mkdir -p build
+cp components/samosa-inference/build/test-molmo2-processor build/test-molmo2-processor
+build/test-molmo2-processor
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference molmo2-model-compile MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++"
+test "$(uname -s)" = Darwin || { echo "visual development profile requires native macOS" >&2; exit 2; }
+test -f "/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h" -a -f "/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a" -a -f "/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/mlx/backend/metal/kernels/mlx.metallib" || { echo "set MLX_DIR and MLX_BUILD_DIR to the existing native MLX source/build pair" >&2; exit 2; }
+c++ -std=c++20 -O2 -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-deprecated-copy -I"/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" -I"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -Iengines -c engines/molmo2/molmo2_model.cpp -o build/molmo2_model.o
+mkdir -p build
+cp components/samosa-inference/build/molmo2_model.o build/molmo2_model.o
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference molmo2-engine MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++"
+test "$(uname -s)" = Darwin || { echo "visual development profile requires native macOS" >&2; exit 2; }
+test -f "/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h" -a -f "/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a" -a -f "/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/mlx/backend/metal/kernels/mlx.metallib" || { echo "set MLX_DIR and MLX_BUILD_DIR to the existing native MLX source/build pair" >&2; exit 2; }
+c++ -std=c++20 -O2 -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-deprecated-copy -I"/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" -I"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -Iengines engines/molmo2/samosa_molmo2.cpp engines/molmo2/molmo2_model.cpp engines/molmo2/molmo2_processor.cpp engines/molmo2/molmo2_contract.cpp engines/molmo2/molmo2_media.mm -o build/samosa-molmo2 -L"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -lmlx /Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/jaccl/libjaccl.a -framework Foundation -framework Metal -framework Accelerate -lc++ -framework AVFoundation -framework CoreMedia -framework CoreGraphics
+mkdir -p build
+cp components/samosa-inference/build/samosa-molmo2 build/samosa-molmo2
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference molmo2-pack MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++"
+test "$(uname -s)" = Darwin || { echo "visual development profile requires native macOS" >&2; exit 2; }
+test -f "/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h" -a -f "/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a" -a -f "/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/mlx/backend/metal/kernels/mlx.metallib" || { echo "set MLX_DIR and MLX_BUILD_DIR to the existing native MLX source/build pair" >&2; exit 2; }
+c++ -std=c++20 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-copy -I"/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" -I"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -Iengines tools/molmo2_pack.cpp engines/molmo2/molmo2_contract.cpp -o build/molmo2-pack -L"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -lmlx /Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/jaccl/libjaccl.a -framework Foundation -framework Metal -framework Accelerate -lc++
+mkdir -p build
+cp components/samosa-inference/build/molmo2-pack build/molmo2-pack
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference specialist
+make[1]: Nothing to be done for `specialist'.
+test -f "vendor/chutni/Makefile" || { echo "missing Chutni submodule; run: git submodule update --init" >&2; exit 2; }
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C "vendor/chutni" BUILD="/Users/deepanwadhwa/Documents/samosa-chat/build/chutni" OPT="-O2 -Wno-error=implicit-function-declaration" "/Users/deepanwadhwa/Documents/samosa-chat/build/chutni/chutni-mcp"
+make[1]: `/Users/deepanwadhwa/Documents/samosa-chat/build/chutni/chutni-mcp' is up to date.
+mkdir -p build
+set -e; staged=$(mktemp "build/chutni-mcp.XXXXXX"); \
+	  trap 'rm -f "$staged"' EXIT HUP INT TERM; \
+	  cp -p "/Users/deepanwadhwa/Documents/samosa-chat/build/chutni/chutni-mcp" "$staged"; \
+	  mv -f "$staged" "build/chutni-mcp"
+mkdir -p build
+cc -O2 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  src/samosa_gateway.c components/samosa-inference/build/libsamosa-inference-specialist.a src/samosa_evidence.c src/samosa_html.c -o build/samosa-gateway 
+mkdir -p build
+cc -O2 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  tests/fake_openai_backend.c -o build/test_fake_openai_backend
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference test-specialist-supervisor
+./build/test-specialist-supervisor /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+mkdir -p build
+cp components/samosa-inference/build/fake-multimodal-helper build/fake-multimodal-helper
+SAMOSA_COMPILED_GATEWAY=./build/samosa-gateway \
+	SAMOSA_FAKE_BACKEND=./build/test_fake_openai_backend \
+	SAMOSA_FAKE_MM_HELPER=./build/fake-multimodal-helper \
+	sh tests/test_molmo2_gateway.sh
+node tests/test_composer_perf.mjs
+echo "Molmo2 native unit/integration suite: PASS"
