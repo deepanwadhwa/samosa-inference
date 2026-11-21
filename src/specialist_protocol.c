@@ -309,3 +309,89 @@ int samosa_mm_visionpsy_inspect(SamosaMmSession *s, const SamosaMmTrace *trace, 
     json_free(root); free(arena); free(line);
     return 1;
 }
+
+/* Existing gateway visual launch profiles; caller supplies selection policy. */
+int samosa_mm_visionpsy_start(SamosaMmSupervisor *supervisor, SamosaMmSession *s,
+                             const SamosaMmTrace *trace, const char *engine,
+                             const char *model, int available) {
+    if (!s) return 0;
+    if (!available) {
+        protocol_trace_event(trace, "visionpsy_start_failed", "\"code\":\"model_unavailable\"");
+        return 0;
+    }
+    TextBuffer start_fields = {0};
+    if (text_add(&start_fields, "\"engine\":") && text_json_string(&start_fields, engine) &&
+        text_add(&start_fields, ",\"model_path\":") && text_json_string(&start_fields, model))
+        protocol_trace_event(trace, "visionpsy_starting", start_fields.data);
+    free(start_fields.data);
+    SamosaMmProvider provider = {
+        .provider = "visionpsy_nano_460m",
+        .executable = engine,
+        .model_dir = model,
+        .protocol = SAMOSA_MM_PROTOCOL_JSON_LINE,
+        .ready_timeout_ms = 20000,
+        .request_timeout_ms = 120000,
+        .shutdown_grace_ms = 2000,
+        .max_frame_bytes = 65536
+    };
+    char error_code[SAMOSA_MM_ERROR_MAX] = {0};
+    if (!samosa_mm_session_start(supervisor, &provider, s,
+                                 error_code, sizeof(error_code))) {
+        TextBuffer fields = {0};
+        if (text_add(&fields, "\"code\":") &&
+            text_json_string(&fields, error_code[0] ? error_code : "start_failed"))
+            protocol_trace_event(trace, "visionpsy_start_failed", fields.data);
+        free(fields.data);
+        return 0;
+    }
+    char fields[96];
+    snprintf(fields, sizeof(fields), "\"pid\":%ld,\"supervisor\":\"multimodal_v1\"",
+             (long)s->pid);
+    protocol_trace_event(trace, "visionpsy_process_started", fields);
+    protocol_trace_event(trace, "visionpsy_ready", NULL);
+    return 1;
+}
+
+int samosa_mm_molmo2_start(SamosaMmSupervisor *supervisor, SamosaMmSession *s,
+                           const SamosaMmTrace *trace, const char *engine,
+                           const char *model, int available) {
+    if (!s || !available) return 0;
+    SamosaMmProvider provider = {
+        .provider = "molmo2_4b",
+        .executable = engine,
+        .model_dir = model,
+        .protocol = SAMOSA_MM_PROTOCOL_JSON_FRAME_V1,
+        .ready_timeout_ms = 90000,
+        .request_timeout_ms = 600000,
+        .shutdown_grace_ms = 3000,
+        .max_frame_bytes = 1024 * 1024
+    };
+    protocol_trace_event(trace, "molmo2_starting",
+                          "\"provider\":\"molmo2_4b\",\"protocol\":\"framed_v1\"");
+    char error_code[SAMOSA_MM_ERROR_MAX] = {0};
+    if (!samosa_mm_session_start(supervisor, &provider, s,
+                                 error_code, sizeof(error_code))) {
+        TextBuffer fields = {0};
+        if (text_add(&fields, "\"code\":") &&
+            text_json_string(&fields, error_code[0] ? error_code : "start_failed"))
+            protocol_trace_event(trace, "molmo2_start_failed", fields.data);
+        free(fields.data);
+        return 0;
+    }
+    char fields[128];
+    snprintf(fields, sizeof(fields), "\"pid\":%ld,\"supervisor\":\"multimodal_v1\"", (long)s->pid);
+    protocol_trace_event(trace, "molmo2_ready", fields);
+    return 1;
+}
+
+void samosa_mm_visual_close(SamosaMmSession *s, const SamosaMmTrace *trace) {
+    /* Transport failure invalidates active, but close still owns reap/lease. */
+    if (!s || (!s->active && !s->supervisor && s->pid <= 0)) return;
+    pid_t pid = s->pid;
+    samosa_mm_session_close(s);
+    char fields[128];
+    snprintf(fields, sizeof(fields), "\"pid\":%ld,\"supervisor\":\"multimodal_v1\"",
+             (long)pid);
+    protocol_trace_event(trace, !strcmp(s->provider, "molmo2_4b")
+                                ? "molmo2_process_stopped" : "visionpsy_process_stopped", fields);
+}

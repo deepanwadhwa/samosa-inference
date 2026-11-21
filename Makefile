@@ -913,6 +913,16 @@ sanitize-specialist-protocol: tests/test_specialist_protocol.c src/specialist_pr
 	./build/test-specialist-protocol-sanitize
 test: test-specialist-protocol
 sanitize: sanitize-specialist-protocol
+.PHONY: test-specialist-launch sanitize-specialist-launch
+build/test-specialist-launch: tests/test_specialist_launch.c include/samosa_inference/specialist_protocol.h build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
+test-specialist-launch: build/test-specialist-launch build/fake-multimodal-helper
+	$(abspath build/test-specialist-launch) $(abspath build/fake-multimodal-helper)
+sanitize-specialist-launch: tests/test_specialist_launch.c src/specialist_protocol.c engines/json.h src/specialist_supervisor.c src/controlled_pipe.h include/samosa_inference/specialist_protocol.h include/samosa_inference/specialist_supervisor.h build/fake-multimodal-helper | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_launch.c src/specialist_protocol.c src/specialist_supervisor.c -o build/test-specialist-launch-sanitize
+	$(abspath build/test-specialist-launch-sanitize) $(abspath build/fake-multimodal-helper)
+test: test-specialist-launch
+sanitize: sanitize-specialist-launch
 build/summary-process.o: src/summary_process.c src/controlled_pipe.h src/json.h include/samosa_inference/summary_process.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
 build/llama-launch.o: src/llama_launch.c include/samosa_inference/llama_launch.h | build

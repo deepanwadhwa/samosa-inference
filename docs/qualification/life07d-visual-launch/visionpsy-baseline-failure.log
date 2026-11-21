@@ -1,0 +1,12 @@
+Building test binaries...
+Health capability separation: PASS
+Catalog verification: PASS
+Auxiliary model selection rejection: PASS
+Attachment uploaded: bf6e855b67618763d38f0cd8c2ab5ea9aed7b28f4475939f040e4e3ac016bedc
+Missing VisionPsy error flow: PASS
+FAIL: OCR-only model plan started VisionPsy
+{"command":"ping"}
+{"command":"inspect","image_path":"/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-visionpsy-e2e-aDlEzH/home/attachments/bf/bf6e855b67618763d38f0cd8c2ab5ea9aed7b28f4475939f040e4e3ac016bedc.png","prompt":"Inspect the actual image pixels, including the high-resolution crops. First describe the visible medium, outline, composition, colors, shapes, and repeated motifs without naming the subject. Then identify the most likely visual type and subject from those observations. Distinguish a literal object from an illustration or decorative pattern that merely resembles one. If the identification is ambiguous, give the plausible interpretations and the visible reason for the uncertainty instead of claiming certainty. The filename is not visual evidence. Give a faithful detailed observation of the actual subject, composition, colors, shapes, patterns, objects, and text. If the image contains text or repeated structured regions, count what is visible and transcribe legible text exactly. Mark unreadable text as uncertain. Never invent labels, names, numbers, axes, metrics, or meanings. Answer this task using only visible evidence: Copy the lettering exactly and preserve line breaks.","max_tokens":512,"max_side_len":1536}
+{"command":"quit"}
+
+Baseline exit: 1

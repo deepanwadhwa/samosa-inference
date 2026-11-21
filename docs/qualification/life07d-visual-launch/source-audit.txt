@@ -1,0 +1,4 @@
+Original Chat baseline: 5d5f5fe
+visionpsy_session_start -> samosa_mm_visionpsy_start: identical body after explicit input/trace substitutions
+molmo2_session_start -> samosa_mm_molmo2_start: identical body after explicit input/trace substitutions
+visionpsy_session_close -> samosa_mm_visual_close: identical body after explicit input/trace substitutions; documented retained-ownership guard fix only

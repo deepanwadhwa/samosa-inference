@@ -1,0 +1,4 @@
+c5c166122b6041c7f8b0f8a7f15404f45f38d6b7d1db6047c1b19a40999f9170  ../../src/samosa_gateway.c
+7af092dac70ddbf7d81afb74c2472eb0cfd573a733c4f238b50ea2462ae47f53  ../../tests/test_visionpsy_e2e.sh
+7c3fccac5ddd603a766dfac2524a6f9cf219a4c761e3a489d8f15681ee20ae1b  ../../tests/visionpsy_e2e_checks.mjs
+6aa44ff57cd1dbb3d495179c54003f57b6521ed1db3492ee7c5cb1ad9aa7beea  ../../tools/package_hf.sh

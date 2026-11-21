@@ -1,0 +1,28 @@
+mkdir -p build
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_supervisor.c -o build/specialist-supervisor.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_protocol.c -o build/specialist-protocol.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/summary_process.c -o build/summary-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/llama_launch.c -o build/llama-launch.o
+ar rcs build/libsamosa-inference-specialist.a build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_launch.c build/libsamosa-inference-specialist.a -o build/test-specialist-launch
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread tests/fake_multimodal_helper.c -o build/fake-multimodal-helper
+/private/tmp/samosa-life07d-source.gjQovn/build/test-specialist-launch /private/tmp/samosa-life07d-source.gjQovn/build/fake-multimodal-helper
+PASS original VisionPsy launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+PASS original Molmo2 launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_launch.c src/specialist_protocol.c src/specialist_supervisor.c -o build/test-specialist-launch-sanitize
+/private/tmp/samosa-life07d-source.gjQovn/build/test-specialist-launch-sanitize /private/tmp/samosa-life07d-source.gjQovn/build/fake-multimodal-helper
+PASS original VisionPsy launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+PASS original Molmo2 launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_protocol.c build/libsamosa-inference-specialist.a -o build/test-specialist-protocol
+./build/test-specialist-protocol
+specialist protocol: PASS (25 native exchanges/refusals, exact inherited wire/defaults, Unicode, bounds, errors, traces)
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_protocol.c src/specialist_protocol.c src/specialist_supervisor.c -o build/test-specialist-protocol-sanitize
+./build/test-specialist-protocol-sanitize
+specialist protocol: PASS (25 native exchanges/refusals, exact inherited wire/defaults, Unicode, bounds, errors, traces)
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_multimodal_supervisor.c build/libsamosa-inference-specialist.a -o build/test-specialist-supervisor
+./build/test-specialist-supervisor /private/tmp/samosa-life07d-source.gjQovn/build/fake-multimodal-helper
+multimodal supervisor: PASS
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_multimodal_supervisor.c src/specialist_supervisor.c -o build/test-specialist-supervisor-sanitize
+./build/test-specialist-supervisor-sanitize /private/tmp/samosa-life07d-source.gjQovn/build/fake-multimodal-helper
+multimodal supervisor: PASS
+make: *** No rule to make target `tests/summary_owned_fixture.h', needed by `build/test-specialist-owned'.  Stop.

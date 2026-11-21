@@ -1,0 +1,28 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_protocol.c -o build/specialist-protocol.o
+ar rcs build/libsamosa-inference-specialist.a build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_launch.c build/libsamosa-inference-specialist.a -o build/test-specialist-launch
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-launch /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+PASS original Molmo2 launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_launch.c src/specialist_protocol.c src/specialist_supervisor.c -o build/test-specialist-launch-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-launch-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+PASS original Molmo2 launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_protocol.c build/libsamosa-inference-specialist.a -o build/test-specialist-protocol
+./build/test-specialist-protocol
+specialist protocol: PASS (25 native exchanges/refusals, exact inherited wire/defaults, Unicode, bounds, errors, traces)
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_protocol.c src/specialist_protocol.c src/specialist_supervisor.c -o build/test-specialist-protocol-sanitize
+./build/test-specialist-protocol-sanitize
+specialist protocol: PASS (25 native exchanges/refusals, exact inherited wire/defaults, Unicode, bounds, errors, traces)
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_multimodal_supervisor.c build/libsamosa-inference-specialist.a -o build/test-specialist-supervisor
+./build/test-specialist-supervisor /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+multimodal supervisor: PASS
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_multimodal_supervisor.c src/specialist_supervisor.c -o build/test-specialist-supervisor-sanitize
+./build/test-specialist-supervisor-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+multimodal supervisor: PASS
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -Isrc tests/test_specialist_owned.c src/engine_process.c build/libsamosa-inference-specialist.a -o build/test-specialist-owned
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-owned /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+specialist owned guardian: PASS (both protocols, reuse, reservation, pending close, failed open, deadline, crash/reap, workspace, cache cap, owner death)
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_owned.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-owned-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-owned-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+specialist owned guardian: PASS (both protocols, reuse, reservation, pending close, failed open, deadline, crash/reap, workspace, cache cap, owner death)

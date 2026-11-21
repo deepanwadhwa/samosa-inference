@@ -5,7 +5,23 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-Native Mac checkpoint, 2026-11-20: LIFE-07c qualifies the component's optional
+Native Mac checkpoint, 2026-11-21: LIFE-07d moves the original gateway visual
+launch profiles/close bodies into the existing specialist owner/public archive.
+Thin gateway calls preserve configured paths, availability, trace events and
+original limits. A reproduced inactive-session close bug now releases retained
+worker/lease ownership after a failed exchange. Normal/SAN launch, protocol,
+supervisor/guardian and fresh standalone gates pass. Gateway summary/runtime,
+Molmo, full VisionPsy workflows and clean package/install checks pass natively.
+VisionPsy's Python fixture/assertions were ported to Node/shell; an obsolete image
+text-only expectation was reproduced against the unchanged gateway, then split
+into preserved image-floor and document-text-only checks. Product policy is
+unchanged. See qualification/life07d-visual-launch/README.md for exact evidence.
+Next LIFE-07e extracts/reuses the shared Whisper runner with original text/SRT,
+microphone/long-window semantics, model identity, scoped cancellation and cleanup.
+Full area3/later areas, Python migration/CI, Agent/App/assembly/retirement remain
+open. The following checkpoints retain prior evidence.
+
+Previous native Mac checkpoint, 2026-11-20: LIFE-07c qualifies the component's optional
 resident VisionPsy/Molmo2 owners. Shared `visual_assets.c` reuses existing
 verification, P6 preparation, commands and strict reply validation; one-shot
 adapters use those helpers too. `visual_host.c` adapts existing Activation,

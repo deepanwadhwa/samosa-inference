@@ -1,0 +1,6 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_protocol.c -o build/specialist-protocol.o
+ar rcs build/libsamosa-inference-specialist.a build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_launch.c build/libsamosa-inference-specialist.a -o build/test-specialist-launch
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-launch /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+FAIL: original inactive-session close guard retained worker/lease after failed exchange
+make: *** [test-specialist-launch] Error 1
