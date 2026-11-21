@@ -929,6 +929,18 @@ build/llama-launch.o: src/llama_launch.c include/samosa_inference/llama_launch.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
 build/whisper-process.o: src/whisper_process.c include/samosa_inference/whisper_process.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
+build/vision-budget.o: src/vision_budget.c include/samosa_inference/vision_budget.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
+.PHONY: test-vision-budget sanitize-vision-budget
+build/test-vision-budget: tests/test_vision_budget.c include/samosa_inference/vision_budget.h build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude $< build/libsamosa-inference-specialist.a -o $@
+test-vision-budget: build/test-vision-budget
+	$(abspath build/test-vision-budget)
+sanitize-vision-budget: tests/test_vision_budget.c src/vision_budget.c include/samosa_inference/vision_budget.h | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_vision_budget.c src/vision_budget.c -o build/test-vision-budget-sanitize
+	$(abspath build/test-vision-budget-sanitize)
+test: test-vision-budget
+sanitize: sanitize-vision-budget
 .PHONY: test-whisper-process sanitize-whisper-process
 build/test-whisper-process: tests/test_whisper_process.c include/samosa_inference/whisper_process.h build/libsamosa-inference-specialist.a
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
@@ -953,7 +965,7 @@ sanitize-llama-launch: | build
 	./build/test-llama-launch-sanitize $(abspath build/test-llama-launch-sanitize)
 test: test-llama-launch
 sanitize: sanitize-llama-launch
-build/libsamosa-inference-specialist.a: build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/whisper-process.o Makefile
+build/libsamosa-inference-specialist.a: build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/whisper-process.o build/vision-budget.o Makefile
 	$(AR) rcs $@ $(filter %.o,$^)
 build/fake-multimodal-helper: tests/fake_multimodal_helper.c | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread $< -o $@

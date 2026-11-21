@@ -5,7 +5,22 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-Native Mac checkpoint, 2026-11-21: LIFE-07e extracts the original shared Whisper
+Native Mac checkpoint, 2026-11-21: LIFE-07f moves the existing visual memory/
+thermal probes, adaptive budget, reserve and bounded reclaim wait into
+vision_budget.c/public API. Gateway retains thin stop/trace and manifest adapters;
+its pause/resume/retry policy is unchanged. Source audit,25 native normal/SAN
+boundary cases, live Mac probes, independent owner build, existing Molmo/
+VisionPsy workflows and package/install checks pass. No Python or Docker ran.
+See qualification/life07f-visual-budget/README.md and Chat's
+docs/INFERENCE_AREA3_REMAINING_AUDIT.md for exact requirements still open.
+Next LIFE-07g delegates existing Mac visual engine builds/tests to the already
+extracted owner source, retiring proven parent duplicates after integration.
+All13 engine source/header files and3 support headers compare identical; JSON
+has the documented portability adaptation. Then move remaining primary backend,
+Whisper guarded execution and shared coordination per the audit. This does not
+close area3, global scheduling, later areas or the complete repository split.
+
+Previous native Mac checkpoint, 2026-11-21: LIFE-07e extracts the original shared Whisper
 runner into whisper_process.c/public header and the existing owner archive.
 Gateway calls preserve selected model/fingerprint and explicit original busy/
 PID/cancel coordination. Original txt/SRT argv, long-window behavior, UTF-8/

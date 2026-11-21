@@ -240,6 +240,15 @@ normal and sanitizer gates; actual-model readiness and release gates remain open
 
 ## Extracted specialist supervisor
 
+The existing Mac visual resource policy is exported through `vision_budget.h`:
+native memory/thermal sampling, original adaptive detail/reserve thresholds and
+bounded Molmo memory-reclaim wait. Trusted sampling/control/trace hooks are
+explicit; omitted hooks retain native defaults. This observes resources and
+preserves the original caller's policy; it is not global memory reservation or
+fair scheduling. `make test-vision-budget sanitize-vision-budget` and the
+[source/behavior evidence](docs/qualification/life07f-visual-budget/README.md)
+cover this extraction.
+
 The original shared microphone/long-audio native CLI runner is exported through
 `include/samosa_inference/whisper_process.h` in the owner archive. It preserves
 English/-nt, text/SRT,16-MiB UTF-8 output and the original result codes. Trusted

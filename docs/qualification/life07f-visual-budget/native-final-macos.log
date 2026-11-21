@@ -1,0 +1,8 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude tests/test_vision_budget.c build/libsamosa-inference-specialist.a -o build/test-vision-budget
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-vision-budget
+Actual host sample: total_bytes=17179869184 available_gb=7.223 memory_pressure=1 thermal=0
+PASS extracted visual policy: 25 threshold cases, original traces/reserve, recovery/unknown/pressure/stop and bounded30-poll reclaim
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_vision_budget.c src/vision_budget.c -o build/test-vision-budget-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-vision-budget-sanitize
+Actual host sample: total_bytes=17179869184 available_gb=7.210 memory_pressure=1 thermal=0
+PASS extracted visual policy: 25 threshold cases, original traces/reserve, recovery/unknown/pressure/stop and bounded30-poll reclaim

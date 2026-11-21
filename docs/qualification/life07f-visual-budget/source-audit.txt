@@ -1,0 +1,9 @@
+Original Chat baseline: ce06f94
+vision_available_memory_gb: original native probe body preserved
+vision_memory_pressure: original native probe body preserved
+vision_total_memory_bytes: original native probe body preserved
+vision_thermal_pressure: original native probe body preserved
+Budget thresholds/detail/unknown/reason/trace: original body preserved after explicit sample/trace substitutions
+Reclaim wait: original100-ms/3-second/peak/stop/trace body preserved after explicit hooks
+Default clock/sleep: original bodies preserved
+Resident-estimate/reserve arithmetic and caller manifest/fallback: original behavior preserved

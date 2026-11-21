@@ -1,0 +1,30 @@
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference specialist
+make[1]: Nothing to be done for `specialist'.
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C "vendor/chutni" BUILD="/Users/deepanwadhwa/Documents/samosa-chat/build/chutni" OPT="-O2 -Wno-error=implicit-function-declaration" "/Users/deepanwadhwa/Documents/samosa-chat/build/chutni/chutni-mcp"
+make[1]: `/Users/deepanwadhwa/Documents/samosa-chat/build/chutni/chutni-mcp' is up to date.
+cc -O2 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  src/samosa_gateway.c components/samosa-inference/build/libsamosa-inference-specialist.a src/samosa_evidence.c src/samosa_html.c -o build/samosa-gateway
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/fake-native-summarizer
+make[1]: `build/fake-native-summarizer' is up to date.
+cp components/samosa-inference/build/fake-native-summarizer build/test_fake_native_summarizer
+cc -O1 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  tests/test_native_summarizer_supervisor.c components/samosa-inference/build/libsamosa-inference-specialist.a src/samosa_evidence.c src/samosa_html.c -o build/test_native_summarizer_supervisor
+build/test_native_summarizer_supervisor \
+	  build/test_fake_native_summarizer tests/fixtures/native-summarizer/model.gguf
+test_native_summarizer_supervisor: PASS
+cc -O1 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  tests/test_runtime_settings.c components/samosa-inference/build/libsamosa-inference-specialist.a src/samosa_evidence.c src/samosa_html.c -o build/test_runtime_settings
+build/test_runtime_settings
+test_runtime_settings: PASS
+cc -O2 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  tests/fake_openai_backend.c -o build/test_fake_openai_backend
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference test-specialist-supervisor
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_multimodal_supervisor.c build/libsamosa-inference-specialist.a -o build/test-specialist-supervisor
+./build/test-specialist-supervisor /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+multimodal supervisor: PASS
+cp components/samosa-inference/build/fake-multimodal-helper build/fake-multimodal-helper
+SAMOSA_COMPILED_GATEWAY=./build/samosa-gateway \
+	SAMOSA_FAKE_BACKEND=./build/test_fake_openai_backend \
+	SAMOSA_FAKE_MM_HELPER=./build/fake-multimodal-helper \
+	sh tests/test_molmo2_gateway.sh
+molmo2 gateway: PASS
