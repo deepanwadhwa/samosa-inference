@@ -1,0 +1,2 @@
+Removed earlier LIFE-07j failed-harness native fixture group 98436; identity, live leader/group, parent1 and private backend.log verified before signal.
+Removed earlier LIFE-07j failed-harness native fixture group 98497; identity, live leader/group, parent1 and private backend.log verified before signal.

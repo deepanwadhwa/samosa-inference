@@ -1,0 +1,5 @@
+orphan listener is rejected as backend readiness: PASS
+auth: selection routes gated, no active selection is a clean 404: PASS
+FAIL: gateway did not reach a ready state
+samosa-gateway: backend qwen is not installed or failed to start; serving the control plane without an active model
+[gateway] compiled ready http://127.0.0.1:18994 backend=qwen ready=false

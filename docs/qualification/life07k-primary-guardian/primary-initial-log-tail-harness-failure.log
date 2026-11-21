@@ -1,0 +1,7 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_backend_process.c build/libsamosa-inference-specialist.a -o build/test-backend-process
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process
+samosa-gateway: refusing to start qwen: private backend port 56928 is already occupied by an untracked process
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-ig6mKV/backend.pid
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-ig6mKV/backend.pid
+FAIL 109: strstr(text,"stderr-preserved\n")&&!fclose(log)
+make: *** [test-backend-process] Error 1

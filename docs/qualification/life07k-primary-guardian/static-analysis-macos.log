@@ -1,0 +1,4 @@
+src/engine_process.c:239:18: warning: Array access results in a null pointer dereference [core.NullDereference]
+  239 |     if(!error && args[first][0]!='/')error="invalid_engine_configuration";
+      |                  ^~~~~~~~~~~~~~
+1 warning generated.

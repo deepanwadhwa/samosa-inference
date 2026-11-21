@@ -1,0 +1,4 @@
+/private/tmp/samosa-life07k-baseline-analysis.QXO6ZK/engine_process.c:202:18: warning: Array access results in a null pointer dereference [core.NullDereference]
+  202 |     if(!error && args[first][0]!='/')error="invalid_engine_configuration";
+      |                  ^~~~~~~~~~~~~~
+1 warning generated.

@@ -1,0 +1,2 @@
+PASS original primary environment/log/argv/exec, llama launch, marker writer and bounded HTTP probe preserved; guardian reused
+PASS complete Gateway unchanged except early private dispatch and existing run-directory creation before ownership acquisition

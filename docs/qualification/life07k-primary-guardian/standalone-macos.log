@@ -1,0 +1,26 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_backend_process.c build/libsamosa-inference-specialist.a -o build/test-backend-process
+/private/tmp/samosa-life07k-source.XETMMF/build/test-backend-process /private/tmp/samosa-life07k-source.XETMMF/build/test-backend-process
+samosa-gateway: refusing to start qwen: private backend port 57521 is already occupied by an untracked process
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-oxnUcE/backend.pid
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-oxnUcE/backend.pid
+PASS primary backend owner: 676 checks; original launch/environment/health/marker/stop, literal paths, rollback inputs; guardian parent-death, actual PID reservation, lease exclusion, unlimited append logs, foreign process survives
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_backend_process.c src/backend_process.c src/llama_launch.c src/engine_process.c -o build/test-backend-process-sanitize
+/private/tmp/samosa-life07k-source.XETMMF/build/test-backend-process-sanitize /private/tmp/samosa-life07k-source.XETMMF/build/test-backend-process
+samosa-gateway: refusing to start qwen: private backend port 57892 is already occupied by an untracked process
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-3e3GYB/backend.pid
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-3e3GYB/backend.pid
+PASS primary backend owner: 676 checks; original launch/environment/health/marker/stop, literal paths, rollback inputs; guardian parent-death, actual PID reservation, lease exclusion, unlimited append logs, foreign process survives
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude tests/test_llama_launch.c src/llama_launch.c -o build/test-llama-launch
+./build/test-llama-launch /private/tmp/samosa-life07k-source.XETMMF/build/test-llama-launch
+[samosa] backend sizing: 8 GB RAM, 4 performance cores -> -c 8192
+[samosa] backend sizing: 8 GB RAM, 4 performance cores -> -c 4096 -t 2
+[samosa] backend sizing: 8 GB RAM, 4 performance cores -> -c 8192 -t 3
+[samosa] backend sizing: 8 GB RAM, 4 performance cores -> -c 8192 -t 3
+llama launch: PASS (original flags, overrides, projector, literal paths, exec refusal)
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_llama_launch.c src/llama_launch.c -o build/test-llama-launch-sanitize
+./build/test-llama-launch-sanitize /private/tmp/samosa-life07k-source.XETMMF/build/test-llama-launch-sanitize
+[samosa] backend sizing: 8 GB RAM, 4 performance cores -> -c 8192
+[samosa] backend sizing: 8 GB RAM, 4 performance cores -> -c 4096 -t 2
+[samosa] backend sizing: 8 GB RAM, 4 performance cores -> -c 8192 -t 3
+[samosa] backend sizing: 8 GB RAM, 4 performance cores -> -c 8192 -t 3
+llama launch: PASS (original flags, overrides, projector, literal paths, exec refusal)

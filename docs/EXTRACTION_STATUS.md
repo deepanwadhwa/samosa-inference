@@ -5,7 +5,25 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-Native Mac checkpoint, 2026-11-21: LIFE-07j moves existing primary launch/group/
+Native Mac checkpoint, 2026-11-21: LIFE-07k reuses existing EngineProcess for
+primary backend ownership, preserving original Qwen/Maple/llama launch, actual
+PID/marker, unlimited lifetime, append/fallback logs and8-second TERM grace.
+Retained per-marker lease, WNOWAIT identity reservation, parent-death lifeline and
+pending-stop handle retention finish groups/marker cleanup before reap. No new
+model/guardian/server implementation. Gateway only adds early private dispatch
+and existing runtime directory creation before acquiring ownership.
+Final primary676 normal/SAN, fresh standalone676 normal/SAN, existing guardian525
+normal/SAN, activation/Whisper/Vision/summary normal/SAN, assembled Gateway stop/
+SIGKILL, selection/rollback/settings/LAN/App/llama, exact package/native install/
+upgrade and retained actual Qwen4-token generation/zero swap growth pass.
+See qualification/life07k-primary-guardian/README.md for evidence and limitations.
+Next: guarded legacy Whisper txt/SRT/long-window/16-MiB and default visual wide/
+native-video paths, preserving Chat's INFERENCE_GUARDIAN_COMPATIBILITY.md.
+Common lifecycle readiness/identity/activation, guardian-death policy and shared
+coordination remain open; area3/full goal are incomplete. No Python/model download/
+Docker/VM or Linux work ran. Inkling remains after the complete refactor.
+
+Previous native Mac checkpoint, 2026-11-21: LIFE-07j moves existing primary launch/group/
 probe/PID-marker/stop into backend_process.c/public API and the owner archive.
 Gateway passes original trusted settings/selection and shared-mutex callbacks;
 raw PID/group mutations now belong to Inference. Original bodies/flags are

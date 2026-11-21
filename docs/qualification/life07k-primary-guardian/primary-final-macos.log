@@ -1,0 +1,12 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_backend_process.c build/libsamosa-inference-specialist.a -o build/test-backend-process
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process
+samosa-gateway: refusing to start qwen: private backend port 57481 is already occupied by an untracked process
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-GTBYqc/backend.pid
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-GTBYqc/backend.pid
+PASS primary backend owner: 676 checks; original launch/environment/health/marker/stop, literal paths, rollback inputs; guardian parent-death, actual PID reservation, lease exclusion, unlimited append logs, foreign process survives
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_backend_process.c src/backend_process.c src/llama_launch.c src/engine_process.c -o build/test-backend-process-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process
+samosa-gateway: refusing to start qwen: private backend port 57842 is already occupied by an untracked process
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-EolUmc/backend.pid
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-EolUmc/backend.pid
+PASS primary backend owner: 676 checks; original launch/environment/health/marker/stop, literal paths, rollback inputs; guardian parent-death, actual PID reservation, lease exclusion, unlimited append logs, foreign process survives

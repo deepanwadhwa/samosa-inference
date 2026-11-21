@@ -1,0 +1,11 @@
+orphan listener is rejected as backend readiness: PASS
+auth: selection routes gated, no active selection is a clean 404: PASS
+happy path: bonsai selected, healthz agrees, durably persisted, no longer 'active' once done: PASS
+reconnect mid-switch via GET /v1/models/selection/active: PASS
+concurrent switch rejected (409 selection_busy): PASS
+readiness timeout -> failed, restores the prior working backend: PASS
+wedged health response is bounded and reaches readiness_timeout: PASS
+immediate child crash -> failed fast, restores the prior working backend: PASS
+fingerprint mismatch (weights file swapped mid-switch) -> failed, restores the prior working backend: PASS
+registry commit failure -> failed, live process rolled back to match the untouched file: PASS
+test_model_selection.sh: PASS

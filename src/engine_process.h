@@ -2,7 +2,7 @@
 #define SAMOSA_ENGINE_PROCESS_H
 #include <sys/types.h>
 #include <stddef.h>
-typedef struct {pid_t guardian;int control,response;int terminal;char reason[64];} EngineProcess;
+typedef struct {pid_t guardian,engine;int server;int control,response;int terminal;char reason[64];} EngineProcess;
 /* argv_json is trusted host configuration, never a public model request.
  * Lifecycle ownership does not establish verified artifact identity/readiness. */
 const char *engine_process_start(const char *self,const char *argv_json,
@@ -39,6 +39,14 @@ const char *engine_process_start_bound_protocol(const char *,const char *,double
 /* Trusted opt-in binary protocol, 1..16MiB result cap enforced by RLIMIT_FSIZE
  * in the guardian/worker. Keeps the legacy 8196-byte summary API unchanged. */
 const char *engine_process_start_bound_protocol_sized(const char *,const char *,double,size_t,int,int,const char *,int,int,int,size_t,EngineProcess *);
+/* Existing primary HTTP backend compatibility profile: no lifetime/log cap.
+ * Child receives private bootstrap configuration fd9 and original output/error
+ * descriptors. Retained ownership lease protects PID-marker cleanup until reap.
+ * Startup identifies the actual worker; it does not establish model readiness. */
+typedef struct {int configuration,output,error;const char *marker;} EngineServer;
+const char *engine_process_start_server(const char *,const char *,int,const EngineServer *,EngineProcess *);
+/* Nonblocking terminal observation; server identity stays reserved until stop. */
+int engine_process_running(EngineProcess *);
 const char *engine_process_stop(EngineProcess *);
 /* Returns -1 for normal command dispatch, otherwise hidden guardian exit code. */
 int engine_guardian_dispatch(int argc,char **argv);

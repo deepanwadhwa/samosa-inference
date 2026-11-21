@@ -1,0 +1,17 @@
+mkdir -p build
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Isrc -c src/engine_process.c -o build/engine-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_supervisor.c -o build/specialist-supervisor.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_protocol.c -o build/specialist-protocol.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/summary_process.c -o build/summary-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/llama_launch.c -o build/llama-launch.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/backend_process.c -o build/backend-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/whisper_process.c -o build/whisper-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/vision_budget.c -o build/vision-budget.o
+ar rcs build/libsamosa-inference-specialist.a build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/whisper-process.o build/vision-budget.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_backend_process.c build/libsamosa-inference-specialist.a -o build/test-backend-process
+/private/tmp/samosa-life07k-source.XETMMF/build/test-backend-process /private/tmp/samosa-life07k-source.XETMMF/build/test-backend-process
+samosa-gateway: refusing to start qwen: private backend port 56983 is already occupied by an untracked process
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-bUhvbE/backend.pid
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-bUhvbE/backend.pid
+FAIL 109: strstr(text,"stderr-preserved\n")&&!fclose(log)
+make: *** [test-backend-process] Error 1

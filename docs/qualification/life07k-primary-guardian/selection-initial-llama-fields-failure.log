@@ -1,0 +1,4 @@
+orphan listener is rejected as backend readiness: PASS
+auth: selection routes gated, no active selection is a clean 404: PASS
+FAIL: expected selected, got failed
+{"job_id":"a584373c0b8e186c0e10988082f47a61","requested_backend":"bonsai","previous_backend":"qwen","state":"failed","active_backend":"qwen","error":{"code":"backend_crashed","message":"The new backend process exited before becoming ready."},"created_at":"2026-11-21T19:31:58Z","updated_at":"2026-11-21T19:31:58Z"}
