@@ -5,7 +5,24 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-Native Mac checkpoint, 2026-11-21: LIFE-07i moves the unchanged10-file Maple
+Native Mac checkpoint, 2026-11-21: LIFE-07j moves existing primary launch/group/
+probe/PID-marker/stop into backend_process.c/public API and the owner archive.
+Gateway passes original trusted settings/selection and shared-mutex callbacks;
+raw PID/group mutations now belong to Inference. Original bodies/flags are
+preserved by audit, except a reproduced stubborn-helper leak fixed with the
+existing guardian's WNOWAIT pattern. Native normal/SAN398 checks, standalone
+archive, full original selection/rollback/settings/LAN/app/llama flows, exact
+package/clean install and retained actual Qwen before/after checks pass. Test
+Python JSON/time/tier helpers are ported without dropping assertions.
+See qualification/life07j-primary-process/README.md for exact scope/results.
+Next LIFE-07k reuses existing guardian/host adapters for remaining legacy/default
+paths under Chat's docs/INFERENCE_GUARDIAN_COMPATIBILITY.md. Primary unlimited
+lifetime/PID/environment, Whisper txt/SRT/long-window/16-MiB and visual wide
+profiles must survive. Common generation readiness/identity/parent-death and
+shared coordination remain unfinished; area3/full goal stay open. No Python,
+new model, Docker/VM or Linux work ran.
+
+Previous native Mac checkpoint, 2026-11-21: LIFE-07i moves the unchanged10-file Maple
 implementation, packer and20 original C++ tests/diagnostics here. Shared cache
 ownership is consolidated, including its last parent header copy. Original
 native flags/frameworks/outputs and assertions are preserved; frozen fixture

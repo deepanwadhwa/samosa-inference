@@ -1,0 +1,18 @@
+node:internal/modules/run_main:104
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+  assert(log.includes('Peak process-tree RSS:'))
+
+    at file:///Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/docs/qualification/life07j-primary-process/qualify-qwen.mjs:38:113
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '=='
+}
+
+Node.js v23.10.0

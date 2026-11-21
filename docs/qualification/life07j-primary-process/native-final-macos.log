@@ -1,0 +1,3 @@
+samosa-gateway: refusing to start qwen: private backend port 53151 is already occupied by an untracked process
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-8b621l/backend.pid
+PASS primary backend owner: 398 checks; original launch/environment/health/marker/stop, literal paths, rollback inputs, descendant cleanup

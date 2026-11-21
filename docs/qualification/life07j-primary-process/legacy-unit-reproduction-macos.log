@@ -1,0 +1,3 @@
+samosa-gateway: refusing to start qwen: private backend port 53004 is already occupied by an untracked process
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-ZonGx5/backend.pid
+FAIL 68: cleaned

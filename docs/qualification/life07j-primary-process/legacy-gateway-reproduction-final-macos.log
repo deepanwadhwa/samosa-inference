@@ -1,0 +1,4 @@
+Gateway fixture startup failed: samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-GYm3on/home/run/backend.pid
+[gateway] compiled ready http://127.0.0.1:53046 backend=qwen ready=false
+
+FAIL 79: primary>1&&helper>1

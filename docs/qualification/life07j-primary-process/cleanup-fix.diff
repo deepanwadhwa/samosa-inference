@@ -1,0 +1,69 @@
+--- a/backend_process.c
++++ b/backend_process.c
+@@ -68,6 +68,15 @@
+     return 1;
+ }
+ 
++/* Reuse EngineProcess's WNOWAIT ownership pattern: keep the direct child
++ * unreaped until its group is finished, so the group identity cannot be reused.
++ * The old early return after waitpid left TERM-resistant helpers alive. */
++static void backend_finish_child(pid_t pid, pid_t pgid) {
++    if (pgid > 1 && pgid != getpgrp()) (void)kill(-pgid, SIGKILL);
++    (void)kill(pid, SIGKILL);
++    while (waitpid(pid, NULL, 0) < 0 && errno == EINTR) {}
++}
++
+ pid_t samosa_backend_process_pid(const SamosaBackendOwner *owner) {
+     pthread_mutex_lock(owner->mutex);
+     pid_t pid = owner->process->pid;
+@@ -82,9 +91,10 @@
+         pthread_mutex_unlock(owner->mutex);
+         return 0;
+     }
+-    int status = 0;
+-    pid_t reaped = waitpid(pid, &status, WNOHANG);
+-    if (reaped == pid || (reaped < 0 && errno == ECHILD)) {
++    siginfo_t info = {0};
++    int observed = waitid(P_PID, (id_t)pid, &info, WEXITED | WNOHANG | WNOWAIT);
++    if ((!observed && info.si_pid == pid) || (observed < 0 && errno == ECHILD)) {
++        if (!observed) backend_finish_child(pid, owner->process->pgid);
+         owner->process->pid = 0;
+         owner->process->pgid = 0;
+         unlink(owner->pid_file);
+@@ -92,7 +102,7 @@
+         return 0;
+     }
+     pthread_mutex_unlock(owner->mutex);
+-    return reaped == 0;
++    return observed == 0;
+ }
+ 
+ int samosa_backend_process_probe(const SamosaBackendOwner *owner, const char *backend, int port) {
+@@ -132,6 +142,8 @@
+     pthread_mutex_unlock(owner->mutex);
+     if (control && control->interrupted) control->interrupted(control->context);
+     if (pid <= 0) return;
++    siginfo_t info = {0};
++    if (waitid(P_PID, (id_t)pid, &info, WEXITED | WNOHANG | WNOWAIT) < 0 && errno == ECHILD) return;
+     /* llama-server may create helper processes (for example Metal/runtime
+        helpers). Give every backend its own process group so closing the app
+        cannot leave one of those children behind after the tracked server is
+@@ -140,13 +152,14 @@
+     if (pgid > 1 && pgid != getpgrp()) (void)kill(-pgid, SIGTERM);
+     kill(pid, SIGTERM);
+     for (int i = 0; i < 80; ++i) {
+-        if (waitpid(pid, NULL, WNOHANG) == pid) return;
++        memset(&info, 0, sizeof(info));
++        int observed = waitid(P_PID, (id_t)pid, &info, WEXITED | WNOHANG | WNOWAIT);
++        if (observed < 0 && errno == ECHILD) return;
++        if (!observed && info.si_pid == pid) break;
+         struct timespec pause = {.tv_sec = 0, .tv_nsec = 100000000};
+         nanosleep(&pause, NULL);
+     }
+-    if (pgid > 1 && pgid != getpgrp()) (void)kill(-pgid, SIGKILL);
+-    kill(pid, SIGKILL);
+-    waitpid(pid, NULL, 0);
++    backend_finish_child(pid, pgid);
+ }
+ 
+ int samosa_backend_process_start(const SamosaBackendOwner *owner, const SamosaBackendLaunch *config) {

@@ -1085,6 +1085,19 @@ build/summary-process.o: src/summary_process.c src/controlled_pipe.h src/json.h 
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
 build/llama-launch.o: src/llama_launch.c include/samosa_inference/llama_launch.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
+build/backend-process.o: src/backend_process.c include/samosa_inference/backend_process.h include/samosa_inference/llama_launch.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
+.PHONY: test-backend-process sanitize-backend-process
+build/test-backend-process: tests/test_backend_process.c include/samosa_inference/backend_process.h build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
+build/test-backend-process-sanitize: tests/test_backend_process.c src/backend_process.c src/llama_launch.c include/samosa_inference/backend_process.h include/samosa_inference/llama_launch.h | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_backend_process.c src/backend_process.c src/llama_launch.c -o $@
+test-backend-process: build/test-backend-process
+	$(abspath build/test-backend-process) $(abspath build/test-backend-process)
+sanitize-backend-process: build/test-backend-process-sanitize build/test-backend-process
+	$(abspath build/test-backend-process-sanitize) $(abspath build/test-backend-process)
+test: test-backend-process
+sanitize: sanitize-backend-process
 build/whisper-process.o: src/whisper_process.c include/samosa_inference/whisper_process.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
 build/vision-budget.o: src/vision_budget.c include/samosa_inference/vision_budget.h | build
@@ -1123,7 +1136,7 @@ sanitize-llama-launch: | build
 	./build/test-llama-launch-sanitize $(abspath build/test-llama-launch-sanitize)
 test: test-llama-launch
 sanitize: sanitize-llama-launch
-build/libsamosa-inference-specialist.a: build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/whisper-process.o build/vision-budget.o Makefile
+build/libsamosa-inference-specialist.a: build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/whisper-process.o build/vision-budget.o Makefile
 	$(AR) rcs $@ $(filter %.o,$^)
 build/fake-multimodal-helper: tests/fake_multimodal_helper.c | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread $< -o $@
