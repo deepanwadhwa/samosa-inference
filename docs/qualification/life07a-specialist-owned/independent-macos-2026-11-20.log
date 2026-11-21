@@ -1,0 +1,22 @@
+mkdir -p build
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_supervisor.c -o build/specialist-supervisor.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/summary_process.c -o build/summary-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/llama_launch.c -o build/llama-launch.o
+ar rcs build/libsamosa-inference-specialist.a build/specialist-supervisor.o build/summary-process.o build/llama-launch.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -Isrc tests/test_specialist_owned.c src/engine_process.c build/libsamosa-inference-specialist.a -o build/test-specialist-owned
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread tests/fake_multimodal_helper.c -o build/fake-multimodal-helper
+/private/tmp/samosa-specialist-native.0ht5cI/build/test-specialist-owned /private/tmp/samosa-specialist-native.0ht5cI/build/fake-multimodal-helper
+specialist owned guardian: PASS (both protocols, reuse, reservation, pending close, failed open, deadline, crash/reap, workspace, cache cap, owner death)
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_owned.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-owned-sanitize
+/private/tmp/samosa-specialist-native.0ht5cI/build/test-specialist-owned-sanitize /private/tmp/samosa-specialist-native.0ht5cI/build/fake-multimodal-helper
+specialist owned guardian: PASS (both protocols, reuse, reservation, pending close, failed open, deadline, crash/reap, workspace, cache cap, owner death)
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_multimodal_supervisor.c build/libsamosa-inference-specialist.a -o build/test-specialist-supervisor
+./build/test-specialist-supervisor /private/tmp/samosa-specialist-native.0ht5cI/build/fake-multimodal-helper
+multimodal supervisor: PASS
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_multimodal_supervisor.c src/specialist_supervisor.c -o build/test-specialist-supervisor-sanitize
+./build/test-specialist-supervisor-sanitize /private/tmp/samosa-specialist-native.0ht5cI/build/fake-multimodal-helper
+multimodal supervisor: PASS
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_summary_process.c build/libsamosa-inference-specialist.a -o build/test-summary-process
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic tests/fake_native_summarizer.c -o build/fake-native-summarizer
+./build/test-summary-process /private/tmp/samosa-specialist-native.0ht5cI/build/fake-native-summarizer
+summary process: PASS (reuse, descriptors, crash/restart, scalar/batch, failure recovery, stop/reap)

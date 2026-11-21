@@ -1,0 +1,6 @@
+Collection: /private/tmp/inference-life03-recovery-mac.log
+Terminal exit: 0 (native process handle observed)
+PASS registry lifecycle: 255 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry lifecycle: 255 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS provider registry: 459 checks; routed namespaces, owner controls, strict discovery and adapter reuse
+PASS provider registry: 459 checks; routed namespaces, owner controls, strict discovery and adapter reuse

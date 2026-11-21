@@ -1,5 +1,32 @@
 # Independent Inference module acceptance
 
+Current execution priority: [extract and wire existing code](EXTRACTION_STATUS.md).
+The acceptance areas below are verification responsibilities, not a direction to
+reimplement behavior already present in Chat or delay ownership moves behind
+additional model-package work.
+
+## Governing goal: extract existing code into its own repository
+
+User clarification, 2026-10-17: split the existing codebase into separate,
+individual, modular repositories and reuse as much of the code already created
+as possible. Inference owns the existing inference implementation behind its
+public interface; the seven acceptance areas below do not authorize reinventing
+working engines, installers, lifecycle, scheduling, sessions or controls.
+
+For each task, inspect the monolith and this component first. Identify the code
+and useful tests to move, wire or consolidate, then make the boundary changes
+needed for explicit ownership, configuration and declared dependencies. Keep
+App-owned product policy in App and consume other owners through public APIs.
+Do not transplant the shared Gateway state or duplicate an implementation that
+already exists in this repository.
+
+New implementation needs a concrete missing requirement or demonstrated defect;
+record why existing code cannot satisfy it. Distinguish extraction, necessary
+boundary fixes and genuinely new capabilities in the task and evidence records.
+Model packaging and qualification support the extraction rather than delaying
+ownership moves. All seven completion gates remain required, and production
+paths retire only after replacement integration qualifies.
+
 Active goal, 2026-10-12. Sources has completed its separate seven-area release.
 This checklist owns Inference completion; Sources closure does not close these
 gates. Existing S02–S13 documents describe qualified subsets and remain evidence.
@@ -14,7 +41,8 @@ Pinned actual-model text/image results and normal/SAN controls are recorded in
 [public text evidence](OPENDECISION_PUBLIC_INTEGRATION.md) and
 [image evidence](OPENDECISION_IMAGE_INTEGRATION.md). Full exported-source checks
 passed on macOS/Linux, and hosted run38973353427 passed at46612a4. This closes
-area1 only:1/7 areas complete; area2 is active. Independent Molmo2 installation
+area1. Area2 is also complete as recorded below:2/7 areas complete; area3 is
+active. Independent Molmo2 installation
 and installed execution remain recorded in
 [Molmo2 evidence](MOLMO_PACKAGE_INSTALLATION_VERIFICATION.md).
 
@@ -35,7 +63,7 @@ Do not introduce a shipped Python runtime.
 - Qualify actual supported models and combined-provider routing, malformed input,
   provenance, unavailable providers and platform-specific capability reporting.
 
-## 2. Model acquisition and installation — active, production acceptance pending
+## 2. Model acquisition and installation — complete
 
 The published [Whisper base.en CPU](../catalog/whisper-base-en-cpu-v1),
 [native T5 summary CPU](../catalog/t5-summary-cpu-v1) and
@@ -51,8 +79,13 @@ package slices only. The final17-file [VisionPsy](../catalog/visionpsy-native-v1
 [Kokoro](../catalog/kokoro-speech-cpu-v1) distributions also pass exact installed
 and cold published-URL normal/SAN gates, actual inference, cache-only reuse and
 cleanup. Speech source assets and notices are published alongside object code.
-General text/Molmo distributions and remaining full area2 acceptance stay open;
-1/7 areas remain complete.
+The37-file [Molmo2](../catalog/molmo2-native-v1) and seven-file
+[Ornith text CPU](../catalog/ornith-text-cpu-v1) entries now also pass both cold
+published-URL modes, actual native inference/control and full cache-only
+resume/removal/reinstallation/cleanup. The complete requirement and binding
+[audit](MODEL_ACQUISITION_ACCEPTANCE_AUDIT.md) closes area2 on2026-10-17.
+Ten declared production entries are qualified.2/7 areas are complete; area3 is
+active. Installation receipts remain explicitly unqualified for loaded readiness.
 
 - Assemble trusted catalogs over the existing verified artifact, HTTPS download
   and setup primitives; pin full engine/model packages and provenance.
@@ -68,7 +101,7 @@ and restored-prefix resume in normal/SAN hosts, followed by vector qualification
 cache-only reuse and cleanup. [Exact evidence](EMBEDDING_PACKAGE_INSTALLATION_VERIFICATION.md#real-url-crash-contention-and-corrupt-prefix-recovery)
 complements the existing controlled credential/redirect/quota/recovery gates.
 
-## 3. Engine lifecycle and readiness — pending
+## 3. Engine lifecycle and readiness — active
 
 - Extend existing guardian/activation ownership to the supported provider set.
 - Start, verify, load, unload and stop through public controls; readiness reflects
@@ -134,12 +167,10 @@ upstream contract permanently open. Reuse the already implemented foundations.
 
 1. Provider contract and original native adapters: qualified; evidence is in
    `PROVIDER_INTEGRATION_AUDIT.md`. Newly identified OpenDecision text/image
-   inference is the only active implementation prerequisite, documented above.
-2. Model acquisition and installation: existing model installation slices now
-   include qualified independent Molmo2 execution. After OpenDecision provider
-   coverage, finish its package dependency and the catalogs, supported package
-   compatibility, resumable/recoverable installation and qualified production
-   entries before moving to lifecycle.
+   inference is also qualified, as documented above.
+2. Model acquisition and installation: complete. All ten declared production
+   entries, package compatibility, resumable/recoverable installation and
+   actual cold published-URL gates are qualified. Continue to lifecycle.
 3. Engine lifecycle/readiness builds on installed, verified packages.
 4. Resource scheduling/admission builds on owned engine lifecycle.
 5. Generation/streaming/session recovery builds on lifecycle and scheduling.

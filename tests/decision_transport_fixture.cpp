@@ -2,6 +2,7 @@
 #include "decision/request.h"
 #include "decision/transport.h"
 #include <csignal>
+#include "../src/sha256.h"
 #ifdef SAMOSA_DECISION_PUBLIC_FIXTURE
 #include <cstdio>
 #include <cstdlib>
@@ -13,10 +14,26 @@ extern "C" const void *OrtGetApiBase();
 #include <stdexcept>
 #include <unistd.h>
 int main(int argc, char **argv) {
+  if(argc==2&&std::string(argv[1])=="--image-frame-fixture") {
+    std::signal(SIGPIPE,SIG_IGN);
+    return static_cast<int>(samosa::decision::serve_image_requests(STDIN_FILENO,STDOUT_FILENO,
+        [](const auto& rgba,int width,int height,const auto& request,auto* reply,auto* error) {
+          if(request=="throw")throw std::runtime_error("private path");
+          if(request=="refuse"){*error="context_limit";return false;}
+          if(request=="oversize"){reply->assign(1048577,'x');return true;}
+          if(request=="empty"){reply->clear();return true;}
+          char image_sha[65],request_sha[65];hash_bytes(rgba.data(),rgba.size(),image_sha);hash_bytes(request.data(),request.size(),request_sha);
+          *reply="{\"width\":"+std::to_string(width)+",\"height\":"+std::to_string(height)+
+              ",\"image_bytes\":"+std::to_string(rgba.size())+",\"request_bytes\":"+std::to_string(request.size())+
+              ",\"image_sha256\":\""+image_sha+"\",\"request_sha256\":\""+request_sha+"\"}";return true;
+        }));
+  }
+  bool resident_images=false;
 #ifdef SAMOSA_DECISION_PUBLIC_FIXTURE
-  if ((argc != 5 && argc != 11) || std::string(argv[1]) != "--model" ||
+  if ((argc != 5 && argc != 6 && argc != 11) || std::string(argv[1]) != "--model" ||
       std::string(argv[3]) != "--tokenizer" || !OrtGetApiBase())
     return 2;
+  if(argc==6){if(std::string(argv[5])!="--resident-images-v1")return 2;resident_images=true;}
   if (argc == 11 && (std::string(argv[5]) != "--image-rgba" ||
       std::string(argv[7]) != "--width" || std::string(argv[9]) != "--height" ||
       access(argv[6], R_OK))) return 2;
@@ -35,10 +52,11 @@ int main(int argc, char **argv) {
     logits->assign(pairs.size(), {0, 0});
     return true;
   };
-  return static_cast<int>(samosa::decision::serve_requests(
-      STDIN_FILENO, STDOUT_FILENO,
-      [&](const auto &request, auto *reply, auto *error) {
+  const auto handler=[&](const std::string& request,std::string* reply,std::string* error) {
 #ifdef SAMOSA_DECISION_PUBLIC_FIXTURE
+        const char *control=std::getenv("SAMOSA_DECISION_QA_MODE_FILE");
+        if(control){std::ifstream selected(control);std::string next;if(selected>>next)mode=next;}
+
         if (mode == "wait") {
           const char *marker = std::getenv("SAMOSA_DECISION_QA_MARKER");
           if (!marker)
@@ -46,7 +64,7 @@ int main(int argc, char **argv) {
           char path[PATH_MAX];
 #ifdef __APPLE__
           if (fcntl(STDOUT_FILENO, F_GETPATH, path) < 0)
-            return false;
+            std::snprintf(path,sizeof(path),"resident-pipe");
 #else
           const ssize_t n = readlink("/proc/self/fd/1", path, sizeof(path) - 1);
           if (n < 0)
@@ -100,5 +118,16 @@ int main(int argc, char **argv) {
           return true;
         }
         return samosa::decision::execute_request(infer, request, reply, error);
+      };
+  if(resident_images)return static_cast<int>(samosa::decision::serve_image_requests(STDIN_FILENO,STDOUT_FILENO,
+      [&](const auto& rgba,int width,int height,const auto& request,auto* reply,auto* error) {
+#ifdef SAMOSA_DECISION_PUBLIC_FIXTURE
+        const char *log=std::getenv("SAMOSA_DECISION_QA_IMAGES");
+        if(log){char sha[65];hash_bytes(rgba.data(),rgba.size(),sha);std::ofstream observed(log,std::ios::app);observed<<getpid()<<' '<<width<<' '<<height<<' '<<sha<<'\n';}
+#else
+        (void)rgba;(void)width;(void)height;
+#endif
+        return handler(request,reply,error);
       }));
+  return static_cast<int>(samosa::decision::serve_requests(STDIN_FILENO,STDOUT_FILENO,handler));
 }

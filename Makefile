@@ -19,15 +19,15 @@ test-registry: build/test-registry
 sanitize-registry: | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_registry.c $(SOURCES) $(LIBS) -o build/test-registry-sanitize
 	./build/test-registry-sanitize
-REGISTRY_FLAGS = -DSAMOSA_WITH_DECISION $(NATIVE_FLAGS) -DSAMOSA_WITH_SPEECH -DSAMOSA_WITH_WHISPER -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -DSAMOSA_WITH_SUMMARY
-REGISTRY_SOURCES = src/decision.c src/decision_assets.c src/speech.c src/audio_store.c src/speech_worker.c src/speech_runtime.c src/speech_package.c src/speech_package_loader.c src/library_runtime.c src/engine_runtime.c $(SOURCES) src/llama.c src/whisper.c src/vision.c src/visual_bridge.c src/temporal.c src/temporal_input.c src/temporal_package.c src/summary.c src/summary_protocol.c src/artifact.c
-REGISTRY_HEADERS = src/rgba_input.h src/decision.h src/decision_assets.h engines/decision/tokenizer/request.h engines/decision/tokenizer/tokenizer.h src/speech.h src/audio_store.h $(SPEECH_WORKER_HEADERS) $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
+REGISTRY_FLAGS = -Iinclude -DSAMOSA_WITH_DECISION $(NATIVE_FLAGS) -DSAMOSA_WITH_SPEECH -DSAMOSA_WITH_WHISPER -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -DSAMOSA_WITH_SUMMARY
+REGISTRY_SOURCES = src/decision_host.c src/speech_host.c src/summary_host.c src/summary_process.c src/managed_host.c src/managed_provider.c src/activation.c src/managed_stream.c src/decision.c src/decision_assets.c src/speech.c src/audio_store.c src/speech_worker.c src/speech_session.c src/speech_runtime.c src/speech_package.c src/speech_package_loader.c src/library_runtime.c src/engine_runtime.c $(SOURCES) src/llama.c src/whisper.c src/vision.c src/visual_bridge.c src/temporal.c src/temporal_input.c src/temporal_package.c src/summary.c src/summary_protocol.c src/artifact.c
+REGISTRY_HEADERS = src/decision_host.h src/speech_host.h src/controlled_pipe.h src/speech_session.h src/summary_host.h include/samosa_inference/summary_process.h src/managed_host.h src/managed_provider.h src/activation.h src/managed_stream.h src/rgba_input.h src/decision.h src/decision_assets.h engines/decision/tokenizer/request.h engines/decision/tokenizer/tokenizer.h src/speech.h src/audio_store.h $(SPEECH_WORKER_HEADERS) $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
 .PHONY: providers
 providers: build/samosa-inference-providers
 build/samosa-inference-providers: src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(REGISTRY_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(REGISTRY_FLAGS) src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(REGISTRY_FLAGS) src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -pthread -o $@
 build/samosa-inference-providers-sanitize: src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(REGISTRY_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(REGISTRY_FLAGS) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(REGISTRY_FLAGS) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -pthread -o $@
 .PHONY: test-registry-cli sanitize-registry-cli
 build/test-registry-cli: tests/test_registry_cli.c tests/whisper_fixture.h src/json.h src/sha256.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc tests/test_registry_cli.c -o $@
@@ -38,11 +38,11 @@ test-registry-cli: build/samosa-inference-providers build/test-registry-cli
 sanitize-registry-cli: build/samosa-inference-providers-sanitize build/test-registry-cli-sanitize
 	$(abspath build/test-registry-cli-sanitize) $(abspath build/samosa-inference-providers-sanitize)
 build/test-registry-modalities: tests/test_registry.c tests/whisper_fixture.h $(REGISTRY_SOURCES) $(HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(REGISTRY_FLAGS) -Isrc tests/test_registry.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(REGISTRY_FLAGS) -Isrc tests/test_registry.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -pthread -o $@
 test-registry-modalities: build/test-registry-modalities
 	./build/test-registry-modalities
 sanitize-registry-modalities: $(DECISION_TOKENIZER_ARCHIVE) | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(REGISTRY_FLAGS) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_registry.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o build/test-registry-modalities-sanitize
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(REGISTRY_FLAGS) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_registry.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -pthread -o build/test-registry-modalities-sanitize
 	./build/test-registry-modalities-sanitize
 test: test-registry
 sanitize: sanitize-registry
@@ -204,7 +204,7 @@ sanitize: sanitize-artifact sanitize-install sanitize-engine-process sanitize-ac
 	./build/test-sessions-sanitize
 release: test
 	mkdir -p dist
-	tar -czf dist/samosa-inference-0.1.0.tar.gz Makefile README.md DEPENDENCIES.md .gitignore src tests docs contracts
+	tar -czf dist/samosa-inference-0.1.0.tar.gz Makefile README.md DEPENDENCIES.md .gitignore src include tests docs contracts
 clean:
 	find build dist -depth -delete
 CURL_CFLAGS ?= $(shell curl-config --cflags)
@@ -213,15 +213,15 @@ NATIVE_FLAGS = -DSAMOSA_WITH_LLAMA -DJSON_TOKENS_MAX=8192 $(CURL_CFLAGS)
 native: build/samosa-inference-llama build/samosa-inference-managed build/samosa-inference-download build/samosa-inference-setup
 build/samosa-inference-download: src/artifact_main.c src/remote_artifact.c src/remote_artifact.h src/package_remote_cache.h src/package_assemble.h src/package_index.h src/catalog.h src/artifact.c src/install.c src/artifact.h src/sha256.h src/json.h src/private_key.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(CURL_CFLAGS) -DSAMOSA_REMOTE_ARTIFACTS src/artifact_main.c src/remote_artifact.c src/artifact.c src/install.c $(CURL_LIBS) -o $@
-build/samosa-inference-managed: src/managed_main.c src/managed_stream.c src/managed_stream.h src/managed_provider.c src/managed_provider.h src/activation.c src/activation.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h $(SOURCES) src/llama.c $(HEADERS) | build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(NATIVE_FLAGS) src/managed_main.c src/managed_stream.c src/managed_provider.c src/activation.c src/artifact.c src/engine_runtime.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) -pthread -o $@
-build/samosa-inference-managed-sanitize: src/managed_main.c src/managed_stream.c src/managed_stream.h src/managed_provider.c src/managed_provider.h src/activation.c src/activation.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h $(SOURCES) src/llama.c $(HEADERS) | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(NATIVE_FLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer src/managed_main.c src/managed_stream.c src/managed_provider.c src/activation.c src/artifact.c src/engine_runtime.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) -pthread -o build/samosa-inference-managed-sanitize
+build/samosa-inference-managed: src/managed_main.c src/managed_host.c src/managed_stream.c src/managed_stream.h src/managed_provider.c src/managed_provider.h src/managed_host.h src/activation.c src/activation.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h $(SOURCES) src/llama.c $(HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(NATIVE_FLAGS) src/managed_main.c src/managed_host.c src/managed_stream.c src/managed_provider.c src/activation.c src/artifact.c src/engine_runtime.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) -pthread -o $@
+build/samosa-inference-managed-sanitize: src/managed_main.c src/managed_host.c src/managed_stream.c src/managed_stream.h src/managed_provider.c src/managed_provider.h src/managed_host.h src/activation.c src/activation.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h $(SOURCES) src/llama.c $(HEADERS) | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(NATIVE_FLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer src/managed_main.c src/managed_host.c src/managed_stream.c src/managed_provider.c src/activation.c src/artifact.c src/engine_runtime.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) -pthread -o build/samosa-inference-managed-sanitize
 build/samosa-inference-llama: src/main.c $(SOURCES) src/llama.c $(HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(NATIVE_FLAGS) src/main.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) -pthread -o $@
 build/samosa-inference-llama-sanitize: src/main.c $(SOURCES) src/llama.c $(HEADERS) | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(NATIVE_FLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer src/main.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) -pthread -o $@
-build/test-llama: tests/test_llama.c $(SOURCES) src/llama.c $(HEADERS) | build
+build/test-llama: tests/test_llama.c tests/llama_http_fixture.h $(SOURCES) src/llama.c $(HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(NATIVE_FLAGS) -Isrc tests/test_llama.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) -pthread -o $@
 test-native: native build/test-llama test-remote-artifact test-remote-tls test-remote-key
 	./build/test-llama
@@ -313,7 +313,7 @@ test: test-package-publish
 sanitize: sanitize-package-publish
 
 
-build/test-llama-sanitize: tests/test_llama.c $(SOURCES) src/llama.c $(HEADERS) | build
+build/test-llama-sanitize: tests/test_llama.c tests/llama_http_fixture.h $(SOURCES) src/llama.c $(HEADERS) | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(NATIVE_FLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc tests/test_llama.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) $(DL_LIBS) -o $@
 
 SUMMARY_SOURCES = src/summary_main.c src/summary.c src/summary_protocol.c src/artifact.c $(SOURCES)
@@ -410,8 +410,8 @@ sanitize-speech-loader: | build
 test: test-library-runtime test-speech-loader
 sanitize: sanitize-library-runtime sanitize-speech-loader
 
-SPEECH_WORKER_SOURCES = src/speech_worker.c src/speech_runtime.c src/speech_package_loader.c src/library_runtime.c src/speech_package.c src/artifact.c src/engine_runtime.c src/engine_process.c
-SPEECH_WORKER_HEADERS = src/speech_worker.h src/speech_runtime.h src/sherpa_abi.h src/speech_package_loader.h src/library_runtime.h src/speech_package.h src/artifact.h src/engine_runtime.h src/engine_process.h src/json.h src/sha256.h
+SPEECH_WORKER_SOURCES = src/speech_worker.c src/speech_session.c src/speech_runtime.c src/speech_package_loader.c src/library_runtime.c src/speech_package.c src/artifact.c src/engine_runtime.c src/engine_process.c
+SPEECH_WORKER_HEADERS = src/controlled_pipe.h src/speech_session.h src/speech_worker.h src/speech_runtime.h src/sherpa_abi.h src/speech_package_loader.h src/library_runtime.h src/speech_package.h src/artifact.h src/engine_runtime.h src/engine_process.h src/json.h src/sha256.h
 .PHONY: speech-worker
 speech-worker: build/samosa-inference-speech-worker
 build/samosa-inference-speech-worker: src/speech_worker_main.c $(SPEECH_WORKER_SOURCES) $(SPEECH_WORKER_HEADERS) | build
@@ -495,13 +495,15 @@ DECISION_TRANSPORT_SOURCES = engines/decision/transport.cpp engines/decision/req
 .PHONY: test-decision-transport sanitize-decision-transport
 build/decision-worker-main.o: engines/decision/main.cpp engines/decision/native_text.h engines/decision/native_image.h engines/decision/image_pixels.h engines/decision/request.h engines/decision/transport.h | build
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines -c engines/decision/main.cpp -o $@
-build/decision-transport-fixture: $(DECISION_TRANSPORT_SOURCES) $(DECISION_REQUEST_HEADERS) engines/decision/transport.h $(DECISION_TOKENIZER_ARCHIVE) | build
+build/decision-transport-fixture: $(DECISION_TRANSPORT_SOURCES) $(DECISION_REQUEST_HEADERS) engines/decision/transport.h src/sha256.h $(DECISION_TOKENIZER_ARCHIVE) | build
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -Iengines $(DECISION_TRANSPORT_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" $(DECISION_RUST_LIBS) -o $@
 test-decision-transport: build/decision-transport-fixture build/decision-worker-main.o
 	python3 tests/test_decision_transport.py ./build/decision-transport-fixture
+	python3 tests/test_decision_image_transport.py ./build/decision-transport-fixture
 sanitize-decision-transport: $(DECISION_TOKENIZER_ARCHIVE) | build
 	$(CXX) -O1 -g -std=c++20 -Wall -Wextra -Werror -Wpedantic -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Iengines $(DECISION_TRANSPORT_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" $(DECISION_RUST_LIBS) -o build/decision-transport-fixture-sanitize
 	python3 tests/test_decision_transport.py ./build/decision-transport-fixture-sanitize
+	python3 tests/test_decision_image_transport.py ./build/decision-transport-fixture-sanitize
 test: test-decision-transport
 sanitize: sanitize-decision-transport
 
@@ -826,7 +828,7 @@ DECISION_FIXTURE_LINK = $(if $(filter Darwin,$(shell uname -s)),-Xlinker -instal
 $(DECISION_FIXTURE_RUNTIME): tests/decision_loader_fixture.c | build
 	mkdir -p build/decision-public-loader
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -shared -fPIC $< $(DECISION_FIXTURE_LINK) -o $@
-build/decision-public-fixture: $(DECISION_TRANSPORT_SOURCES) $(DECISION_REQUEST_HEADERS) engines/decision/transport.h $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_FIXTURE_RUNTIME) | build
+build/decision-public-fixture: $(DECISION_TRANSPORT_SOURCES) $(DECISION_REQUEST_HEADERS) engines/decision/transport.h src/sha256.h $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_FIXTURE_RUNTIME) | build
 	$(CXX) -O2 -std=c++20 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_DECISION_PUBLIC_FIXTURE -Iengines $(DECISION_TRANSPORT_SOURCES) "$(DECISION_TOKENIZER_ARCHIVE)" $(DECISION_FIXTURE_RUNTIME) $(DECISION_RUST_LIBS) -Xlinker -rpath -Xlinker '$(DECISION_ORT_RPATH)' -o $@
 .PHONY: test-decision-public sanitize-decision-public
 test-decision-public: build/samosa-inference-providers build/decision-public-fixture
@@ -835,3 +837,192 @@ test-decision-public: build/samosa-inference-providers build/decision-public-fix
 sanitize-decision-public: build/samosa-inference-providers-sanitize build/decision-public-fixture
 	python3 tests/test_decision_controls.py $(abspath build/samosa-inference-providers-sanitize) $(abspath build/decision-public-fixture) $(abspath $(DECISION_FIXTURE_RUNTIME))
 	python3 tests/test_decision_controls.py $(abspath build/samosa-inference-providers-sanitize) $(abspath build/decision-public-fixture) $(abspath $(DECISION_FIXTURE_RUNTIME)) --image
+
+# Existing App specialist supervisor, extracted without an inference rewrite.
+# Preserve the existing dynamically linked development build. Release CPU builds
+# continue to use tools/build_t5_runtime.sh and its pinned static dependency.
+T5_LLAMA_DIR ?=
+T5_LLAMA_BUILD ?= $(T5_LLAMA_DIR)/build
+.PHONY: t5-engine test-t5-engine-real
+t5-engine: engines/t5_summary.cpp | build
+	@test -f "$(T5_LLAMA_DIR)/include/llama.h" || { echo "set T5_LLAMA_DIR to the existing Prism checkout" >&2; exit 2; }
+	@test -f "$(T5_LLAMA_BUILD)/bin/libllama.0.dylib" || { echo "missing built Prism libraries" >&2; exit 2; }
+	$(CXX) -O3 -std=c++17 -I"$(T5_LLAMA_DIR)/include" -I"$(T5_LLAMA_DIR)/ggml/include" \
+	  engines/t5_summary.cpp -o build/samosa-summarizer \
+	  -Wl,-rpath,@loader_path/../lib -Wl,-rpath,"$(T5_LLAMA_BUILD)/bin" \
+	  "$(T5_LLAMA_BUILD)/bin/libllama.0.dylib" \
+	  "$(T5_LLAMA_BUILD)/bin/libggml.0.dylib" \
+	  "$(T5_LLAMA_BUILD)/bin/libggml-cpu.0.dylib" \
+	  "$(T5_LLAMA_BUILD)/bin/libggml-blas.0.dylib" \
+	  "$(T5_LLAMA_BUILD)/bin/libggml-metal.0.dylib" \
+	  "$(T5_LLAMA_BUILD)/bin/libggml-base.0.dylib"
+build/test-native-summarizer: tests/test_native_summarizer.c | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $< -o $@
+test-t5-engine-real: build/test-native-summarizer
+	@test -n "$(T5_TEST_ENGINE)" -a -n "$(T5_TEST_MODEL)" || { echo "set T5_TEST_ENGINE and T5_TEST_MODEL" >&2; exit 2; }
+	./build/test-native-summarizer "$(T5_TEST_ENGINE)" "$(T5_TEST_MODEL)"
+.PHONY: specialist test-specialist-supervisor sanitize-specialist-supervisor
+specialist: build/libsamosa-inference-specialist.a
+.PHONY: test-summary-process sanitize-summary-process
+.PHONY: test-summary-transport-real sanitize-summary-transport-real
+build/test-summary-transport-real: tests/test_summary_transport_real.c tests/summary_owned_fixture.h src/engine_process.c src/engine_process.h build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -Isrc $< src/engine_process.c build/libsamosa-inference-specialist.a -o $@
+test-summary-transport-real: build/test-summary-transport-real
+	@test -n "$(T5_TEST_ENGINE)" -a -n "$(T5_TEST_MODEL)" || { echo "set T5_TEST_ENGINE and T5_TEST_MODEL" >&2; exit 2; }
+	./build/test-summary-transport-real "$(T5_TEST_ENGINE)" "$(T5_TEST_MODEL)"
+sanitize-summary-transport-real: | build
+	@test -n "$(T5_TEST_ENGINE)" -a -n "$(T5_TEST_MODEL)" || { echo "set T5_TEST_ENGINE and T5_TEST_MODEL" >&2; exit 2; }
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_summary_transport_real.c src/summary_process.c src/engine_process.c -o build/test-summary-transport-real-sanitize
+	./build/test-summary-transport-real-sanitize "$(T5_TEST_ENGINE)" "$(T5_TEST_MODEL)"
+build/fake-native-summarizer: tests/fake_native_summarizer.c | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $< -o $@
+build/test-summary-process: tests/test_summary_process.c build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
+test-summary-process: build/test-summary-process build/fake-native-summarizer
+	./build/test-summary-process $(abspath build/fake-native-summarizer)
+sanitize-summary-process: build/fake-native-summarizer | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_summary_process.c src/summary_process.c -o build/test-summary-process-sanitize
+	./build/test-summary-process-sanitize $(abspath build/fake-native-summarizer)
+test: test-summary-process
+sanitize: sanitize-summary-process
+build/specialist-supervisor.o: src/specialist_supervisor.c src/controlled_pipe.h include/samosa_inference/specialist_supervisor.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
+build/summary-process.o: src/summary_process.c src/controlled_pipe.h src/json.h include/samosa_inference/summary_process.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
+build/llama-launch.o: src/llama_launch.c include/samosa_inference/llama_launch.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
+.PHONY: test-llama-launch sanitize-llama-launch
+build/test-llama-launch: tests/test_llama_launch.c src/llama_launch.c include/samosa_inference/llama_launch.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude tests/test_llama_launch.c src/llama_launch.c -o $@
+test-llama-launch: build/test-llama-launch
+	./build/test-llama-launch $(abspath build/test-llama-launch)
+sanitize-llama-launch: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_llama_launch.c src/llama_launch.c -o build/test-llama-launch-sanitize
+	./build/test-llama-launch-sanitize $(abspath build/test-llama-launch-sanitize)
+test: test-llama-launch
+sanitize: sanitize-llama-launch
+build/libsamosa-inference-specialist.a: build/specialist-supervisor.o build/summary-process.o build/llama-launch.o Makefile
+	$(AR) rcs $@ $(filter %.o,$^)
+build/fake-multimodal-helper: tests/fake_multimodal_helper.c | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread $< -o $@
+build/test-specialist-supervisor: tests/test_multimodal_supervisor.c build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
+test-specialist-supervisor: build/test-specialist-supervisor build/fake-multimodal-helper
+	./build/test-specialist-supervisor $(abspath build/fake-multimodal-helper)
+sanitize-specialist-supervisor: build/fake-multimodal-helper | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_multimodal_supervisor.c src/specialist_supervisor.c -o build/test-specialist-supervisor-sanitize
+	./build/test-specialist-supervisor-sanitize $(abspath build/fake-multimodal-helper)
+test: test-specialist-supervisor
+sanitize: sanitize-specialist-supervisor
+
+# Shared original HTTP fixture exercised through actual activation/guardian.
+MANAGED_READINESS_SOURCES = src/managed_provider.c src/activation.c src/artifact.c src/engine_runtime.c $(SOURCES) src/llama.c
+MANAGED_READINESS_HEADERS = src/managed_provider.h src/activation.h src/artifact.h src/engine_runtime.h $(HEADERS)
+.PHONY: test-managed-readiness sanitize-managed-readiness
+build/fake-owned-llama: tests/fake_owned_llama.c tests/llama_http_fixture.h src/json.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc tests/fake_owned_llama.c -o $@
+build/test-managed-readiness: tests/test_managed_readiness.c $(MANAGED_READINESS_SOURCES) $(MANAGED_READINESS_HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(NATIVE_FLAGS) -Isrc tests/test_managed_readiness.c $(MANAGED_READINESS_SOURCES) $(LIBS) $(CURL_LIBS) -pthread -o $@
+test-managed-readiness: build/test-managed-readiness build/fake-owned-llama
+	$(abspath build/test-managed-readiness) $(abspath build/fake-owned-llama)
+sanitize-managed-readiness: build/fake-owned-llama | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(NATIVE_FLAGS) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_managed_readiness.c $(MANAGED_READINESS_SOURCES) $(LIBS) $(CURL_LIBS) -pthread -o build/test-managed-readiness-sanitize
+	$(abspath build/test-managed-readiness-sanitize) $(abspath build/fake-owned-llama)
+test-native: test-managed-readiness
+sanitize-native: sanitize-managed-readiness
+
+.PHONY: test-managed-host sanitize-managed-host
+MANAGED_HOST_SOURCES = src/managed_host.c $(MANAGED_READINESS_SOURCES)
+build/test-managed-host: tests/test_managed_host.c src/managed_host.h $(MANAGED_HOST_SOURCES) $(MANAGED_READINESS_HEADERS) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(NATIVE_FLAGS) -Isrc tests/test_managed_host.c $(MANAGED_HOST_SOURCES) $(LIBS) $(CURL_LIBS) -pthread -o $@
+test-managed-host: build/test-managed-host
+	$(abspath build/test-managed-host)
+sanitize-managed-host: | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(NATIVE_FLAGS) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_managed_host.c $(MANAGED_HOST_SOURCES) $(LIBS) $(CURL_LIBS) -pthread -o build/test-managed-host-sanitize
+	$(abspath build/test-managed-host-sanitize)
+test-native: test-managed-host
+sanitize-native: sanitize-managed-host
+
+.PHONY: test-registry-lifecycle sanitize-registry-lifecycle
+build/fake-registry-llama: tests/fake_registry_llama.c tests/llama_http_fixture.h src/json.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc tests/fake_registry_llama.c -o $@
+build/test-registry-lifecycle: tests/test_registry_lifecycle.c src/registry_host.c $(REGISTRY_SOURCES) $(REGISTRY_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(REGISTRY_FLAGS) -Isrc tests/test_registry_lifecycle.c src/registry_host.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -pthread -o $@
+test-registry-lifecycle: build/test-registry-lifecycle build/fake-registry-llama build/samosa-inference-providers
+	$(abspath build/test-registry-lifecycle) $(abspath build/fake-registry-llama) $(abspath build/samosa-inference-providers)
+sanitize-registry-lifecycle: build/fake-registry-llama build/samosa-inference-providers-sanitize $(DECISION_TOKENIZER_ARCHIVE) | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(REGISTRY_FLAGS) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_registry_lifecycle.c src/registry_host.c $(REGISTRY_SOURCES) $(DECISION_TOKENIZER_ARCHIVE) $(DECISION_RUST_LIBS) $(LIBS) $(CURL_LIBS) $(DL_LIBS) -pthread -o build/test-registry-lifecycle-sanitize
+	$(abspath build/test-registry-lifecycle-sanitize) $(abspath build/fake-registry-llama) $(abspath build/samosa-inference-providers-sanitize)
+test-native: test-registry-lifecycle
+sanitize-native: sanitize-registry-lifecycle
+
+.PHONY: test-registry-embedding-lifecycle sanitize-registry-embedding-lifecycle
+test-registry-embedding-lifecycle: build/test-registry-lifecycle build/fake-registry-llama build/samosa-inference-providers
+	$(abspath build/test-registry-lifecycle) $(abspath build/fake-registry-llama) $(abspath build/samosa-inference-providers) --embedding
+sanitize-registry-embedding-lifecycle: sanitize-registry-lifecycle
+	$(abspath build/test-registry-lifecycle-sanitize) $(abspath build/fake-registry-llama) $(abspath build/samosa-inference-providers-sanitize) --embedding
+test-native: test-registry-embedding-lifecycle
+sanitize-native: sanitize-registry-embedding-lifecycle
+
+.PHONY: test-summary-owned sanitize-summary-owned
+build/test-summary-owned: tests/test_summary_owned.c tests/summary_owned_fixture.h src/controlled_pipe.h src/summary_process.c src/engine_process.c src/engine_process.h src/json.h include/samosa_inference/summary_process.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -Isrc tests/test_summary_owned.c src/summary_process.c src/engine_process.c -o $@
+test-summary-owned: build/test-summary-owned build/fake-native-summarizer
+	$(abspath build/test-summary-owned) $(abspath build/fake-native-summarizer)
+sanitize-summary-owned: build/fake-native-summarizer | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_summary_owned.c src/summary_process.c src/engine_process.c -o build/test-summary-owned-sanitize
+	$(abspath build/test-summary-owned-sanitize) $(abspath build/fake-native-summarizer)
+test: test-summary-owned
+sanitize: sanitize-summary-owned
+
+.PHONY: test-summary-owned-real sanitize-summary-owned-real
+test-summary-owned-real: build/test-summary-transport-real
+	@test -n "$(T5_TEST_ENGINE)" -a -n "$(T5_TEST_MODEL)" || { echo "set T5_TEST_ENGINE and T5_TEST_MODEL" >&2; exit 2; }
+	$(abspath build/test-summary-transport-real) "$(T5_TEST_ENGINE)" "$(T5_TEST_MODEL)" --guardian
+sanitize-summary-owned-real: | build
+	@test -n "$(T5_TEST_ENGINE)" -a -n "$(T5_TEST_MODEL)" || { echo "set T5_TEST_ENGINE and T5_TEST_MODEL" >&2; exit 2; }
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_summary_transport_real.c src/summary_process.c src/engine_process.c -o build/test-summary-transport-real-sanitize
+	$(abspath build/test-summary-transport-real-sanitize) "$(T5_TEST_ENGINE)" "$(T5_TEST_MODEL)" --guardian
+
+.PHONY: test-registry-summary-lifecycle sanitize-registry-summary-lifecycle
+test-registry-summary-lifecycle: build/samosa-inference-providers build/fake-native-summarizer
+	python3 tests/summary_registry_lifecycle.py $(abspath build/samosa-inference-providers) $(abspath build/fake-native-summarizer)
+sanitize-registry-summary-lifecycle: build/samosa-inference-providers-sanitize build/fake-native-summarizer
+	python3 tests/summary_registry_lifecycle.py $(abspath build/samosa-inference-providers-sanitize) $(abspath build/fake-native-summarizer)
+test-native: test-registry-summary-lifecycle
+sanitize-native: sanitize-registry-summary-lifecycle
+
+.PHONY: test-registry-speech-lifecycle sanitize-registry-speech-lifecycle
+test-registry-speech-lifecycle: build/samosa-inference-providers build/test-speech-worker build/speech-worker-fixture.so
+	python3 tests/speech_registry_lifecycle.py $(abspath build/samosa-inference-providers) --fixture-host $(abspath build/test-speech-worker) --fixture-library $(abspath build/speech-worker-fixture.so)
+sanitize-registry-speech-lifecycle: build/samosa-inference-providers-sanitize build/test-speech-worker build/speech-worker-fixture.so
+	python3 tests/speech_registry_lifecycle.py $(abspath build/samosa-inference-providers-sanitize) --fixture-host $(abspath build/test-speech-worker) --fixture-library $(abspath build/speech-worker-fixture.so)
+test-native: test-registry-speech-lifecycle
+sanitize-native: sanitize-registry-speech-lifecycle
+
+.PHONY: test-registry-decision-lifecycle sanitize-registry-decision-lifecycle
+test-registry-decision-lifecycle: build/samosa-inference-providers build/decision-public-fixture
+	python3 tests/decision_registry_lifecycle.py $(abspath build/samosa-inference-providers) --worker $(abspath build/decision-public-fixture) --runtime $(abspath $(DECISION_FIXTURE_RUNTIME))
+sanitize-registry-decision-lifecycle: build/samosa-inference-providers-sanitize build/decision-public-fixture
+	python3 tests/decision_registry_lifecycle.py $(abspath build/samosa-inference-providers-sanitize) --worker $(abspath build/decision-public-fixture) --runtime $(abspath $(DECISION_FIXTURE_RUNTIME))
+test-native: test-registry-decision-lifecycle
+sanitize-native: sanitize-registry-decision-lifecycle
+
+.PHONY: test-registry-image-decision-lifecycle sanitize-registry-image-decision-lifecycle
+test-registry-image-decision-lifecycle: build/samosa-inference-providers build/decision-public-fixture
+	python3 tests/decision_registry_lifecycle.py $(abspath build/samosa-inference-providers) --image --worker $(abspath build/decision-public-fixture) --runtime $(abspath $(DECISION_FIXTURE_RUNTIME))
+sanitize-registry-image-decision-lifecycle: build/samosa-inference-providers-sanitize build/decision-public-fixture
+	python3 tests/decision_registry_lifecycle.py $(abspath build/samosa-inference-providers-sanitize) --image --worker $(abspath build/decision-public-fixture) --runtime $(abspath $(DECISION_FIXTURE_RUNTIME))
+test-native: test-registry-image-decision-lifecycle
+sanitize-native: sanitize-registry-image-decision-lifecycle
+
+.PHONY: test-specialist-owned sanitize-specialist-owned
+build/test-specialist-owned: tests/test_specialist_owned.c tests/summary_owned_fixture.h src/engine_process.c src/engine_process.h build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -Isrc $< src/engine_process.c build/libsamosa-inference-specialist.a -o $@
+test-specialist-owned: build/test-specialist-owned build/fake-multimodal-helper
+	$(abspath build/test-specialist-owned) $(abspath build/fake-multimodal-helper)
+sanitize-specialist-owned: build/fake-multimodal-helper | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_owned.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-owned-sanitize
+	$(abspath build/test-specialist-owned-sanitize) $(abspath build/fake-multimodal-helper)
+test: test-specialist-owned
+sanitize: sanitize-specialist-owned

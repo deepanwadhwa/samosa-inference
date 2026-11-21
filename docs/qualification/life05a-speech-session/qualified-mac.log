@@ -1,0 +1,6 @@
+PASS extracted speech session: repeated generation without reopen, bound root, cancellation and mutation refusal
+PASS owned speech worker: 354 checks; native ABI, packet integrity, controls, crash and parent-death cleanup
+PASS extracted speech session: repeated generation without reopen, bound root, cancellation and mutation refusal
+PASS owned speech worker: 358 checks; native ABI, packet integrity, controls, crash and parent-death cleanup
+PASS public speech registry: 175 checks; native PCM, owner/range controls, replay, cancellation and recovery
+PASS public speech registry: 175 checks; native PCM, owner/range controls, replay, cancellation and recovery

@@ -1,0 +1,4 @@
+Molmo2 4B by Allen Institute for AI; original pinned model card declares Apache2.0.
+Full original model card, standard Apache2.0 terms and native dependency licenses are included.
+The native PROVENANCE.md and manifest retain the existing Q4/group64 conversion and upstream revision.
+No new model conversion or shard copies are performed. Existing native engine and colocated MLX kernels are reused.

@@ -1,0 +1,8 @@
+Collection: /private/tmp/inference-life03-release-check-mac.log
+Terminal exit: 0 (native process handle observed)
+PASS registry lifecycle: 260 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry lifecycle: 260 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS managed host: 71 checks; configuration-only text/embedding load, no engine/state work, explicit activation and cleanup
+PASS managed host: 71 checks; configuration-only text/embedding load, no engine/state work, explicit activation and cleanup
+PASS managed CLI: 41 checks; private host config, bounded schema, artifact/environment refusal and key cleanup
+PASS managed CLI: 41 checks; private host config, bounded schema, artifact/environment refusal and key cleanup

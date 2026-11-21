@@ -1,0 +1,10 @@
+Collection: /private/tmp/inference-life03-qualified-linux.log
+Terminal exit: 0 (native process handle observed)
+PASS registry lifecycle: 213 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry lifecycle: 213 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS managed host: 71 checks; configuration-only text/embedding load, no engine/state work, explicit activation and cleanup
+PASS managed host: 71 checks; configuration-only text/embedding load, no engine/state work, explicit activation and cleanup
+PASS integrated managed readiness: 154 checks; generation failure, last-good revision, reap, healthy replacement and unrelated survivor
+PASS integrated managed readiness: 154 checks; generation failure, last-good revision, reap, healthy replacement and unrelated survivor
+PASS registry native CLI: 587 checks; native engine, restart replay, scoped cancellation and private configuration
+PASS registry native CLI: 659 checks; native engine, restart replay, scoped cancellation and private configuration

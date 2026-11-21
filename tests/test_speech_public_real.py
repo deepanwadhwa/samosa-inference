@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from speech_quality import qualify_voice
 
 arguments = sys.argv[1:]
 streaming = arguments[-1] == "--stream"
@@ -81,17 +82,7 @@ try:
               manifest_sha256=pin, package_identity=hashlib.sha256(("sherpa-speech-package-v1:" + pin).encode()).hexdigest(),
               input_sha256=hashlib.sha256(fields["text"].encode()).hexdigest(), requested_voice=voice))
         check(receipt["sample_rate"] == 24000)
-        if profile and profile.get("fresh_generation") == "variable_pcm":
-            # A pinned model still varies across fresh generations. Keep a
-            # duration regression bound; verify each result against its own
-            # receipt, then require exact retained replay. Reference hashes
-            # are diagnostic evidence, not a promise of deterministic output.
-            tolerance = profile["sample_count_relative_tolerance"]
-            check(abs(receipt["samples"] - samples) <= samples * tolerance)
-            digest = receipt["pcm_sha256"]
-            samples = receipt["samples"]
-        else:
-            check(receipt["samples"] == samples and receipt["pcm_sha256"] == digest)
+        samples, digest = qualify_voice(profile, samples, digest, receipt, check)
         check(receipt["bytes"] == samples * 2)
         pcm = bytearray()
         while len(pcm) < receipt["bytes"]:

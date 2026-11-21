@@ -1,0 +1,2 @@
+PASS speech registry lifecycle: 5 scenarios; /private/tmp/inference-life05d-kokoro-final-normal
+PASS speech registry lifecycle: 5 scenarios; /private/tmp/inference-life05d-kokoro-final-sanitize

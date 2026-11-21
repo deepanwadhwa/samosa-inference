@@ -29,8 +29,49 @@ static char *captured_command(const char *self,const char *mode,const char *path
     fputc('[',out);for(size_t k=0;k<6;k++){if(k)fputc(',',out);json_quote(out,args[k],strlen(args[k]));}
     fputc(']',out);CHECK(!fclose(out));return body;
 }
+static void protocol_pipes(int input[2],int output[2]){
+    CHECK(!pipe(input)&&!pipe(output));int all[]={input[0],input[1],output[0],output[1]};
+    for(size_t i=0;i<4;i++)CHECK(!fcntl(all[i],F_SETFD,FD_CLOEXEC));
+}
+static void exact(int fd,const void *wanted,size_t length){
+    unsigned char bytes[4096];CHECK(length<=sizeof(bytes));size_t used=0;
+    while(used<length){struct pollfd watch={fd,POLLIN|POLLHUP,0};CHECK(poll(&watch,1,3000)>0);
+        ssize_t n=read(fd,bytes+used,length-used);CHECK(n>0);used+=(size_t)n;}
+    CHECK(!memcmp(bytes,wanted,length));
+}
+static void backpressure(int fd){
+    for(unsigned i=0;i<300;i++){
+        struct pollfd watch={fd,POLLOUT,0};int ready=poll(&watch,1,0);CHECK(ready>=0);
+        if(!ready)return;
+        CHECK(!(watch.revents&(POLLERR|POLLHUP|POLLNVAL)));pause_ms();
+    }
+    CHECK(0);
+}
 static int fixture(const char *mode,const char *path){
     if(!strcmp(mode,"fail"))return 9;
+    if(!strncmp(mode,"duplex",6)){
+        char model[3];if(pread(5,model,3,0)!=3||memcmp(model,"abc",3))return 4;
+        int held=lease(path);if(held<0)return 4;
+        char descendant[512];snprintf(descendant,sizeof(descendant),"%s.descendant",path);
+        pid_t pid=fork();if(pid<0)return 4;
+        if(!pid){close(0);close(1);close(2);int hold=lease(descendant);if(hold<0)_exit(4);for(;;)pause();}
+        int ready=0;for(int i=0;i<300;i++){if(!access(descendant,F_OK)&&!released(descendant)){ready=1;break;}pause_ms();}
+        if(!ready)return 4;
+        fputs("resident diagnostic on stderr\n",stderr);fflush(stderr);
+        if(write(STDOUT_FILENO,model,3)!=3)return 4;
+        if(!strcmp(mode,"duplex-closed-output")){close(STDOUT_FILENO);for(;;)pause();}
+        if(!strcmp(mode,"duplex-log")||!strcmp(mode,"duplex-flood")){
+            char bytes[4096];memset(bytes,'x',sizeof(bytes));int output=!strcmp(mode,"duplex-log")?STDERR_FILENO:STDOUT_FILENO;
+            for(;;)if(write(output,bytes,sizeof(bytes))<1)return 4;
+        }
+        char bytes[128];ssize_t n;
+        while((n=read(STDIN_FILENO,bytes,sizeof(bytes)))>0){
+            if(!strcmp(mode,"duplex-crash")){kill(getpid(),SIGKILL);return 4;}
+            if(!strcmp(mode,"duplex-hup")){kill(getpid(),SIGHUP);return 0;}
+            if(write(STDOUT_FILENO,bytes,(size_t)n)!=n)return 4;
+        }
+        return n<0?4:0;
+    }
     if(!strcmp(mode,"protocol")||!strcmp(mode,"protocol-flood")||!strcmp(mode,"protocol-large")){
         fputs("diagnostic belongs only in stderr\n",stderr);
         if(!strcmp(mode,"protocol-flood")){char b[9000];memset(b,'x',sizeof(b));return write(1,b,sizeof(b))==(ssize_t)sizeof(b)?0:4;}
@@ -49,12 +90,89 @@ static int fixture(const char *mode,const char *path){
     if(!strcmp(mode,"closed-log")){close(STDOUT_FILENO);close(STDERR_FILENO);}
     for(;;)pause();
 }
+static void duplex_tests(const char *self,const char *root){
+    char path[512],descendant[600],residency_path[512],model_path[512],ready[512],foreign[512];
+    snprintf(path,sizeof(path),"%s/duplex-engine",root);snprintf(descendant,sizeof(descendant),"%s.descendant",path);
+    snprintf(residency_path,sizeof(residency_path),"%s/duplex-residency",root);snprintf(model_path,sizeof(model_path),"%s/duplex-model",root);
+    snprintf(ready,sizeof(ready),"%s/duplex-ready",root);snprintf(foreign,sizeof(foreign),"%s/duplex-foreign",root);
+    int fd=open(model_path,O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC,0600);CHECK(fd>=0);
+    CHECK(write(fd,"abc",3)==3&&!close(fd));int model=open(model_path,O_RDONLY|O_CLOEXEC);CHECK(model>=0);
+    /* The worker uses bound fd5, even when no original model pathname exists. */
+    CHECK(!unlink(model_path));
+    pid_t external;char *foreign_args[]={(char *)self,"--fixture","sleep",foreign,NULL};
+    CHECK(!posix_spawn(&external,self,NULL,NULL,foreign_args,environ));observe(foreign,0);
+    const char *modes[]={"duplex","duplex-eof","duplex-crash","duplex-flood","duplex-log","duplex-closed-output","duplex-pending","duplex-lifetime","duplex-hup"};
+    for(size_t mode=0;mode<sizeof(modes)/sizeof(*modes);mode++){
+        int input[2],output[2];protocol_pipes(input,output);int residency=lease(residency_path);CHECK(residency>=0);
+        char *cmd=command(self,modes[mode],path);EngineProcess p;
+        if(!mode){
+            CHECK(!strcmp(engine_process_start_bound_duplex(self,cmd,30,65536,residency,model,model,output[1],&p),"invalid_engine_configuration"));
+            CHECK(p.guardian<0&&p.response<0);
+            CHECK(!strcmp(engine_process_start_bound_duplex(self,cmd,30,65536,residency,model,input[1],output[1],&p),"invalid_engine_configuration"));
+            CHECK(!strcmp(engine_process_start_bound_duplex(self,cmd,30,65536,residency,model,input[0],output[0],&p),"invalid_engine_configuration"));
+            CHECK(!strcmp(engine_process_start_bound_duplex(self,cmd,30,65536,-1,model,input[0],output[1],&p),"invalid_engine_configuration"));
+        }
+        CHECK(!engine_process_start_bound_duplex(self,cmd,mode==7?1:30,mode==4?1024:65536,residency,model,input[0],output[1],&p));
+        CHECK(!close(input[0])&&!close(residency));if(mode!=3)CHECK(!close(output[1]));
+        exact(output[0],"abc",3);if(mode!=4&&mode!=7){observe(path,0);observe(descendant,0);}
+        if(mode==3){backpressure(output[1]);CHECK(!close(output[1]));}
+        if(mode!=4&&mode!=7)CHECK(!released(residency_path));
+        if(!mode){
+            const unsigned char frame[]={0,0,0,3,'a','b','c'};
+            for(unsigned i=0;i<3;i++){CHECK(write(input[1],frame,sizeof(frame))==(ssize_t)sizeof(frame));exact(output[0],frame,sizeof(frame));}
+            CHECK(!engine_process_stop(&p));
+        }else if(mode==1){CHECK(!close(input[1]));input[1]=-1;terminal(&p);CHECK(!engine_process_stop(&p));CHECK(!strcmp(p.reason,"completed"));}
+        else if(mode==2||mode==8){CHECK(write(input[1],"x",1)==1);terminal(&p);expect_stop(&p,"engine_failed");}
+        else if(mode==3)CHECK(!engine_process_stop(&p));
+        else if(mode==4){terminal(&p);expect_stop(&p,"log_limit");}
+        else if(mode==5){
+            struct pollfd watch={output[0],POLLIN|POLLHUP,0};CHECK(poll(&watch,1,3000)>0);char byte;CHECK(read(output[0],&byte,1)==0);
+            CHECK(!engine_process_stop(&p));
+        }else if(mode==6){
+            CHECK(!kill(p.guardian,SIGSTOP));int stopped;CHECK(waitpid(p.guardian,&stopped,WUNTRACED)==p.guardian&&WIFSTOPPED(stopped));
+            expect_stop(&p,"engine_shutdown_pending");CHECK(p.guardian>0&&p.response>=0);
+            CHECK(!released(residency_path)&&!released(path)&&!released(descendant));
+            CHECK(!kill(p.guardian,SIGCONT));CHECK(!engine_process_stop(&p));
+        }else {terminal(&p);expect_stop(&p,"lifetime_exceeded");}
+        observe(path,1);observe(descendant,1);observe(residency_path,1);CHECK(!released(foreign));
+        if(input[1]>=0)CHECK(!close(input[1]));
+        CHECK(!close(output[0]));free(cmd);CHECK(!unlink(path)&&!unlink(descendant)&&!unlink(residency_path));
+    }
+    /* An orphaned stopped group gets SIGHUP/SIGCONT from the OS. The guardian
+     * must survive HUP and reap even with a worker blocked in stdout. */
+    fd=open(model_path,O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC,0600);CHECK(fd>=0);CHECK(write(fd,"abc",3)==3&&!close(fd));
+    pid_t parent;char *args[]={(char *)self,"--duplex-parent",path,ready,residency_path,model_path,NULL};
+    CHECK(!posix_spawn(&parent,self,NULL,NULL,args,environ));
+    int seen=0;for(int i=0;i<300;i++){if(!access(ready,F_OK)){seen=1;break;}pause_ms();}CHECK(seen);
+    FILE *file=fopen(ready,"r");CHECK(file);long guardian;CHECK(fscanf(file,"%ld",&guardian)==1&&guardian>1&&!fclose(file));
+    /* The direct owner confirmed SIGSTOP before publishing this ready record. */
+    observe(path,0);observe(descendant,0);observe(residency_path,0);
+    CHECK(!kill(parent,SIGKILL));int status;CHECK(waitpid(parent,&status,0)==parent);
+    observe(path,1);observe(descendant,1);observe(residency_path,1);CHECK(!released(foreign));
+    CHECK(!kill(external,SIGKILL));CHECK(waitpid(external,&status,0)==external);observe(foreign,1);
+    CHECK(!close(model));CHECK(!unlink(path)&&!unlink(descendant)&&!unlink(residency_path)&&!unlink(ready)&&!unlink(model_path)&&!unlink(foreign));
+}
 int main(int argc,char **argv){
     int guardian=engine_guardian_dispatch(argc,argv);if(guardian>=0)return guardian;
     if(argc==4&&!strcmp(argv[1],"--fixture"))return fixture(argv[2],argv[3]);
     if(argc==6&&!strcmp(argv[1],"--vision-engine-bounded-bridge")){
         int input=open(argv[4],O_RDONLY);if(input<0||dup2(input,0)<0)return 4;close(input);
         return fixture(argv[2],argv[3]);
+    }
+    if(argc==6&&!strcmp(argv[1],"--duplex-parent")){
+        int residency=lease(argv[4]),model=open(argv[5],O_RDONLY|O_CLOEXEC),input[2],output[2];
+        if(residency<0||model<0)return 3;
+        protocol_pipes(input,output);char *cmd=command(argv[0],"duplex-flood",argv[2]);EngineProcess p;
+        if(engine_process_start_bound_duplex(argv[0],cmd,30,65536,residency,model,input[0],output[1],&p))return 3;
+        free(cmd);close(input[0]);close(model);close(residency);
+        exact(output[0],"abc",3);
+        backpressure(output[1]);close(output[1]);
+        if(kill(p.guardian,SIGSTOP))return 3;
+        int stopped;if(waitpid(p.guardian,&stopped,WUNTRACED)!=p.guardian||!WIFSTOPPED(stopped))return 3;
+        FILE *ready=fopen(argv[3],"w");if(!ready)return 3;
+        fprintf(ready,"%ld\n",(long)p.guardian);if(fclose(ready))return 3;
+        /* Leave stdout unread: blocked engine output cannot mask parent death. */
+        for(;;)pause();
     }
     if((argc==4||argc==5)&&!strcmp(argv[1],"--parent-worker")){
         char *cmd=command(argv[0],"grandchild",argv[2]);EngineProcess p;
@@ -166,7 +284,7 @@ int main(int argc,char **argv){
     CHECK(access(ack_workspace,F_OK)<0&&errno==ENOENT);
     close(ack_in);close(ack_out);close(ack_dir);close(ack_lease);
     CHECK(!unlink(residency_path));if(!access(path,F_OK))CHECK(!unlink(path));
-    CHECK(!rmdir(root));
+    duplex_tests(argv[0],root);CHECK(!rmdir(root));
 
     printf("PASS engine process ownership: %u checks; bounded logs/lifetime, owned stop/group/parent-death, foreign survivor\n",checks);return 0;
 }

@@ -1,0 +1,4 @@
+Collection: /private/tmp/inference-life04b-native-final-mac.log
+Terminal exit: 0 (observed process handle)
+PASS owned summary transport: 280 checks; guardian residency, scalar/batch/coalescing, bounded I/O, scoped cancellation and pending cleanup
+PASS owned summary transport: 356 checks; guardian residency, scalar/batch/coalescing, bounded I/O, scoped cancellation and pending cleanup

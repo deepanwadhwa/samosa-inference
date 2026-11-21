@@ -261,3 +261,13 @@ publication. Existing small shards fit the current uploader; no new splitting,
 archive unpacker, downloader or inference implementation is introduced. The
 prerelease is published; cold published-URL/common-registry qualification and the
 production catalog entry remain pending. Actual scope is macOS26.5.1 arm64 only.
+
+## Published distribution acceptance
+
+The [37-file production catalog](../catalog/molmo2-native-v1) now carries both
+normal/SAN cold published-URL receipts. Each actual common-registry gate passes
+524778 checks, followed by native cache-only resume/removal/reinstall and cleanup.
+All source/model/runtime pins remain unchanged from the exact installed candidate.
+Logs: `/private/tmp/samosa-molmo-published-{normal,sanitize}.log`. The production
+distribution slice is qualified; full component2 and wider platform/lifecycle
+acceptance remain open.

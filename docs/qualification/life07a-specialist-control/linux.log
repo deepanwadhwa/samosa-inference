@@ -1,0 +1,13 @@
+make: Entering directory '/host-tmp/inference-life03-linux-siqynlpg'
+clang  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_supervisor.c -o build/specialist-supervisor.o
+ar rcs build/libsamosa-inference-specialist.a build/specialist-supervisor.o build/summary-process.o build/llama-launch.o
+clang  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_multimodal_supervisor.c build/libsamosa-inference-specialist.a -o build/test-specialist-supervisor
+./build/test-specialist-supervisor /host-tmp/inference-life03-linux-siqynlpg/build/fake-multimodal-helper
+multimodal supervisor: PASS
+clang  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_multimodal_supervisor.c src/specialist_supervisor.c -o build/test-specialist-supervisor-sanitize
+./build/test-specialist-supervisor-sanitize /host-tmp/inference-life03-linux-siqynlpg/build/fake-multimodal-helper
+multimodal supervisor: PASS
+clang  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_summary_process.c build/libsamosa-inference-specialist.a -o build/test-summary-process
+./build/test-summary-process /host-tmp/inference-life03-linux-siqynlpg/build/fake-native-summarizer
+summary process: PASS (reuse, descriptors, crash/restart, scalar/batch, failure recovery, stop/reap)
+make: Leaving directory '/host-tmp/inference-life03-linux-siqynlpg'

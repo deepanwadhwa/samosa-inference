@@ -1,0 +1,3 @@
+Actual managed QA root: /tmp/samosa-managed-native.DSHfGp
+PASS actual text registry: combined discovery, native counting/generation, scoped operation status, observed active cancellation, survivor, foreign owner refusal and credential-free offline replay
+PASS actual managed public CLI: correlated requests, observed active in-stream cancellation, survivor, FIFO EOF shutdown, offline exact retry, no retained key

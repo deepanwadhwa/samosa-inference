@@ -1,0 +1,5 @@
+Collection: /private/tmp/inference-life03e-regression-linux.log
+Terminal exit: 0 (process handle observed)
+PASS registry text lifecycle: 261 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS native llama adapter: 477 controlled-HTTP checks; exact token IDs, bounded HTTP, budget/provider/admission/last-good sessions
+PASS native llama adapter: 477 controlled-HTTP checks; exact token IDs, bounded HTTP, budget/provider/admission/last-good sessions

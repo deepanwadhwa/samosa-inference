@@ -1,0 +1,1 @@
+{"architecture":"qwen35","engine":"llama-server","format":"samosa.inference.llama-package.v1","kind":"text","model":"model.gguf","runtime_revision":"4fbc76dec51d0add466f0210855c0596589b60d4"}

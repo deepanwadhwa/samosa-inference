@@ -1,0 +1,12 @@
+Collection: /private/tmp/inference-life04a-final-linux.log
+Terminal exit: 0 (observed native handle)
+PASS engine process ownership: 515 checks; bounded logs/lifetime, owned stop/group/parent-death, foreign survivor
+PASS engine process ownership: 515 checks; bounded logs/lifetime, owned stop/group/parent-death, foreign survivor
+PASS activation: 112 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation
+PASS activation: 168 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation
+PASS integrated managed readiness: 154 checks; generation failure, last-good revision, reap, healthy replacement and unrelated survivor
+PASS integrated managed readiness: 154 checks; generation failure, last-good revision, reap, healthy replacement and unrelated survivor
+summary protocol boundaries PASS
+PASS public summary: 479 checks; framing, pins, replay/owner, controls and invalid responses
+summary protocol boundaries PASS
+PASS public summary: 503 checks; framing, pins, replay/owner, controls and invalid responses

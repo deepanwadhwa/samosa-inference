@@ -1,0 +1,26 @@
+{
+  "assignment": "LIFE-04a resident guardian duplex transport",
+  "date": "2026-10-24",
+  "status": "qualified transport prerequisite; summary resident integration and area3 remain open",
+  "scope": "kernel-bounded borrowed protocol pipes, retained model/lease/group/parent-death and bounded stderr; no model-readiness claim",
+  "platforms": [
+    "macOS 26.5.1 ARM64",
+    "Debian12 ARM64 native container"
+  ],
+  "instrumentation": "native C fixture, host and guardian normal and ASan+UBSan",
+  "linux_export": "/private/tmp/inference-life04a-linux-ohu030fo",
+  "regression_export": "/private/tmp/inference-life03-linux-siqynlpg",
+  "diagnostic": "Separate debug-only copy caught orphan-group SIGHUP before cleanup; excluded from acceptance",
+  "source_sha256": {
+    "src/engine_process.c": "967d07fadf960427517bf1af9111002ad394a6e3ecd91a5f325e3aec7a4cea1d",
+    "src/engine_process.h": "cd1a6c5cfef974cda36f80b5f8c6dcda3498b25da17b7c2e9bd7be7d4e3aeab1",
+    "tests/test_engine_process.c": "3f2aff182f42d14eb032b4102109b50932e95853813bfd9482377b1f8c81717d"
+  },
+  "evidence_sha256": {
+    "regressions-mac.log": "e35c67f74614b21488bcdad5fed25bda06ca5b6b661d8c0a8e8eee55a8593dc3",
+    "excluded-hup-diagnostic.log": "4357171fdd55fc0d60071d02e37d5a8baa720866be42bef34134095524eaad98",
+    "native-mac.log": "df92cec0ee66c0694c6c149783daf1ae8746441679d4cc0df45f10bfaeda8339",
+    "regressions-linux.log": "c48ed2d43e37bac27fcd9c3b088c8dfe84440901b378b7f40757dae4757eef06",
+    "native-linux.log": "75c32179fa920061cd920e6259f2d2d227da2c1c2ad3f8b27bf75201d8024e31"
+  }
+}

@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 import os
+import platform
 from pathlib import Path
 import select
 import socket
@@ -30,6 +31,8 @@ def private_json(path, value):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--registry-binary")
+    parser.add_argument("--registry-owned", action="store_true",
+                        help="start/stop the existing engine through registry --session")
     parser.add_argument("--binary", required=True)
     parser.add_argument("--offline-binary", required=True)
     parser.add_argument("--engine", required=True)
@@ -38,6 +41,7 @@ def main():
     parser.add_argument("--runtime-revision", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
+    assert not args.registry_owned or args.registry_binary, "owned mode requires registry binary"
     root = Path(args.output).resolve()
     root.mkdir(mode=0o700)
     engine, model = Path(args.engine).resolve(), Path(args.model).resolve()
@@ -61,9 +65,24 @@ def main():
                   port=port, expected_revision=0, gpu_layers=0, threads=4,
                   embedding_config_file=str(root / "embedding.json"))
     private_json(root / "managed.json", config)
+    registry = None
+    if args.registry_owned:
+        host = {("Darwin", "arm64"): "macos-arm64", ("Linux", "aarch64"): "linux-arm64"}[
+            (platform.system(), platform.machine())]
+        binding = (f"llama-static-system-v1:{host}:system-runtime-v1:llama-native-template-v1:"
+                   f"{engine_sha}:{engine.stat().st_size}:{args.model_sha256}:{model.stat().st_size}:8192:embedding-qa")
+        identity = "managed-text-" + hashlib.sha256(binding.encode()).hexdigest()
+        registry = dict(contract_version=1, owner="embedding-qa", providers=[
+            dict(kind="embeddings", provider_id=identity, state=str(root / "state" / "admission"),
+                 context_tokens=8192, managed_config_file=str(root / "managed.json")),
+            dict(kind="fake_text", provider_id="contract-text", state=str(root / "text-state"))])
+        private_json(root / "registry.json", registry)
     receipts = []
+    lifecycle = []
     with open(root / "stderr.log", "wb") as log:
-        process = subprocess.Popen([args.binary, "--config", str(root / "managed.json")],
+        command = ([args.registry_binary, "--config", str(root / "registry.json"), "--session"]
+                   if args.registry_owned else [args.binary, "--config", str(root / "managed.json")])
+        process = subprocess.Popen(command,
                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=log)
         buffer = bytearray()
         credential = root / "registry-key"
@@ -72,7 +91,7 @@ def main():
             # The supervisor removes its startup key before announcing readiness.
             # This trusted host harness retains a private copy only for live
             # registry requests, and removes it before testing offline replay.
-            if not args.registry_binary or credential.exists():
+            if args.registry_owned or not args.registry_binary or credential.exists():
                 return
             for path in (root / "state").glob("key.*"):
                 try:
@@ -110,6 +129,17 @@ def main():
             return json.loads(line)
 
         def registry_call(request, expected=0):
+            if args.registry_owned and not process.stdin.closed:
+                request_id = "registry-" + str(len(lifecycle))
+                frame = dict(contract_version=1, request_id=request_id, request=request)
+                process.stdin.write(json.dumps(frame).encode() + b"\n")
+                process.stdin.flush()
+                response = receive()
+                assert response["request_id"] == request_id, response
+                result = response["response"]
+                assert ("error" in result) == bool(expected), result
+                lifecycle.append(dict(op=request["op"], response=result))
+                return result
             result = subprocess.run([args.registry_binary, "--config", str(root / "registry.json")],
                                     input=json.dumps(request), text=True, capture_output=True, timeout=90)
             assert result.returncode == expected, (result.stdout, result.stderr)
@@ -142,9 +172,19 @@ def main():
             return result
 
         try:
-            event = receive()
+            if args.registry_owned:
+                discovery = registry_call(dict(contract_version=1, op="describe"))
+                assert discovery["managed_lifecycle"]["provider_ids"] == [identity]
+                assert not (root / "state").exists(), "discovery created managed state"
+                status = registry_call(dict(contract_version=1, op="provider_lifecycle_status", provider_id=identity))
+                assert status["ready"] is False
+                started = registry_call(dict(contract_version=1, op="provider_start", provider_id=identity))
+                assert started["ready"] is True, started
+                event = dict(event="provider_started", provider_id=identity)
+            else:
+                event = receive()
             assert event.get("event") == "provider_started", event
-            if args.registry_binary:
+            if args.registry_binary and not args.registry_owned:
                 assert credential.exists(), "startup credential was not retained"
                 provider = dict(kind="embeddings", provider_id=event["provider_id"],
                                 state=str(root / "state" / "admission"), endpoint=f"http://127.0.0.1:{port}",
@@ -191,6 +231,16 @@ def main():
             private_json(root / "long-input-refusal.json", refused)
             private_json(root / "receipts.json", receipts)
             private_json(root / "rankings.json", rankings)
+            if args.registry_owned:
+                stopped = registry_call(dict(contract_version=1, op="provider_stop", provider_id=identity))
+                assert stopped["ready"] is False and not list((root / "state").glob("key.*"))
+                replay = embed(queries[0][0], "query", "query-0")
+                assert replay == receipts[4]["response"], "stopped-engine exact replay changed"
+                started = registry_call(dict(contract_version=1, op="provider_start", provider_id=identity))
+                assert started["ready"] is True
+                status = registry_call(dict(contract_version=1, op="provider_lifecycle_status", provider_id=identity))
+                assert status["ready"] is True
+                private_json(root / "lifecycle.json", lifecycle)
         finally:
             if credential.exists():
                 credential.unlink()
@@ -206,8 +256,9 @@ def main():
     offline_request = dict(contract_version=1, op="embed_text", text=queries[0][0],
                            role="query", operation_id="query-0", timeout_ms=60000)
     if args.registry_binary:
-        registry["providers"][0]["endpoint"] = "http://127.0.0.1:1"
-        registry["providers"][0].pop("api_key_file")
+        if not args.registry_owned:
+            registry["providers"][0]["endpoint"] = "http://127.0.0.1:1"
+            registry["providers"][0].pop("api_key_file")
         # Supervisor shutdown removes its secret; replay needs neither endpoint
         # nor credentials, while the pinned representation remains unchanged.
         (root / "registry.json").unlink()
@@ -216,6 +267,10 @@ def main():
         replay = registry_call(offline_request)
         assert replay == receipts[4]["response"]
         private_json(root / "registry-offline-replay.json", replay)
+        if args.registry_owned:
+            with socket.socket() as stopped:
+                assert stopped.connect_ex(("127.0.0.1", port)) != 0, "engine listener survived EOF"
+            assert not list((root / "state").glob("key.*")), "credential survived EOF"
         offline_request.pop("provider_id")
     offline = subprocess.run([
         args.offline_binary, "--llama-endpoint", "http://127.0.0.1:1",
@@ -236,7 +291,8 @@ def main():
     assert result["profile"] == receipts[4]["response"]["profile"]
     assert result["vector"] == receipts[4]["response"]["vector"], "single/stream vectors differ"
     private_json(root / "single-response.json", result)
-    print(f"PASS actual managed/registry embedding: 768 dimensions, 4/4 paraphrase rankings, long-input refusal, offline replay, single/stream parity, shutdown; {root}")
+    ownership = "owned registry lifecycle" if args.registry_owned else "managed/registry"
+    print(f"PASS actual {ownership} embedding: 768 dimensions, 4/4 paraphrase rankings, long-input refusal, offline replay, single/stream parity, shutdown; {root}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,3 @@
+1ce08a52e0c12e5a7a972470d29db8ddac8bd1c9dc78172eb57ef6a7aa147b9c  dist/install.sh
+613c1157184357f35baf6fc89ceac369873f7ca15ea61fbd0fb69f6be64f83db  tools/package_hf.py
+446bd2baa8848b7b1cfd05e8fe6238d2b9ed1363d7b63dd92e974acb3f7f09d8  tests/test_package_pdfium.py

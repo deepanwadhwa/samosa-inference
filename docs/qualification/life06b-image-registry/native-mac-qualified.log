@@ -1,0 +1,8 @@
+PASS decision transport: 28 pipe checks; fragmentation, boundaries, recovery, EOF and broken reader
+PASS resident decision image transport: 21 checks; changing frames, independent full-size limits, refusal recovery, fragmentation, truncation and EOF
+PASS decision transport: 28 pipe checks; fragmentation, boundaries, recovery, EOF and broken reader
+PASS resident decision image transport: 21 checks; changing frames, independent full-size limits, refusal recovery, fragmentation, truncation and EOF
+PASS decision registry lifecycle: 8 scenarios; /private/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T/samosa-decision-registry-rnjc4nm8
+PASS decision registry lifecycle: 8 scenarios; /private/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T/samosa-decision-registry-zwbr4o3h
+PASS decision registry lifecycle: 8 scenarios; /private/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T/samosa-decision-registry-mclw_eo4
+PASS decision registry lifecycle: 8 scenarios; /private/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T/samosa-decision-registry-0_lzw7hk

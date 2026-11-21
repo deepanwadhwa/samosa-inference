@@ -1,0 +1,13 @@
+PASS extracted speech session: repeated generation without reopen, bound root, cancellation and mutation refusal
+PASS resident speech worker: same loaded model/guardian, provisional PCM, EOF, controls, malformed audio, crash and lease recovery
+PASS owned speech worker: 464 checks; native ABI, packet integrity, controls, crash and parent-death cleanup
+PASS extracted speech session: repeated generation without reopen, bound root, cancellation and mutation refusal
+PASS resident speech worker: same loaded model/guardian, provisional PCM, EOF, controls, malformed audio, crash and lease recovery
+PASS owned speech worker: 466 checks; native ABI, packet integrity, controls, crash and parent-death cleanup
+PASS owned summary transport: 267 checks; guardian residency, scalar/batch/coalescing, bounded I/O, scoped cancellation and pending cleanup
+PASS owned summary transport: 272 checks; guardian residency, scalar/batch/coalescing, bounded I/O, scoped cancellation and pending cleanup
+summary process: PASS (reuse, descriptors, crash/restart, scalar/batch, failure recovery, stop/reap)
+summary process: PASS (reuse, descriptors, crash/restart, scalar/batch, failure recovery, stop/reap)
+PASS public speech registry: 175 checks; native PCM, owner/range controls, replay, cancellation and recovery
+PASS public speech registry: 175 checks; native PCM, owner/range controls, replay, cancellation and recovery
+make: Leaving directory '/host-tmp/inference-life03-linux-siqynlpg'

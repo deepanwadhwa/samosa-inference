@@ -1,0 +1,9 @@
+PASS decision transport: 28 pipe checks; fragmentation, boundaries, recovery, EOF and broken reader
+PASS resident decision image transport: 21 checks; changing frames, independent full-size limits, refusal recovery, fragmentation, truncation and EOF
+PASS decision transport: 28 pipe checks; fragmentation, boundaries, recovery, EOF and broken reader
+PASS resident decision image transport: 21 checks; changing frames, independent full-size limits, refusal recovery, fragmentation, truncation and EOF
+PASS decision registry lifecycle: 8 scenarios; /tmp/samosa-decision-registry-x4ln0y3v
+PASS decision registry lifecycle: 8 scenarios; /tmp/samosa-decision-registry-gpb8rjaw
+PASS decision registry lifecycle: 8 scenarios; /tmp/samosa-decision-registry-ht40w94k
+PASS decision registry lifecycle: 8 scenarios; /tmp/samosa-decision-registry-e13tbod0
+make: Leaving directory '/host-tmp/inference-life03-linux-siqynlpg'

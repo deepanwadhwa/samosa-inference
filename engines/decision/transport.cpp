@@ -1,6 +1,7 @@
 #include "transport.h"
 #include <cerrno>
 #include <cstdint>
+#include <cstring>
 #include <unistd.h>
 namespace samosa::decision {
 namespace {
@@ -35,6 +36,19 @@ std::string error_reply(const std::string& error) {
     if(error==code)return "{\"error\":\""+error+"\"}";
   return "{\"error\":\"engine_failed\"}";
 }
+uint32_t u32(const unsigned char* p) {
+  return (uint32_t(p[0])<<24)|(uint32_t(p[1])<<16)|(uint32_t(p[2])<<8)|p[3];
+}
+bool emit_response(int output,bool success,std::string& reply,const std::string& error) {
+  if(!success)reply=error_reply(error);
+  else if(reply.empty())reply=error_reply("engine_failed");
+  else if(reply.size()>limit)reply=error_reply("decision_result_limit");
+  const auto bytes=static_cast<uint32_t>(reply.size());
+  const unsigned char prefix[]={static_cast<unsigned char>(bytes>>24),static_cast<unsigned char>(bytes>>16),
+      static_cast<unsigned char>(bytes>>8),static_cast<unsigned char>(bytes)};
+  return write_exact(output,prefix,sizeof(prefix))&&write_exact(output,reply.data(),reply.size());
+}
+
 }
 TransportResult serve_requests(int input,int output,const RequestHandler& handler) {
   if(input<0||output<0||!handler)return TransportResult::IoFailure;
@@ -50,14 +64,29 @@ TransportResult serve_requests(int input,int output,const RequestHandler& handle
     if(body!=Read::Complete)return TransportResult::InvalidFrame;
     std::string reply,error;bool success=false;
     try {success=handler(request,&reply,&error);} catch(...) {error="engine_failed";}
-    if(!success)reply=error_reply(error);
-    else if(reply.empty())reply=error_reply("engine_failed");
-    else if(reply.size()>limit)reply=error_reply("decision_result_limit");
-    const auto bytes=static_cast<uint32_t>(reply.size());
-    const unsigned char prefix[]={static_cast<unsigned char>(bytes>>24),static_cast<unsigned char>(bytes>>16),
-        static_cast<unsigned char>(bytes>>8),static_cast<unsigned char>(bytes)};
-    if(!write_exact(output,prefix,sizeof(prefix))||!write_exact(output,reply.data(),reply.size()))
-      return TransportResult::IoFailure;
+    if(!emit_response(output,success,reply,error))return TransportResult::IoFailure;
   }
 }
+TransportResult serve_image_requests(int input,int output,const ImageRequestHandler& handler) {
+  if(input<0||output<0||!handler)return TransportResult::IoFailure;
+  for(;;) {
+    unsigned char header[24];const Read opening=read_exact(input,header,sizeof(header));
+    if(opening==Read::Eof)return TransportResult::Eof;
+    if(opening==Read::Failed)return TransportResult::IoFailure;
+    if(opening!=Read::Complete||std::memcmp(header,"SMIMG001",8))return TransportResult::InvalidFrame;
+    const uint32_t width=u32(header+8),height=u32(header+12),pixels=u32(header+16),size=u32(header+20);
+    if(!width||width>512||!height||height>512||pixels!=width*height*4||!size||size>limit)return TransportResult::InvalidFrame;
+    std::vector<uint8_t> rgba(pixels);std::string request(size,'\0');
+    const Read image=read_exact(input,rgba.data(),rgba.size());
+    if(image==Read::Failed)return TransportResult::IoFailure;
+    if(image!=Read::Complete)return TransportResult::InvalidFrame;
+    const Read body=read_exact(input,request.data(),request.size());
+    if(body==Read::Failed)return TransportResult::IoFailure;
+    if(body!=Read::Complete)return TransportResult::InvalidFrame;
+    std::string reply,error;bool success=false;
+    try {success=handler(rgba,static_cast<int>(width),static_cast<int>(height),request,&reply,&error);}catch(...){error="engine_failed";}
+    if(!emit_response(output,success,reply,error))return TransportResult::IoFailure;
+  }
+}
+
 }

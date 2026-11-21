@@ -7,6 +7,14 @@ copied without implementation changes. Its framed scalar/batch protocol and
 tokenizer-bounded reduction remain unchanged. The upstream example attribution
 is retained in the source; the pinned ggml/llama license is in `LLAMA_LICENSE`.
 
+Chat now delegates its summarizer build to this owner; its duplicate source is
+removed. For the existing macOS dynamic-library development profile, run
+`make t5-engine T5_LLAMA_DIR=/absolute/prism-checkout`
+(optionally set `T5_LLAMA_BUILD`). This preserves the original development link
+flags. Run the moved original protocol test with
+`make test-t5-engine-real T5_TEST_ENGINE=/absolute/engine T5_TEST_MODEL=/absolute/model.gguf`.
+The pinned static release build below remains independent of that profile.
+
 Build from this repository with a separate checkout at Prism revision
 `9fcaed763ccda38ea81068ad9d7f991aaddca451`:
 

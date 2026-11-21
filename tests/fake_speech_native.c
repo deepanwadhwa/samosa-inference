@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "sherpa_abi.h"
 
@@ -35,6 +36,8 @@ const SamosaSherpaOfflineTts *SherpaOnnxCreateOfflineTts(const SamosaSherpaTtsCo
             return NULL;
         tts.pocket = 0;
     }
+    const char *log=getenv("SAMOSA_TEST_SPEECH_LOAD_LOG");
+    if(log){int fd=open(log,O_WRONLY|O_CREAT|O_APPEND,0600);if(fd>=0){(void)write(fd,"C",1);close(fd);}}
     return &tts;
 }
 
@@ -57,6 +60,8 @@ const SamosaSherpaGeneratedAudio *SherpaOnnxOfflineTtsGenerateWithConfig(
         return NULL;
     if (!strcmp(text, "partial-wait")) {
         if (callback && !callback(samples, 2, .5f, arg)) return NULL;
+        const char *marker=getenv("SAMOSA_TEST_SPEECH_PARTIAL_MARKER");
+        if(marker){int fd=open(marker,O_WRONLY|O_CREAT|O_EXCL,0600);if(fd>=0)close(fd);}
         for (;;) pause();
     }
     if (!strcmp(text, "crash")) { raise(SIGKILL); return NULL; }
@@ -74,7 +79,7 @@ const SamosaSherpaGeneratedAudio *SherpaOnnxOfflineTtsGenerateWithConfig(
     if (!strcmp(text, "nan")) result.samples = bad;
     if (!strcmp(text, "clip")) result.samples = clipped;
     if (!strcmp(text, "bad-rate")) result.sample_rate = 1;
-    if (!strcmp(text, "empty")) result.n = 0;
+    if (!strcmp(text, "empty") || getenv("SAMOSA_TEST_SPEECH_FORCE_EMPTY")) result.n = 0;
     if (!strcmp(text, "null")) return NULL;
     if (!strcmp(text, "limit")) {
         if (callback) callback(samples, 24000 * 46, .5f, arg);

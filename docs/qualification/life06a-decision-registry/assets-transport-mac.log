@@ -1,0 +1,4 @@
+PASS decision assets: 104 checks; pinned held files, closed loader graph, mutation and cancellation; synthetic binaries only
+PASS decision assets: 104 checks; pinned held files, closed loader graph, mutation and cancellation; synthetic binaries only
+PASS decision transport: 28 pipe checks; fragmentation, boundaries, recovery, EOF and broken reader
+PASS decision transport: 28 pipe checks; fragmentation, boundaries, recovery, EOF and broken reader

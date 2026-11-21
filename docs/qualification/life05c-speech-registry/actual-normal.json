@@ -1,0 +1,520 @@
+{
+  "checks": [
+    "lazy discovery, strict lifecycle, actual synthesis-qualified readiness and idempotent start",
+    "both voices, original retained PCM/hash/range validation on the same loaded worker and activation",
+    "exact stopped-worker/missing-package replay, retained audio reads and foreign-owner refusal",
+    "actual public cancellation/deadline refuse successful audio and recover through explicit activation",
+    "EOF reaps owned loaded worker and releases residency"
+  ],
+  "records": [
+    {
+      "op": "describe",
+      "response": {
+        "contract_version": 1,
+        "component": "samosa-inference",
+        "version": "0.1.0",
+        "interface": "provider-registry-v1",
+        "max_providers": 16,
+        "providers": [
+          {
+            "provider_id": "native-speech-v1",
+            "kind": "speech_output",
+            "availability": "configured_unqualified",
+            "operations": [
+              "provider_describe",
+              "operation_get",
+              "operation_cancel",
+              "speech_generate",
+              "audio_read",
+              "audio_delete"
+            ],
+            "context_tokens": 4096,
+            "host_platform": "macos-arm64",
+            "declared_platform": null,
+            "platform_policy": "unspecified"
+          },
+          {
+            "provider_id": "peer",
+            "kind": "fake_text",
+            "availability": "configured_unqualified",
+            "operations": [
+              "provider_describe",
+              "operation_get",
+              "operation_cancel",
+              "count_tokens",
+              "generate",
+              "provider_status",
+              "session_create",
+              "session_get"
+            ],
+            "context_tokens": 4096,
+            "host_platform": "macos-arm64",
+            "declared_platform": null,
+            "platform_policy": "unspecified"
+          }
+        ],
+        "managed_lifecycle": {
+          "operations": [
+            "provider_start",
+            "provider_lifecycle_status",
+            "provider_stop"
+          ],
+          "provider_ids": [
+            "native-speech-v1"
+          ]
+        }
+      }
+    },
+    {
+      "op": "provider_lifecycle_status",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "ready": false,
+        "state": "stopped",
+        "health_error": "provider_unavailable"
+      }
+    },
+    {
+      "op": "provider_start",
+      "response": {
+        "contract_version": 1,
+        "error": {
+          "code": "unknown_field"
+        }
+      }
+    },
+    {
+      "op": "provider_start",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "ready": true,
+        "state": "ready",
+        "health_error": null
+      }
+    },
+    {
+      "op": "provider_start",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "ready": true,
+        "state": "ready",
+        "health_error": null
+      }
+    },
+    {
+      "op": "speech_generate",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "e6f79709b580c06e29a63c9b721ee262177de901c291f7fea32edc5fad943080",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 78720,
+        "bytes": 157440,
+        "pcm_sha256": "5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4",
+        "provenance": {
+          "validation": "verified_before_and_after_generation",
+          "manifest_sha256": "49a3fc30b37676239559a633d9860f129e6201f6fe3475cfe3a5a7f5bca27173",
+          "package_identity": "0688173c8e819e24e4ceb2ce71ac717ab2256d0d706bf2dc43f4852476eff8e3",
+          "input_sha256": "c0f98bf75ad41f3ddb2ccb744747c8707bb67ae8a297e03fb0892054967bc114",
+          "requested_voice": "caro"
+        },
+        "operation_id": "caro"
+      }
+    },
+    {
+      "op": "audio_read",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "e6f79709b580c06e29a63c9b721ee262177de901c291f7fea32edc5fad943080",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 78720,
+        "bytes": 157440,
+        "pcm_sha256": "5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4",
+        "offset": 0,
+        "length": 32768,
+        "observed_pcm_range_sha256": "c773eb2239e45d9a2f822ee7db230d50472f3fe790040262aa262fc48688bcc0",
+        "observed_pcm_range_bytes": 32768
+      }
+    },
+    {
+      "op": "audio_read",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "e6f79709b580c06e29a63c9b721ee262177de901c291f7fea32edc5fad943080",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 78720,
+        "bytes": 157440,
+        "pcm_sha256": "5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4",
+        "offset": 32768,
+        "length": 32768,
+        "observed_pcm_range_sha256": "2aad8e4d628e95b651a3eaf1ad33939a35fdcaa554c9e43b3e345ec67a6f0ea2",
+        "observed_pcm_range_bytes": 32768
+      }
+    },
+    {
+      "op": "audio_read",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "e6f79709b580c06e29a63c9b721ee262177de901c291f7fea32edc5fad943080",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 78720,
+        "bytes": 157440,
+        "pcm_sha256": "5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4",
+        "offset": 65536,
+        "length": 32768,
+        "observed_pcm_range_sha256": "9a895fffbb3cf63807b3343bfbd33b811e109eaabcdebe12a0a5156533036735",
+        "observed_pcm_range_bytes": 32768
+      }
+    },
+    {
+      "op": "audio_read",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "e6f79709b580c06e29a63c9b721ee262177de901c291f7fea32edc5fad943080",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 78720,
+        "bytes": 157440,
+        "pcm_sha256": "5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4",
+        "offset": 98304,
+        "length": 32768,
+        "observed_pcm_range_sha256": "b923e75b7a79015aae29e6b4227e62155549a2b9fb9f9736460b4812771098e0",
+        "observed_pcm_range_bytes": 32768
+      }
+    },
+    {
+      "op": "audio_read",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "e6f79709b580c06e29a63c9b721ee262177de901c291f7fea32edc5fad943080",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 78720,
+        "bytes": 157440,
+        "pcm_sha256": "5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4",
+        "offset": 131072,
+        "length": 26368,
+        "observed_pcm_range_sha256": "1cbbd66a270107e07e166e8317ce0621a54d45afcf9c88d8885c9c25aa01812f",
+        "observed_pcm_range_bytes": 26368
+      }
+    },
+    {
+      "op": "speech_generate",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "1ff4b146fff1b010143f93ed821032bb0f3febec989204766b08d684d10c8bbe",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 90240,
+        "bytes": 180480,
+        "pcm_sha256": "0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc",
+        "provenance": {
+          "validation": "verified_before_and_after_generation",
+          "manifest_sha256": "49a3fc30b37676239559a633d9860f129e6201f6fe3475cfe3a5a7f5bca27173",
+          "package_identity": "0688173c8e819e24e4ceb2ce71ac717ab2256d0d706bf2dc43f4852476eff8e3",
+          "input_sha256": "c0f98bf75ad41f3ddb2ccb744747c8707bb67ae8a297e03fb0892054967bc114",
+          "requested_voice": "stuart"
+        },
+        "operation_id": "stuart"
+      }
+    },
+    {
+      "op": "audio_read",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "1ff4b146fff1b010143f93ed821032bb0f3febec989204766b08d684d10c8bbe",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 90240,
+        "bytes": 180480,
+        "pcm_sha256": "0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc",
+        "offset": 0,
+        "length": 32768,
+        "observed_pcm_range_sha256": "fd24350cc49f08cd86c5837d7f403bfc0f79002c8db5dc3ad48c8b4ff4728ad0",
+        "observed_pcm_range_bytes": 32768
+      }
+    },
+    {
+      "op": "audio_read",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "1ff4b146fff1b010143f93ed821032bb0f3febec989204766b08d684d10c8bbe",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 90240,
+        "bytes": 180480,
+        "pcm_sha256": "0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc",
+        "offset": 32768,
+        "length": 32768,
+        "observed_pcm_range_sha256": "2f8cba418400c2ef0512b8b85ae3cba750cc1b597eac86aa157f2f1e3e6efdb9",
+        "observed_pcm_range_bytes": 32768
+      }
+    },
+    {
+      "op": "audio_read",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "1ff4b146fff1b010143f93ed821032bb0f3febec989204766b08d684d10c8bbe",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 90240,
+        "bytes": 180480,
+        "pcm_sha256": "0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc",
+        "offset": 65536,
+        "length": 32768,
+        "observed_pcm_range_sha256": "2dd9b2a71a8c4e6b6a56d8575720f3d667afca7ab16ba2e0707a573d9dbb6c30",
+        "observed_pcm_range_bytes": 32768
+      }
+    },
+    {
+      "op": "audio_read",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "1ff4b146fff1b010143f93ed821032bb0f3febec989204766b08d684d10c8bbe",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 90240,
+        "bytes": 180480,
+        "pcm_sha256": "0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc",
+        "offset": 98304,
+        "length": 32768,
+        "observed_pcm_range_sha256": "ad809ae9054513ae61c2a77c2d280057f4c7aaec0e28d81198d18eabc21fb7c5",
+        "observed_pcm_range_bytes": 32768
+      }
+    },
+    {
+      "op": "audio_read",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "1ff4b146fff1b010143f93ed821032bb0f3febec989204766b08d684d10c8bbe",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 90240,
+        "bytes": 180480,
+        "pcm_sha256": "0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc",
+        "offset": 131072,
+        "length": 32768,
+        "observed_pcm_range_sha256": "0e228f581862684ae95aea6c025711880ba8bde1dd76681c2f639e0fd266bffe",
+        "observed_pcm_range_bytes": 32768
+      }
+    },
+    {
+      "op": "audio_read",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "1ff4b146fff1b010143f93ed821032bb0f3febec989204766b08d684d10c8bbe",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 90240,
+        "bytes": 180480,
+        "pcm_sha256": "0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc",
+        "offset": 163840,
+        "length": 16640,
+        "observed_pcm_range_sha256": "720bc732b99353f0faf41c2e269ec9db2e3e89b002491445122690ac370d3ab0",
+        "observed_pcm_range_bytes": 16640
+      }
+    },
+    {
+      "op": "speech_generate",
+      "response": {
+        "contract_version": 1,
+        "operation_id": "caro",
+        "error": {
+          "code": "idempotency_conflict"
+        }
+      }
+    },
+    {
+      "op": "provider_stop",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "ready": false,
+        "state": "stopped",
+        "health_error": "provider_unavailable"
+      }
+    },
+    {
+      "op": "speech_generate",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "e6f79709b580c06e29a63c9b721ee262177de901c291f7fea32edc5fad943080",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 78720,
+        "bytes": 157440,
+        "pcm_sha256": "5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4",
+        "provenance": {
+          "validation": "verified_before_and_after_generation",
+          "manifest_sha256": "49a3fc30b37676239559a633d9860f129e6201f6fe3475cfe3a5a7f5bca27173",
+          "package_identity": "0688173c8e819e24e4ceb2ce71ac717ab2256d0d706bf2dc43f4852476eff8e3",
+          "input_sha256": "c0f98bf75ad41f3ddb2ccb744747c8707bb67ae8a297e03fb0892054967bc114",
+          "requested_voice": "caro"
+        },
+        "operation_id": "caro"
+      }
+    },
+    {
+      "op": "audio_read",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "audio_id": "e6f79709b580c06e29a63c9b721ee262177de901c291f7fea32edc5fad943080",
+        "format": "pcm_s16le",
+        "channels": 1,
+        "sample_rate": 24000,
+        "samples": 78720,
+        "bytes": 157440,
+        "pcm_sha256": "5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4",
+        "offset": 0,
+        "length": 8,
+        "observed_pcm_range_sha256": "97bb7d081304a590f6515acd301ffe12c2cc33632c38a4c732c419a8e657a6cb",
+        "observed_pcm_range_bytes": 8
+      }
+    },
+    {
+      "op": "provider_start",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "ready": true,
+        "state": "ready",
+        "health_error": null
+      }
+    },
+    {
+      "op": "operation_get",
+      "response": {
+        "contract_version": 1,
+        "error": {
+          "code": "unknown_operation"
+        }
+      }
+    },
+    {
+      "op": "operation_get",
+      "response": {
+        "contract_version": 1,
+        "operation_id": "actual-cancel",
+        "status": "running",
+        "cancel_requested": false
+      }
+    },
+    {
+      "op": "provider_stop",
+      "response": {
+        "contract_version": 1,
+        "error": {
+          "code": "provider_busy"
+        }
+      }
+    },
+    {
+      "op": "operation_cancel",
+      "response": {
+        "contract_version": 1,
+        "operation_id": "actual-cancel",
+        "status": "running",
+        "cancel_requested": true
+      }
+    },
+    {
+      "op": "provider_lifecycle_status",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "ready": false,
+        "state": "stopped",
+        "health_error": "provider_unavailable"
+      }
+    },
+    {
+      "op": "provider_start",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "ready": true,
+        "state": "ready",
+        "health_error": null
+      }
+    },
+    {
+      "op": "speech_generate",
+      "response": {
+        "contract_version": 1,
+        "error": {
+          "code": "deadline_exceeded"
+        },
+        "operation_id": "actual-deadline"
+      }
+    },
+    {
+      "op": "provider_lifecycle_status",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "ready": false,
+        "state": "stopped",
+        "health_error": "provider_unavailable"
+      }
+    },
+    {
+      "op": "provider_start",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "native-speech-v1",
+        "ready": true,
+        "state": "ready",
+        "health_error": null
+      }
+    }
+  ],
+  "provider": {
+    "kind": "speech_output",
+    "provider_id": "native-speech-v1",
+    "package": "/private/tmp/inference-life05-pocket-vlslz1c_",
+    "manifest_sha256": "49a3fc30b37676239559a633d9860f129e6201f6fe3475cfe3a5a7f5bca27173",
+    "state": "/private/tmp/inference-life05c-actual-qualified-r3-normal/state",
+    "lifecycle": "resident-speech-v1",
+    "worker_sha256": "187bd0d0138a9db19fc9c94c5192519dc22d36b41ac34cd9e96bf5609e7c4424",
+    "worker_size": 9095176,
+    "manifest_size": 3897
+  },
+  "actual_model": true,
+  "binary_sha256": "187bd0d0138a9db19fc9c94c5192519dc22d36b41ac34cd9e96bf5609e7c4424",
+  "evidence_note": "Derived report: range base64 replaced with decoded byte count and SHA256; generation receipts unchanged. Original report retained at /private/tmp/inference-life05c-actual-qualified-r3-normal/report.json"
+}

@@ -18,6 +18,14 @@ static unsigned checks;
 static void delay(void){struct timespec t={0,10000000};nanosleep(&t,NULL);}
 static int held(const char *path){int fd=open(path,O_RDONLY);if(fd<0)return 0;int locked=flock(fd,LOCK_EX|LOCK_NB);close(fd);return locked!=0;}
 static const char *qualify(void *p){const char *path=p;for(int i=0;i<200;i++){if(held(path))return NULL;delay();}return "readiness_failed";}
+static const char *bound_launch(void *unused,const char *self,const char *args,double lifetime,size_t limit,
+        int lease,int model,EngineProcess *process) {
+    (void)unused;return engine_process_start_bound(self,args,lifetime,limit,lease,model,process);
+}
+static const char *refuse_runtime(void *unused,int engine,int model) {
+    (void)unused;char bytes[3];struct stat st;CHECK(!fstat(engine,&st)&&st.st_size>0);
+    CHECK(pread(model,bytes,3,0)==3&&!memcmp(bytes,"abc",3));return "runtime_refused";
+}
 static const char *fail(void *p){(void)p;return "readiness_failed";}
 static const char *mutate(void *p){const char *e=qualify(p);if(e)return e;int fd=open(p,O_WRONLY);CHECK(fd>=0);CHECK(pwrite(fd,"x",1,0)==1);CHECK(!close(fd));return NULL;}
 static void fail_directory_sync(const char *phase,void *p){Activation *a=p;CHECK(!strcmp(phase,"committed"));CHECK(!close(a->root));a->root=-1;}
@@ -46,11 +54,24 @@ int main(int argc,char **argv){
     ActivationConfig c={.state=state,.self=argv[0],.engine=engine,.model=model,.engine_sha=sha,
         .model_sha="ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",.engine_size=size,.model_size=3,
         .byte_ceiling=size,.argv_template="[\"@ENGINE@\",\"--hold-model\",\"@MODEL@\"]",.lifetime=30,.log_limit=65536,.qualify=qualify,.qualification=model};
-    Activation a,b;CHECK(!activation_start(&c,&a));CHECK(a.revision==1);CHECK(held(model));
+    Activation a,b;ActivationConfig invalid=c;invalid.model_argument=model;
+    const char *refused=activation_start(&invalid,&a);CHECK(refused&&!strcmp(refused,"invalid_activation_configuration"));
+    invalid=c;invalid.trusted_host_runtime=1;invalid.launch=bound_launch;refused=activation_start(&invalid,&a);CHECK(refused&&!strcmp(refused,"invalid_activation_configuration"));
+    invalid=c;invalid.model_argument="relative";refused=activation_start(&invalid,&a);CHECK(refused&&!strcmp(refused,"invalid_activation_configuration"));
+    CHECK(!activation_start(&c,&a));CHECK(a.revision==1);CHECK(held(model));
     char *saved=get(state);CHECK(strstr(saved,"\"revision\":1"));CHECK(strstr(saved,"\"live_readiness\":\"unobserved\""));
     const char *e=activation_start(&c,&b);CHECK(e&&!strcmp(e,"activation_busy"));CHECK(held(model));
     CHECK(!activation_stop(&a));CHECK(!held(model));
     restart_get(argv[0],state,saved);
+    ActivationConfig bundle=c;bundle.expected_revision=1;bundle.launch=bound_launch;
+    const char *snapshot="{\"profile\":\"test\",\"pins\":[\"retained\"]}";char bundle_sha[65];hash_bytes(snapshot,strlen(snapshot),bundle_sha);
+    bundle.verify_runtime=refuse_runtime;bundle.bundle_config=snapshot;bundle.bundle_identity=bundle_sha;
+    e=activation_start(&bundle,&a);CHECK(e&&!strcmp(e,"runtime_refused"));CHECK(!held(model));
+    char *unchanged=get(state);CHECK(!strcmp(saved,unchanged));free(unchanged);
+    bundle.bundle_config="{}";e=activation_start(&bundle,&a);CHECK(e&&!strcmp(e,"invalid_activation_configuration"));bundle.bundle_config=snapshot;
+    bundle.require_system_runtime=1;e=activation_start(&bundle,&a);CHECK(e&&!strcmp(e,"invalid_activation_configuration"));
+    bundle.require_system_runtime=0;bundle.bundle_identity="bad";e=activation_start(&bundle,&a);CHECK(e&&!strcmp(e,"invalid_activation_configuration"));
+
     e=activation_start(&c,&a);CHECK(e&&!strcmp(e,"activation_revision_conflict"));CHECK(!held(model));
     c.expected_revision=1;c.qualify=fail;e=activation_start(&c,&a);CHECK(e&&!strcmp(e,"readiness_failed"));CHECK(!held(model));
     char *current=get(state);CHECK(!strcmp(saved,current));free(current);

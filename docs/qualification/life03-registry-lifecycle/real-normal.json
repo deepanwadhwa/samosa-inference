@@ -1,0 +1,159 @@
+{
+  "platform": "macos-arm64",
+  "root": "/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T/samosa-registry-managed-real-19f3ublp",
+  "provider_id": "managed-text-fd4d7bf63cca299130fcf51a2624e6a8059f7e82f0528c680fa9ab18f9d79198",
+  "engine_sha256": "958601dbd22ab2f5857e09860247f30c74153cb0f3914b8d62f2bacbba9aab97",
+  "model_sha256": "5720d1f671b4996481274fffe01868c3c36e87c135cc8538471cc7bd6087b106",
+  "checks": [
+    "discovery performs no engine/state work",
+    "native model generation-qualified startup and live health",
+    "actual public native counting and generation",
+    "exact tracked replay with engine stopped",
+    "owned model restart qualifies again",
+    "EOF engine cleanup and no retained credentials"
+  ],
+  "records": [
+    {
+      "op": "describe",
+      "response": {
+        "contract_version": 1,
+        "component": "samosa-inference",
+        "version": "0.1.0",
+        "interface": "provider-registry-v1",
+        "max_providers": 16,
+        "providers": [
+          {
+            "provider_id": "managed-text-fd4d7bf63cca299130fcf51a2624e6a8059f7e82f0528c680fa9ab18f9d79198",
+            "kind": "text",
+            "availability": "configured_unqualified",
+            "operations": [
+              "provider_describe",
+              "operation_get",
+              "operation_cancel",
+              "count_tokens",
+              "generate",
+              "provider_status",
+              "session_create",
+              "session_get"
+            ],
+            "context_tokens": 4096,
+            "host_platform": "macos-arm64",
+            "declared_platform": null,
+            "platform_policy": "unspecified"
+          }
+        ],
+        "managed_lifecycle": {
+          "operations": [
+            "provider_start",
+            "provider_lifecycle_status",
+            "provider_stop"
+          ],
+          "provider_ids": [
+            "managed-text-fd4d7bf63cca299130fcf51a2624e6a8059f7e82f0528c680fa9ab18f9d79198"
+          ]
+        }
+      }
+    },
+    {
+      "op": "provider_lifecycle_status",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "managed-text-fd4d7bf63cca299130fcf51a2624e6a8059f7e82f0528c680fa9ab18f9d79198",
+        "ready": false,
+        "state": "stopped",
+        "health_error": "provider_unavailable"
+      }
+    },
+    {
+      "op": "provider_start",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "managed-text-fd4d7bf63cca299130fcf51a2624e6a8059f7e82f0528c680fa9ab18f9d79198",
+        "ready": true,
+        "state": "ready",
+        "health_error": null
+      }
+    },
+    {
+      "op": "provider_status",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "managed-text-fd4d7bf63cca299130fcf51a2624e6a8059f7e82f0528c680fa9ab18f9d79198",
+        "status": "ready",
+        "ready": true,
+        "artifact_identity": "owned_system_runtime_v1"
+      }
+    },
+    {
+      "op": "count_tokens",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "managed-text-fd4d7bf63cca299130fcf51a2624e6a8059f7e82f0528c680fa9ab18f9d79198",
+        "input_tokens": 24,
+        "context_tokens": 4096,
+        "tokenizer": "llama-native-template-v1",
+        "operation_id": "real-count"
+      }
+    },
+    {
+      "op": "generate",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "managed-text-fd4d7bf63cca299130fcf51a2624e6a8059f7e82f0528c680fa9ab18f9d79198",
+        "answer": "4",
+        "usage": {
+          "input_tokens": 24,
+          "output_tokens": 2,
+          "processed_input_tokens": 24
+        },
+        "quality": "native",
+        "operation_id": "real-generation"
+      }
+    },
+    {
+      "op": "provider_stop",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "managed-text-fd4d7bf63cca299130fcf51a2624e6a8059f7e82f0528c680fa9ab18f9d79198",
+        "ready": false,
+        "state": "stopped",
+        "health_error": "provider_unavailable"
+      }
+    },
+    {
+      "op": "generate",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "managed-text-fd4d7bf63cca299130fcf51a2624e6a8059f7e82f0528c680fa9ab18f9d79198",
+        "answer": "4",
+        "usage": {
+          "input_tokens": 24,
+          "output_tokens": 2,
+          "processed_input_tokens": 24
+        },
+        "quality": "native",
+        "operation_id": "real-generation"
+      }
+    },
+    {
+      "op": "provider_start",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "managed-text-fd4d7bf63cca299130fcf51a2624e6a8059f7e82f0528c680fa9ab18f9d79198",
+        "ready": true,
+        "state": "ready",
+        "health_error": null
+      }
+    },
+    {
+      "op": "provider_status",
+      "response": {
+        "contract_version": 1,
+        "provider_id": "managed-text-fd4d7bf63cca299130fcf51a2624e6a8059f7e82f0528c680fa9ab18f9d79198",
+        "status": "ready",
+        "ready": true,
+        "artifact_identity": "owned_system_runtime_v1"
+      }
+    }
+  ]
+}

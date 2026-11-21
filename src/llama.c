@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
 #include "budget.h"
+#include "embedding.h"
 #include "json.h"
 #include "llama.h"
 #include "sessions.h"
@@ -402,6 +403,28 @@ const char *llama_generate(const InferenceConfig *cfg, const char *prompt,
 }
 const char *llama_admit(const char *path, int *lock) {
   return inference_admit(path, lock);
+}
+
+const char *llama_probe(const InferenceConfig *cfg) {
+  size_t tokens = 0;
+  const char *error = llama_count(cfg, "x", &tokens);
+  if (error) return error;
+  if (!tokens || tokens > cfg->context_tokens) return "invalid_provider_response";
+  if (cfg->embedding) {
+    float *vector = NULL;
+    error = llama_embed(cfg, "task: search result | query: runtime readiness",
+                       cfg->embedding->dimensions, &vector, &tokens);
+    free(vector);
+    if (error) return error;
+    return tokens ? NULL : "invalid_provider_response";
+  }
+  char *answer = NULL;
+  size_t input = 0, output = 0, processed = 0;
+  error = llama_generate(cfg, "Reply with the word ready.", 8, &answer,
+                         &input, &output, &processed);
+  if (!error && (!answer || !*answer || !output)) error = "invalid_provider_response";
+  free(answer);
+  return error;
 }
 
 /* Embedding input already carries its task/document prefix. Chat templating

@@ -51,6 +51,16 @@ int main(void) {
     bound[0] = 128;
     assert(!summary_reply_frame(bound, 8197, &n));
     free(bound);
+    const size_t budgets[]={16,64,128,256};
+    for(size_t i=0;i<4;i++)for(int opening=0;opening<2;opening++){
+        size_t wrapped=0,legacy=0;unsigned char *a=summary_budget_frame("abc",3,budgets[i],opening,&wrapped);
+        unsigned char *b=opening?summary_opening_frame("abc",3,&legacy):summary_prompt_frame("abc",3,&legacy);
+        assert(a&&b&&wrapped==legacy+8&&a[0]==0x20&&!a[1]&&!a[2]&&!a[3]&&!a[4]&&!a[5]);
+        assert(((size_t)a[6]*256+a[7])==budgets[i]&&!memcmp(a+8,b,legacy));free(a);free(b);
+    }
+    assert(!summary_budget_frame("abc",3,15,0,&n)&&!n);
+    assert(!summary_budget_frame("abc",3,257,0,&n)&&!n);
+    assert(!summary_budget_frame("abc",3,128,2,&n)&&!n);
     puts("summary protocol boundaries PASS");
     return 0;
 }

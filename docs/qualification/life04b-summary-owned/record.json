@@ -1,0 +1,41 @@
+{
+  "assignment": "LIFE-04b controlled guardian-owned summary transport",
+  "date": "2026-10-24",
+  "status": "qualified transport integration; public T5 activation/registry lifecycle and remaining area3 open",
+  "platforms": [
+    "macOS26.5.1 ARM64 native/actual model",
+    "Debian12 ARM64 native control/fixture"
+  ],
+  "instrumentation": "C transport/test host/guardian normal and ASan+UBSan; external actual catalog T5 engine release build",
+  "linux_export": "/private/tmp/inference-life04b-linux-wxuyfv9_",
+  "source_sha256": {
+    "Makefile": "9404915437d7a23f17256d0ba38a1043aa5b134f908abd0bfb2ad96f545bf13b",
+    "include/samosa_inference/summary_process.h": "5c0e1f4ec63ec0bcaf2be5a9bcf7249bb7654e308a4e9ca68d86d54ad4573ea8",
+    "src/summary_process.c": "1f17f20028e64db8cfa7b10e26f41716f3f0078f9108e6d319d71585d274841c",
+    "src/json.h": "cbec6583903fe054da1eca0ac839d13e777bbc6d9dbe10144260d5392f930d2b",
+    "src/engine_process.c": "967d07fadf960427517bf1af9111002ad394a6e3ecd91a5f325e3aec7a4cea1d",
+    "src/engine_process.h": "cd1a6c5cfef974cda36f80b5f8c6dcda3498b25da17b7c2e9bd7be7d4e3aeab1",
+    "tests/test_summary_process.c": "a2182e501f501dc117fc9fbccb48b4286eec5b5c298a1e7e8003953271fb6cf5",
+    "tests/test_summary_owned.c": "a0a405e2634efb9318a53b260fe52387d470c2fcf97eb545d0960dfa7e8aafd3",
+    "tests/summary_owned_fixture.h": "abb30c1cbf6ddd726c8771f15af11d8cd477ad5f4886d5edd94b454eac207ef3",
+    "tests/fake_native_summarizer.c": "5be33b8366201d50ca8d58c40777f8882224e26a46447d14879e493a650294fb",
+    "tests/test_summary_transport_real.c": "bef6c78c0dba1905bc0d5297ac5a657000cdb2a4a5b52b5005bbaff97e3efd0f"
+  },
+  "parent_source_sha256": {
+    "tools/package_hf.py": "1a2b252cffe299eb1bef055616ed67565d6457fad66b33962811f66a715f3ce0",
+    "dist/install.sh": "14b260cc931558c25a1c8a5a4a88cdfde6fc215af05d740d2aff8f2847c7ce09"
+  },
+  "actual_engine_sha256": "f3748ba69924338abcabbcffea32e6f567c73b00c0c1f9d38def7a984e708ecf",
+  "actual_model_sha256": "30c73e0b2ebd4f65538d87f5157aa7193261e8ff362e441df86c6941f3e9265c",
+  "scope": "Original scalar/batch/coalesced corpus on one guardian; test host bindings are not production activation/pin/readiness qualification",
+  "evidence_sha256": {
+    "app-build.log": "ad91ab66f1ef9b9e6be25c5e669a714dec075c0bf13345bf395b6a359b318329",
+    "installer.log": "0077bedd39d34b36c37a9596a7ec71a5ba5fcc7c77354ce7458f26d87873e279",
+    "legacy-and-actual-mac.log": "1e16cb8d969049e0cf21d7e5aecdca27e9765773e97fbcd83f10a1a2615ee8d1",
+    "legacy-linux.log": "72fb152bef6b2aa0d85e1d4e2a3350ac62222862f9a20abfee9279871f190583",
+    "native-mac.log": "2a4b04c0fa88bbf6724b60e7c56e6a06c170a70fc97bc8255b28dbbc6c856077",
+    "native-linux.log": "7337e8f8d85d97274cdca1fe4998ea8e98a33aa3b3a9b587fc47c37c9ad69767",
+    "app-supervisor.log": "00daf46fa08ba3096d2a5aa757ab666b2ec70b89767f45f43c0c1e2e47086c1a",
+    "package.log": "c250f6a721b86c4a7be9f995e93fc5924c1dabc64327a0b1b0376ba11d15c917"
+  }
+}

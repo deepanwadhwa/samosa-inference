@@ -230,3 +230,75 @@ reported Sherpa ABI before model initialization. See
 [loader evidence and supported search profiles](docs/SPEECH_LOADER_VERIFICATION.md).
 Independent CI exports this repository's source and runs controlled macOS/Linux
 normal and sanitizer gates; actual-model readiness and release gates remain open.
+
+## Extracted specialist supervisor
+
+The existing text/embedding managed CLI's trusted configuration, credential and
+engine ownership are reusable through `src/managed_host.h`:
+`managed_host_start` accepts a private host config path and caller cancellation
+callback, returns typed errors, and retains all strings backing its provider.
+`managed_host_close` stops the owned engine before releasing storage. A pending
+shutdown retains ownership for a later close attempt. Keep a live host at a
+stable address and join request users before closing. The CLI delegates setup
+and cleanup to this owner while retaining signals and request transport. This
+is the existing managed implementation, not another installer or supervisor.
+
+The same owner-built library exposes the existing native llama-server launch
+adapter through `include/samosa_inference/llama_launch.h`. Its trusted host
+configuration preserves the original context/thread/GPU overrides, loopback
+binding, single-slot/cache settings and optional projector arguments.
+`samosa_llama_launch` replaces an already owned child process with the configured
+engine; it does not create a new supervisor or accept public request commands.
+`make test-llama-launch sanitize-llama-launch` checks actual exec argv delivery,
+including paths containing spaces and executable failure. App process ownership
+is still transitional; common managed lifecycle acceptance remains required.
+
+The owner library also includes the existing resident T5 process and scalar/batch
+pipe transport in `src/summary_process.c`, exposed through
+`include/samosa_inference/summary_process.h`. Host configuration supplies the
+engine, model, log and GPU settings. `samosa_summary_process_once` and
+`samosa_summary_process_batch` serialize requests, preserve inherited reply bounds
+and deadlines, and stop the resident process after failed transport. Returned
+strings belong to the caller. Configuration stays fixed during a resident
+process lifetime. Chat keeps its enrichment/activity policy and delegates to
+this public owner interface.
+
+`samosa_summary_process_coalesce` also owns the inherited cross-caller batch
+coalescer. Controlled variants accept absolute monotonic deadlines and a typed
+cancellation check, covering mutex/queue waits and nonblocking protocol writes
+and reads. Only requests sharing the same control object (or the legacy null
+scope) may coalesce. Keep controls, configuration and source arrays alive until
+return. A completed queue head hands coordination to its next waiter.
+
+An initialized transport can bind a `SamosaSummaryLifecycle` before sharing it.
+Its trusted `open` callback supplies borrowed **client write/read** descriptors,
+in that order; the external host owns pins, guardian and residency. Callbacks
+run under the transport mutex and must be bounded and nonreentrant. Cleanup
+errors retain ownership and refuse new work until a successful close retry.
+Check `samosa_summary_process_close` before destroying an externally owned
+transport or releasing its context. The original launcher remains the default.
+Guardian binding and controlled I/O do not by themselves assert public provider
+readiness; the owning activation must qualify an actual warm request.
+
+The inherited coalescer groups requests by resident process and concise mode,
+returns each
+caller's replies in order, and delivers progress through a host callback. It
+preserves the existing optimization and does not establish global queue capacity,
+fair scheduling, authentication or operation control. Those remain acceptance
+requirements of the common Inference service.
+
+`make test-summary-process sanitize-summary-process` verifies native process and
+transport fixtures. Actual original T5 subject/number/isolation scenarios run with
+`make test-summary-transport-real sanitize-summary-transport-real T5_TEST_ENGINE=/absolute/engine T5_TEST_MODEL=/absolute/model.gguf`.
+The external engine itself retains its declared instrumentation; these targets
+do not establish common-provider readiness or global scheduling acceptance.
+
+The existing Chat specialist supervisor now belongs to this repository:
+`src/specialist_supervisor.c`, public header
+`include/samosa_inference/specialist_supervisor.h`, and its original tests.
+Build the host library with `make specialist`; link
+`build/libsamosa-inference-specialist.a` with `-pthread` and `-Iinclude`.
+`make test-specialist-supervisor sanitize-specialist-supervisor` runs the moved
+line/framed protocol, readiness, reservation, cancellation and shutdown tests.
+The App delegates this build and links the public archive. It no longer compiles
+its own copy of the supervisor. Existing `samosa_mm_*` names and behavior remain.

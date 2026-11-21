@@ -1,0 +1,36 @@
+{
+  "assignment": "LIFE-03 managed text registry lifecycle",
+  "date": "2026-10-24",
+  "status": "text slice qualified; embedding and remaining modalities lifecycle open",
+  "platforms": [
+    "macOS 26.5.1 ARM64",
+    "Debian 12 ARM64 native container"
+  ],
+  "instrumentation": "C host/registry/activation/guardian normal and ASan+UBSan; tokenizer and external native model engine release builds",
+  "linux_export": "/private/tmp/inference-life03-linux-siqynlpg",
+  "source_delta_after_native_checks": "managed_host.h ownership comment only; no compiled declaration or behavior change",
+  "sha256": {
+    "Makefile": "2a70e610eb577c54401ffa98f317d23a23376eae73cb559393b2bfa24e73772b",
+    "src/managed_host.c": "feaaca7423ec730052820675c45e6b277c7c6e30c02a1ccdc978e2beda76259e",
+    "src/managed_host.h": "289a26da5e582408339652ed5d16a93879122faac7274466273aca84f8a08593",
+    "src/registry_host.c": "580bbbebd74f82c18bf3c3f080f7a5d4c4e36e9dda34b0783e2cc6d4d7607982",
+    "src/registry_host.h": "d41ef812fc9642970d21756bce98e2b0c0bcb8f7b2e064ccf5eef2315ec45f0f",
+    "src/registry_main.c": "b4d47f5943c19624bd208a21e8279eaebe2c1f028899690f59443fb723a274f2",
+    "tests/test_managed_host.c": "32ea0bf70948f5ed074f2116038373ec47bf2e1915d8a0002d557e22f22222ea",
+    "tests/test_registry_lifecycle.c": "d416633c99e258fe0ac1e7e1b76c4d1c8c3306450e92a85d157dd3efc093e27f",
+    "tests/fake_registry_llama.c": "0d3c9961c1d31f88bb6303802d5017f5684f2b393d5ead62f998709f9426946b",
+    "tests/llama_http_fixture.h": "9a4aa53b87311c998d65063ce83090c7540f908ac5b1ab5bdd9aa00f1f4e1053",
+    "tests/registry_managed_real.py": "526d0ea0b075ef362d68b7fe540d761b07efe16a2b9279d082bc48c794f8e912"
+  },
+  "logs_sha256": {
+    "real-normal.json": "50e97f431e7761dc8f261924e2d3990fba642ed5e494abd92dbfd7792e1459ec",
+    "mac-modalities.log": "39ae38ab05bc00f4a0b66d4846525b0e93556f9823d0e514fe5bfb499262f427",
+    "previous-regression-linux.log": "571ca882f8968f2dbdfbc0f9060edad9ca2955859259809e9bc97df237712b15",
+    "previous-regression-mac.log": "66e60101340c4d2462f70e1f82993506fbf0e66f5f695b5b31470c12b9e240d8",
+    "real-sanitize.json": "dbb8f8fc5f2479fa76c8a072f11c0e298dd6b21027adf437e08547366b5d81ba",
+    "mac-final.log": "dde3819b23376e36137017bd673e8600bd75f0a513e4c9e5f9af6809b91c93ce",
+    "real-sanitize.log": "8e30165b747b36d19655be0175cbaafad1aeafda55af63afd417fefe1affb5cd",
+    "real-normal.log": "b522e620e5c35e396075df8fe1dd6940028e91fe219d94f30e5dbbf3136ade33",
+    "linux-final.log": "0bb0c6a40933feca7a66ef004e840518f7bb9b65021af63e5738cd93176177d4"
+  }
+}

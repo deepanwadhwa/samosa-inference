@@ -1,0 +1,7 @@
+PASS actual public Pocket caro: 78720 samples, ranged PCM hash 5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4
+PASS actual public Pocket stuart: 90240 samples, ranged PCM hash 0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc
+PASS actual public speech: 265 checks; public model execution, retained audio ranges and replay
+PASS actual public Pocket caro: 78720 samples, ranged PCM hash 5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4
+PASS actual public Pocket stuart: 90240 samples, ranged PCM hash 0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc
+PASS actual public speech: 265 checks; public model execution, retained audio ranges and replay
+PASS isolated snapshotted speech harness and pinned shared quality helper: /private/tmp/inference-life05d-harness-4cfbvgy5

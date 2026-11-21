@@ -1,0 +1,2 @@
+9d1581b2afab2931a1457b39e860bbdaacbbb280015a6237d7ec9ec6d36ad3cb  catalog/kokoro-speech-cpu-v1/quality-profile.json
+ebaa30beadfcc040df55621155c8cb56e839ca7ee9ce54f0ce929d7d08afbe76  catalog/kokoro-speech-cpu-v1/payload/manifest.json

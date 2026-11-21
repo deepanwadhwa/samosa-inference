@@ -173,6 +173,9 @@ def main():
                   sources_sha256=digest(candidate / 'sources.json'),
                   executables={key: digest(getattr(args, key)) for key in binaries},
                   status='not_executed')
+    speech_helper = args.harness.resolve().with_name('speech_quality.py') if speech else None
+    if speech_helper:
+        result['speech_quality_helper_sha256'] = digest(speech_helper)
     if args.speech_quality_profile:
         quality = json.loads(args.speech_quality_profile.read_text())
         assert quality['manifest_sha256'] == policy['manifest_sha256']
@@ -228,6 +231,11 @@ def main():
             shutil.copyfile(getattr(args, key), snapshots[key])
             snapshots[key].chmod(0o500)
             assert digest(snapshots[key]) == result['executables'][key]
+        if speech_helper:
+            helper = base / 'speech_quality.py'
+            shutil.copyfile(speech_helper, helper)
+            helper.chmod(0o400)
+            assert digest(helper) == result['speech_quality_helper_sha256']
         for name in ('catalog.json', 'sources.json'):
             shutil.copyfile(candidate / name, base / name)
             (base / name).chmod(0o600)

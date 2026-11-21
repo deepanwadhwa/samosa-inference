@@ -315,8 +315,20 @@ int main(int argc, char **argv) {
         uint32_t encoded = 0;
         if (!read_exact(&encoded, sizeof(encoded))) break;
         uint32_t length = ntohl(encoded);
+        // Optional budget-v1 wrapper. Legacy scalar/batch frames are unchanged;
+        // contexts remain resident at the configured maximum, with a local
+        // per-request generation limit rather than a model reload.
+        int request_tokens = max_tokens;
+        if (length == 0x20000000U) {
+            if (!read_exact(&encoded, sizeof(encoded))) break;
+            uint32_t requested = ntohl(encoded);
+            if (requested < 16 || requested > static_cast<uint32_t>(max_tokens)) break;
+            request_tokens = static_cast<int>(requested);
+            if (!read_exact(&encoded, sizeof(encoded))) break;
+            length = ntohl(encoded);
+        }
         if (length & 0x80000000U) {
-            int batch_max_tokens = (length & 0x40000000U) ? std::min(max_tokens, memory_max_tokens) : max_tokens;
+            int batch_max_tokens = (length & 0x40000000U) ? std::min(request_tokens, memory_max_tokens) : request_tokens;
             uint32_t count = length & 0x3fffffffU;
             if (!count || count > 64) break;
             std::vector<std::string> prompts(count), replies(count);
@@ -357,7 +369,7 @@ int main(int argc, char **argv) {
         if (!length || length > 65536) break;
         std::string prompt(length, '\0');
         if (!read_exact(prompt.data(), prompt.size())) break;
-        if (!write_reply(summarize(model, scalar, prompt, max_tokens))) break;
+        if (!write_reply(summarize(model, scalar, prompt, request_tokens))) break;
     }
     llama_free(scalar); llama_free(batched);
     llama_model_free(model);

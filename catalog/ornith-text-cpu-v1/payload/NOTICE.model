@@ -1,0 +1,5 @@
+Ornith1.0 9B Q4_K_M, original App catalog revision 3296bc7a404871a72ac3f1903f561459c09b5c17.
+The complete pinned upstream model card is retained, including its explicit MIT declaration.
+The card links a separate LICENSE file that is absent at that pinned revision; none is fabricated.
+Weights are acquired directly from the original immutable upstream URL, not rehosted by this package.
+The independently qualified llama.cpp CPU engine and its full MIT notice are reused unchanged.

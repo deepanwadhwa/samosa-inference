@@ -1,0 +1,6 @@
+PASS decision registry lifecycle: 8 scenarios; /private/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T/samosa-decision-registry-m13pvwfb
+PASS decision registry lifecycle: 8 scenarios; /private/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T/samosa-decision-registry-bvwqh1mc
+PASS summary registry lifecycle: 11 scenarios; /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T/samosa-summary-registry-nqnaxkb7
+PASS summary registry lifecycle: 11 scenarios; /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T/samosa-summary-registry-o1vbdf37
+PASS speech registry lifecycle: 8 scenarios; /private/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T/samosa-speech-registry-g36ic1iv
+PASS speech registry lifecycle: 8 scenarios; /private/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T/samosa-speech-registry-x5z6ggju

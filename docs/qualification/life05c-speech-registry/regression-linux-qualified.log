@@ -1,0 +1,7 @@
+PASS registry text lifecycle: 261 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry text lifecycle: 261 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry embedding lifecycle: 333 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry embedding lifecycle: 333 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS summary registry lifecycle: 11 scenarios; /tmp/samosa-summary-registry-49nh11de
+PASS summary registry lifecycle: 11 scenarios; /tmp/samosa-summary-registry-tc3c5y59
+make: Leaving directory '/host-tmp/inference-life03-linux-siqynlpg'

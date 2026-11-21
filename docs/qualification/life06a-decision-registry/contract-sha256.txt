@@ -1,0 +1,2 @@
+cb5126e3295784a6936e3edf9a10a87e03f2bd54c2f146aa2b2d5eb6ebd20f1e  contracts/provider-registry-v1.md
+e0280aab6d6df5c132d2a52988af95c26d054b94b3f482f7910c1e7ee82bd734  docs/REGISTRY_LIFECYCLE.md

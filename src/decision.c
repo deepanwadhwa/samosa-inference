@@ -171,7 +171,7 @@ char *decision_normalized(const InferenceConfig *cfg, const Json *j) {
   free(frame.rgba);
   return body;
 }
-static const char *validated_result(const InferenceConfig *cfg, const char *payload,
+const char *decision_result_validate(const InferenceConfig *cfg, const char *payload,
                                     const uint8_t *bytes, size_t length) {
   void *request = NULL;
   int code = sm_decision_request_load((const uint8_t *)payload, strlen(payload),
@@ -218,6 +218,11 @@ static int transfer(int fd, void *data, size_t bytes, int writing) {
 static const char *run(const InferenceConfig *cfg, const char *payload, const DecisionFrame *frame,
                        char **result) {
   const DecisionConfig *d = cfg->decision;
+  if((d->run&&!image_mode(cfg))||(d->run_image&&image_mode(cfg))) {
+    int lease=-1;const char *error=inference_schedule(cfg,&lease);
+    if(!error)error=image_mode(cfg)?d->run_image(d->context,cfg,payload,frame->rgba,frame->width,frame->height,result):d->run(d->context,cfg,payload,result);
+    if(lease>=0)close(lease);return error;
+  }
   DecisionAssets assets = {0};
   int lease = -1, input = -1, output = -1, directory = -1, created = 0;
   const char *error = inference_schedule(cfg, &lease);
@@ -360,7 +365,7 @@ static const char *run(const InferenceConfig *cfg, const char *payload, const De
             error = "invalid_provider_response";
           else {
             frame[s.st_size] = 0;
-            error = validated_result(cfg, payload, frame + 4, length);
+            error = decision_result_validate(cfg, payload, frame + 4, length);
             if (!error) {
               *result = strndup((char *)frame + 4, length);
               if (!*result)

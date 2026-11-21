@@ -32,4 +32,22 @@ typedef struct {
  * Owner/auth/admission/artifact publication belong to the public adapter. */
 const char *speech_process_run(const SpeechProcessConfig *,
     const char *(*control)(void *), void *, SpeechRuntimeResult *);
+/* Private sequential resident transport. Initialize with speech_resident_init;
+ * one caller at a time. Start uses self/package/pin, residency/package fds and
+ * lifetime/log limits from SpeechProcessConfig; no per-request workspace fds.
+ * Startup is ownership only, never readiness. A completed
+ * warm generation and pinned host activation are still required. Spool is a
+ * caller-owned private regular fd; it receives the original PCM packet format.
+ * Active frame/control/sink failures invalidate and reap this same worker;
+ * shutdown-pending retains descriptors/process for an explicit stop retry. */
+typedef struct {EngineProcess process;int write_fd,read_fd;
+    /* Optional trusted activation ownership. Bind before start; it is the only
+     * authoritative process record, and must outlive this transport. */
+    EngineProcess *owner;
+} SpeechResident;
+void speech_resident_init(SpeechResident *);
+const char *speech_resident_start(const SpeechProcessConfig *,SpeechResident *);
+const char *speech_resident_stop(SpeechResident *);
+const char *speech_resident_run(SpeechResident *,const char *request,size_t bytes,
+    int spool_fd,SpeechPcmSink,void *,const char *(*control)(void *),void *,SpeechRuntimeResult *);
 #endif

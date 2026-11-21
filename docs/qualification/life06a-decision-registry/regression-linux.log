@@ -1,0 +1,17 @@
+PASS public decision controls: 207 checks; NUL/order, offline replay, typed result refusal, owner isolation, cancellation/deadline, mutation and requester-death cleanup; model-free fixture
+PASS public decision controls: 236 checks; NUL/order, offline replay, typed result refusal, owner isolation, cancellation/deadline, mutation and requester-death cleanup; model-free fixture
+PASS public decision controls: 266 checks; NUL/order, offline replay, typed result refusal, owner isolation, cancellation/deadline, mutation and requester-death cleanup; model-free fixture
+PASS public decision controls: 290 checks; NUL/order, offline replay, typed result refusal, owner isolation, cancellation/deadline, mutation and requester-death cleanup; model-free fixture
+PASS decision assets: 104 checks; pinned held files, closed loader graph, mutation and cancellation; synthetic binaries only
+PASS decision assets: 104 checks; pinned held files, closed loader graph, mutation and cancellation; synthetic binaries only
+PASS registry text lifecycle: 261 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry text lifecycle: 261 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry embedding lifecycle: 333 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry embedding lifecycle: 333 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS summary registry lifecycle: 11 scenarios; /tmp/samosa-summary-registry-5xdxu478
+PASS summary registry lifecycle: 11 scenarios; /tmp/samosa-summary-registry-8m0t_kz8
+PASS speech registry lifecycle: 8 scenarios; /tmp/samosa-speech-registry-stf611kn
+PASS speech registry lifecycle: 8 scenarios; /tmp/samosa-speech-registry-i0qbfmi5
+PASS provider registry: 459 checks; routed namespaces, owner controls, strict discovery and adapter reuse
+PASS provider registry: 459 checks; routed namespaces, owner controls, strict discovery and adapter reuse
+make: Leaving directory '/host-tmp/inference-life03-linux-siqynlpg'

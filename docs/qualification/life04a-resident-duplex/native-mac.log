@@ -1,0 +1,4 @@
+Collection: /private/tmp/inference-life04a-qualified-mac-r2.log
+Terminal exit: 0 (observed native handle)
+PASS engine process ownership: 525 checks; bounded logs/lifetime, owned stop/group/parent-death, foreign survivor
+PASS engine process ownership: 525 checks; bounded logs/lifetime, owned stop/group/parent-death, foreign survivor

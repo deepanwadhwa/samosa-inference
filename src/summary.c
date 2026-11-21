@@ -134,7 +134,8 @@ static const char *verify(const InferenceConfig *cfg, int fd,
   return error;
 }
 int summary_bridge_dispatch(int argc, char **argv) {
-  if (argc < 2 || strcmp(argv[1], "--summary-engine-bridge"))
+  int resident=argc>=2&&!strcmp(argv[1],"--summary-resident-bridge");
+  if (argc < 2 || (!resident&&strcmp(argv[1], "--summary-engine-bridge")))
     return -1;
   if (argc != 5 || argv[2][0] != '/' || !sha(argv[3]))
     return 2;
@@ -143,6 +144,7 @@ int summary_bridge_dispatch(int argc, char **argv) {
   unsigned long tokens = strtoul(argv[4], &end, 10);
   if (errno || end == argv[4] || *end || tokens < 16 || tokens > 256)
     return 2;
+  if(resident&&tokens!=256)return 2;
   int executable = open(argv[2], O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
   if (executable < 0 || verify(NULL, executable, argv[3], 67108864u, 1))
     return 2;
@@ -177,6 +179,7 @@ int summary_bridge_dispatch(int argc, char **argv) {
 static const char *run(const InferenceConfig *cfg, const char *text,
                        size_t tokens, int opening, char **result) {
   const SummaryConfig *s = cfg->summary;
+  if(s->run)return s->run(s->context,cfg,text,tokens,opening,result);
   int lease = -1, model = -1, executable = -1, directory = -1, input = -1,
       output = -1;
   const char *error = inference_interrupted(cfg);

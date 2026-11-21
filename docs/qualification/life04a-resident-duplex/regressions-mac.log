@@ -1,0 +1,12 @@
+Collection: /private/tmp/inference-life04a-final-mac.log
+Terminal exit: 0 (observed native handle)
+PASS engine process ownership: 515 checks; bounded logs/lifetime, owned stop/group/parent-death, foreign survivor
+PASS engine process ownership: 515 checks; bounded logs/lifetime, owned stop/group/parent-death, foreign survivor
+PASS activation: 110 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation
+PASS activation: 116 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation
+PASS integrated managed readiness: 152 checks; generation failure, last-good revision, reap, healthy replacement and unrelated survivor
+PASS integrated managed readiness: 152 checks; generation failure, last-good revision, reap, healthy replacement and unrelated survivor
+summary protocol boundaries PASS
+PASS public summary: 478 checks; framing, pins, replay/owner, controls and invalid responses
+summary protocol boundaries PASS
+PASS public summary: 478 checks; framing, pins, replay/owner, controls and invalid responses

@@ -1,0 +1,27 @@
+{
+  "execution_os": "26.5.1",
+  "format": "samosa.inference.molmo-distribution-qualification.v1",
+  "index_sha256": "ea12e2c91353f0098e846bace435d69830a53e85b8c5f7596f1ca9abfeefff6a",
+  "minimum_os": "26.5.1",
+  "modes": {
+    "normal": {
+      "harness_sha256": "8315942a9f89b5d79d8e96b0ec99265e8b41f180658bb5ff1f9b3acb3ee5c9be",
+      "installed_temporal_checks": 524671,
+      "log_sha256": "29e5da65f72bc0311dbbe32d69396e8b0aa7e66e5aef77126262ae244c220cd4",
+      "public_sha256": "81cb857837808dee66a55e5137a422b11a626869e91f719fe40dc25e91a4ae3a",
+      "published_registry_checks": 524778,
+      "setup_sha256": "ec32b47ec6e49ffb3667e44ff973a3642f56f65008b149837db8b063dcd0d1fa",
+      "status": "passed"
+    },
+    "sanitize": {
+      "harness_sha256": "68387d69bf5aeca4e99b18de9adb9ade5f3e0a7815cfd27ac1ef3f9c95392166",
+      "installed_temporal_checks": 524671,
+      "log_sha256": "aa42c1558161f5316e574b042b881edd55bebb1faeb1a745132078d2beed92ed",
+      "public_sha256": "e98607e27f507bb0f99434a1b8076c34dcc64ef9423fa7f94a4d6966ef185c7d",
+      "published_registry_checks": 524778,
+      "setup_sha256": "b3dc41729f375c96629d21dae4c2ec8ca71e0961cf0a3561371a4ed0be741f9d",
+      "status": "passed"
+    }
+  },
+  "platform": "macos-arm64"
+}

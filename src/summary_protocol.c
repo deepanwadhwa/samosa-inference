@@ -37,6 +37,15 @@ unsigned char *summary_opening_frame(const char *text, size_t bytes, size_t *len
     return batch;
 }
 
+unsigned char *summary_budget_frame(const char *text,size_t bytes,size_t tokens,int opening,size_t *length){
+    if(length)*length=0;
+    if(!length||tokens<16||tokens>256||(opening!=0&&opening!=1))return NULL;
+    size_t n=0;unsigned char *old=opening?summary_opening_frame(text,bytes,&n):summary_prompt_frame(text,bytes,&n);
+    if(!old)return NULL;
+    unsigned char *frame=calloc(n+8,1);
+    if(frame){frame[0]=0x20;frame[6]=(unsigned char)(tokens>>8);frame[7]=(unsigned char)tokens;memcpy(frame+8,old,n);*length=n+8;}
+    free(old);return frame;
+}
 char *summary_reply_frame(const unsigned char *frame, size_t bytes, size_t *length) {
     if (length) *length = 0;
     if (!frame || !length || bytes < 4) return NULL;

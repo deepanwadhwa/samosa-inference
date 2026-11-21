@@ -1,0 +1,6 @@
+Collection: /private/tmp/inference-life04b-qualified-linux.log
+Terminal exit: 0 (observed process handle)
+PASS owned summary transport: 264 checks; guardian residency, scalar/batch/coalescing, bounded I/O, scoped cancellation and pending cleanup
+PASS owned summary transport: 269 checks; guardian residency, scalar/batch/coalescing, bounded I/O, scoped cancellation and pending cleanup
+summary process: PASS (reuse, descriptors, crash/restart, scalar/batch, failure recovery, stop/reap)
+summary process: PASS (reuse, descriptors, crash/restart, scalar/batch, failure recovery, stop/reap)

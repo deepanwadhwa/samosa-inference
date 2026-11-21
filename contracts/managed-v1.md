@@ -155,3 +155,17 @@ Sources isolated public-process transport to call the owned adapter directly.
 The host still supplies explicit state and expected activation revision; this
 mode neither discovers configuration nor silently restarts a saved runtime.
 The actual-model gate requires single/stream vector and profile equality.
+
+The trusted native host API in `src/managed_host.h` owns the same configuration,
+ephemeral credential and provider lifetime used by this CLI. `managed_host_start`
+accepts the private configuration path, owning executable for guardian dispatch,
+host-current revision policy and caller cancellation callback/context. Public
+JSON requests cannot select these inputs. Configuration strings, embedding
+profile and credential remain owned by a stable `ManagedHost` until close.
+
+Start only a fresh/closed host. After joining request users, call
+`managed_host_close`; it stops/reaps through the existing managed owner before
+freeing backing storage. An unconfirmed shutdown retains ownership/storage for
+retry. The CLI owns signals, request transport and rendering errors; this API
+does not install signal handlers, write public responses, or create a second
+activation store or engine supervisor. Public wire shapes are unchanged.

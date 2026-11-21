@@ -1,0 +1,14 @@
+BEGIN remote provider_install
+PASS remote provider_install
+BEGIN remote provider_status
+PASS remote provider_status
+PASS actual managed/registry embedding: 768 dimensions, 4/4 paraphrase rankings, long-input refusal, offline replay, single/stream parity, shutdown; /private/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T/samosa-embedding-remote-8ua4palb/embedding-quality
+BEGIN remote provider_resume
+PASS remote provider_resume
+BEGIN remote provider_remove
+PASS remote provider_remove
+BEGIN remote provider_install
+PASS remote provider_install
+BEGIN remote provider_remove
+PASS remote provider_remove
+PASS published embedding catalog: cold remote install, actual inference, cache-only reuse and cleanup

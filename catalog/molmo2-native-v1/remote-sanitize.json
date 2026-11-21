@@ -1,0 +1,13 @@
+{
+  "catalog_sha256": "009fea87cd11694414bbc9c5aa00416e229c6962abcc648f226f8b8c0cb2bcf4",
+  "executables": {
+    "harness": "68387d69bf5aeca4e99b18de9adb9ade5f3e0a7815cfd27ac1ef3f9c95392166",
+    "public": "e98607e27f507bb0f99434a1b8076c34dcc64ef9423fa7f94a4d6966ef185c7d",
+    "setup": "b3dc41729f375c96629d21dae4c2ec8ca71e0961cf0a3561371a4ed0be741f9d"
+  },
+  "format": "samosa.inference.molmo-remote-qualification.v1",
+  "index_sha256": "ea12e2c91353f0098e846bace435d69830a53e85b8c5f7596f1ca9abfeefff6a",
+  "sources_sha256": "08b4c4fd6956bf9a653248b65e01990023a31fbf266f51cc49c80552df3f4120",
+  "status": "passed",
+  "temporary_installation_removed": true
+}

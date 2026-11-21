@@ -1,0 +1,1 @@
+PASS old image engine refuses new resident mode without readiness, last-good commit or leaked residency {'contract_version': 1, 'error': {'code': 'provider_process_failed'}} /private/tmp/inference-life06b-old-engine-p4zth5hh

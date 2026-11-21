@@ -28,6 +28,9 @@ typedef struct { const char *endpoint,*provider_id,*admission_state;size_t conte
 const char *llama_embed(const InferenceConfig *,const char *,size_t,float **,size_t *);
 const char *llama_count(const InferenceConfig *,const char *,size_t *);
 const char *llama_properties(const InferenceConfig *);
+/* Bounded actual capability request for owned startup qualification. Metadata
+ * and process/artifact ownership remain the managed lifecycle's responsibility. */
+const char *llama_probe(const InferenceConfig *);
 const char *llama_generate(const InferenceConfig *,const char *,size_t,char **,size_t *,size_t *,size_t *);
 const char *llama_admit(const char *,int *);
 #endif

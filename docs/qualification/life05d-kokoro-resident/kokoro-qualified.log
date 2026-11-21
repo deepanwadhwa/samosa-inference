@@ -1,0 +1,16 @@
+PASS speech registry lifecycle: 5 scenarios; /private/tmp/inference-life05d-kokoro-normal
+PASS speech registry lifecycle: 5 scenarios; /private/tmp/inference-life05d-kokoro-sanitize
+PASS actual public Kokoro bella: 55591 samples, ranged PCM hash 60bc5f80daa0a9a38dbf950262dfd7ebd0c86ba8aa569cfc956ae0d91fb46079
+PASS actual public Kokoro sarah: 59109 samples, ranged PCM hash ebda863c903e1f10ab9ffaaa795dee3e96ffc92c5eb12108f6efd3953889432c
+PASS actual public Kokoro nicole: 67192 samples, ranged PCM hash 142516ca14c4f870049904aaf49f14301d5516e9a9caa881f55a7bf6de9dc8a0
+PASS actual public Kokoro adam: 56643 samples, ranged PCM hash 15426be472dc9972f72088f32bffb812cb97729ce1d0fe17d4924d22409df54f
+PASS actual public Kokoro michael: 59973 samples, ranged PCM hash 1b7b7cd6e15a1da3b7d5c9fa99cea0eeab1a8d8e0ccee56f88db781dd5c9a668
+PASS actual public Kokoro emma: 60139 samples, ranged PCM hash 8131db4a691966efc458b632fb4bcecd8d0aae30d93ad9a2ab10f949ef28e605
+PASS actual public speech: 583 checks; public model execution, retained audio ranges and replay
+PASS actual public Kokoro bella: 55591 samples, ranged PCM hash 082eee88d241fb214c8af5feaacd7017af24dae8b1dc0ec9d24e917445a6b159
+PASS actual public Kokoro sarah: 59158 samples, ranged PCM hash 2db3b0ad6a481d511ba5a3a7a56d0d68520216f0b156bfad08efdc1fb410fdc1
+PASS actual public Kokoro nicole: 67186 samples, ranged PCM hash 239ca9d2ee34f5789c8d9a4f2f2e670bf3d887bf466028177149431658987a53
+PASS actual public Kokoro adam: 56677 samples, ranged PCM hash 2fbf5103ffdcbe178b670482e696e65117c80e97a9cf691471f0727a98895041
+PASS actual public Kokoro michael: 59982 samples, ranged PCM hash aa8d4b200a6908463f53807111445265f26474ea6e59c490042273ebb78ed153
+PASS actual public Kokoro emma: 60144 samples, ranged PCM hash c3e4963a3333b43b21a9efc48f26332e9576d2e3dc3eaaf0e9766cf2d2297fb3
+PASS actual public speech: 583 checks; public model execution, retained audio ranges and replay

@@ -1,0 +1,18 @@
+PASS summary registry lifecycle: 11 scenarios; /tmp/inference-life04c-native-linux
+PASS summary registry lifecycle: 11 scenarios; /tmp/inference-life04c-native-linux-san
+PASS activation: 112 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation
+PASS activation: 168 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation
+PASS integrated managed readiness: 154 checks; generation failure, last-good revision, reap, healthy replacement and unrelated survivor
+PASS integrated managed readiness: 154 checks; generation failure, last-good revision, reap, healthy replacement and unrelated survivor
+PASS registry text lifecycle: 261 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry text lifecycle: 261 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry embedding lifecycle: 333 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry embedding lifecycle: 333 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+summary protocol boundaries PASS
+PASS public summary: 479 checks; framing, pins, replay/owner, controls and invalid responses
+summary protocol boundaries PASS
+PASS public summary: 503 checks; framing, pins, replay/owner, controls and invalid responses
+PASS owned summary transport: 267 checks; guardian residency, scalar/batch/coalescing, bounded I/O, scoped cancellation and pending cleanup
+PASS owned summary transport: 272 checks; guardian residency, scalar/batch/coalescing, bounded I/O, scoped cancellation and pending cleanup
+PASS provider registry: 459 checks; routed namespaces, owner controls, strict discovery and adapter reuse
+PASS provider registry: 459 checks; routed namespaces, owner controls, strict discovery and adapter reuse

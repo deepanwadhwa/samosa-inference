@@ -4,6 +4,9 @@
 #include "json.h"
 struct SummaryConfig {
     const char *self, *executable, *model, *executable_sha256, *model_sha256;
+    /* Trusted resident adapter; never supplied by public request fields. */
+    const char *(*run)(void *,const InferenceConfig *,const char *,size_t,int,char **);
+    void *context;
 };
 int summary_bridge_dispatch(int, char **);
 int summary_dispatch(const InferenceConfig *, const Json *, FILE *);

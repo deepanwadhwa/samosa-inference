@@ -1,0 +1,20 @@
+{
+  "actual_model_platform": "macOS26.5.1-arm64",
+  "area3": "active",
+  "assignment": "LIFE-02",
+  "evidence": {
+    "cli.log": "90859ac11bab6dd8039d142bca2645f06da06a6fdcbfb826118ff27d70e51068",
+    "embedding-normal.log": "a7059aabbf125d812f2a68331aecbb0b193ed174086ed35953ee6e413ca8e170",
+    "embedding-sanitize.log": "9edcdfc93464984c27b187326a5485b59ee7b6d1f9f5002e4af97d97b545a4fe",
+    "linux.log": "f51c4fd782b88092e36ce30a293425de69f06e64f780f474610874201270383f",
+    "real-normal.log": "6a961249733965f569ddb581c57bd4dc701e28cf19f5349212bf319ba9bb7943",
+    "real-sanitize.log": "9d6ec3a000c29868bcc7793eb0b3cb551fe51f5e785f6f34d81723a3d13cb3b5"
+  },
+  "external_engine_instrumentation": "release build",
+  "sources": {
+    "src/managed_host.c": "43fd5296bca814b6e0ae1b02385ed204dd1bbae264682a867c5cff2686a5ac59",
+    "src/managed_host.h": "0f78a2071222106e4399eb8df73c1066d0ebba59ade8307947c5b64ef1c8eb00",
+    "src/managed_main.c": "36e65f987201574187a21c1ef4ea9298d9d273950a1fd4dbcc90c494066c0c47"
+  },
+  "status": "qualified-extraction"
+}

@@ -1,0 +1,51 @@
+{
+  "image": {
+    "assets": "/private/tmp/inference-life06b-image-assets-9iqxvk42",
+    "engine_pin": "3054cf6a1beead8b75afa911ac6467a9c82e0b8f6bc8908931c0b2a3069c9458",
+    "reference": "/private/tmp/inference-life06b-package-3vrsf20j/reference.json",
+    "reference_pin": "ca1a8222ba9eb10b33648f5f1cca18b1aa61e0d493daf006dca530603fdc2ee6",
+    "policy": {
+      "engine_sha256": "cc2266a25773068d462628de69a53b8e1f8ddd7c3735b5ea0ebab940bef362b4",
+      "format": "samosa.inference.decision-distribution-host-policy.v1",
+      "model_sha256": "dd3301b3310117bc09f6e8e1e10af9bab98fdc38d6c41e907ba148d1938fb73b",
+      "profile": "image",
+      "qualification": "macOS26.5.1 arm64 execution;26.0 observed worker deployment minimum",
+      "redirect_hosts": [
+        "release-assets.githubusercontent.com"
+      ],
+      "reference_sha256": "ca1a8222ba9eb10b33648f5f1cca18b1aa61e0d493daf006dca530603fdc2ee6",
+      "runtime_revision": "0a65512ed366e84f9f52b4f62de7ef0f879dd80e",
+      "runtime_sha256": "5b4c4df69e6d1bc10eb0d08da525b11faf8365a0a78cc597a5cc57926330a9ca",
+      "tokenizer_sha256": "9846872af4d6df792f3931d68b65394370948d3cf80fa8974743a006facd351e"
+    }
+  },
+  "text": {
+    "assets": "/private/tmp/inference-life06b-text-assets-ahmje92l",
+    "engine_pin": "3054cf6a1beead8b75afa911ac6467a9c82e0b8f6bc8908931c0b2a3069c9458",
+    "reference": "/private/tmp/inference-life06a-package-4au43gvm/reference.json",
+    "reference_pin": "f2c54e4d1be67059c184b9a2326b1b7b96ee7b1de02b6efcaeef5cbf3951dc11",
+    "policy": {
+      "engine_sha256": "cc2266a25773068d462628de69a53b8e1f8ddd7c3735b5ea0ebab940bef362b4",
+      "format": "samosa.inference.decision-distribution-host-policy.v1",
+      "model_sha256": "15f64c4741ace31bb4130c241bdfdcd48b1d76910210d96f4ee86dacddd54398",
+      "profile": "text",
+      "qualification": "macOS26.5.1 arm64 execution;26.0 observed worker deployment minimum",
+      "redirect_hosts": [
+        "release-assets.githubusercontent.com"
+      ],
+      "reference_sha256": "f2c54e4d1be67059c184b9a2326b1b7b96ee7b1de02b6efcaeef5cbf3951dc11",
+      "runtime_revision": "0a65512ed366e84f9f52b4f62de7ef0f879dd80e",
+      "runtime_sha256": "5b4c4df69e6d1bc10eb0d08da525b11faf8365a0a78cc597a5cc57926330a9ca",
+      "tokenizer_sha256": "7caa16d3d730231fc7b9c2db4716e3e38736880bd4f2e016bb37987645e4900a"
+    }
+  },
+  "source_sha256": {
+    "engines/decision/main.cpp": "98264b85fab4b144345a5e86446d375cd4ca39dedede0e308a998ac8271ff17e",
+    "engines/decision/transport.cpp": "663cb4231b3b0efca52b290157d75b986b6dc82b257d89970638209dd0e0e3f3",
+    "engines/decision/transport.h": "bf3c787b571d22dba18626dd3982a065f37663e8678e957b77b166fafd2f66b3"
+  },
+  "sdk": {
+    "root": "/private/tmp/inference-life06b-sdk-55z2wp8r",
+    "source_revision": "8f0278c77bf44b0cc83c098c6c722b92a36ac4b5"
+  }
+}

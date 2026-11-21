@@ -1,0 +1,3 @@
+Collection: /private/tmp/inference-life03e-real-normal-r2.log
+Terminal exit: 0 (process handle observed)
+PASS actual owned registry lifecycle embedding: 768 dimensions, 4/4 paraphrase rankings, long-input refusal, offline replay, single/stream parity, shutdown; /private/tmp/inference-life03e-real-normal-r2

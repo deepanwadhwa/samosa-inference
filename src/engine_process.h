@@ -13,6 +13,18 @@ const char *engine_process_start(const char *self,const char *argv_json,
 const char *engine_process_start_leased(const char *,const char *,double,size_t,int,EngineProcess *);
 /* Bound model is inherited read-only as fd5, usable through /dev/fd/5. */
 const char *engine_process_start_bound(const char *,const char *,double,size_t,int,int,EngineProcess *);
+/* Resident protocol: borrow a read-only input FIFO and write-only output FIFO.
+ * Guardian retains model/lease and owns group/parent-death cleanup, separating
+ * stdout protocol from bounded stderr. Caller owns framing, request limits and
+ * cancellation/deadlines and closes its protocol descriptors after stop.
+ * Kernel pipe capacity bounds buffering; startup alone is not readiness. */
+const char *engine_process_start_bound_duplex(const char *,const char *,double,size_t,int,int,int,int,EngineProcess *);
+/* Same resident duplex ownership plus the existing retained workspace cleanup
+ * after reap/parent death. Matches the workspace path to its private directory
+ * descriptor. Pipe buffering and caller framing bound protocol output; bounded
+ * stderr and lifetime remain guardian-owned. Preserves duplex's file-size policy
+ * so OS-managed Metal caches can grow independently of protocol bytes. */
+const char *engine_process_start_bound_workspace_duplex(const char *,const char *,double,size_t,int,int,const char *,int,int,int,EngineProcess *);
 /* Owned transcription workspace: guardian removes input.wav/result.srt after
  * reaping the engine, including when the requesting process dies. */
 const char *engine_process_start_bound_workspace(const char *,const char *,double,size_t,int,int,const char *,int,EngineProcess *);

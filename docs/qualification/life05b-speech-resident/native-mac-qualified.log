@@ -1,0 +1,6 @@
+PASS extracted speech session: repeated generation without reopen, bound root, cancellation and mutation refusal
+PASS resident speech worker: same loaded model/guardian, provisional PCM, EOF, controls, malformed audio, crash and lease recovery
+PASS owned speech worker: 493 checks; native ABI, packet integrity, controls, crash and parent-death cleanup
+PASS extracted speech session: repeated generation without reopen, bound root, cancellation and mutation refusal
+PASS resident speech worker: same loaded model/guardian, provisional PCM, EOF, controls, malformed audio, crash and lease recovery
+PASS owned speech worker: 495 checks; native ABI, packet integrity, controls, crash and parent-death cleanup

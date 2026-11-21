@@ -1,0 +1,8 @@
+Collection: /private/tmp/inference-life03-mac-final-r2.log
+Terminal exit: 0 (native process handle observed)
+PASS registry lifecycle: 126 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry lifecycle: 126 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS integrated managed readiness: 152 checks; generation failure, last-good revision, reap, healthy replacement and unrelated survivor
+PASS integrated managed readiness: 152 checks; generation failure, last-good revision, reap, healthy replacement and unrelated survivor
+PASS registry native CLI: 584 checks; native engine, restart replay, scoped cancellation and private configuration
+PASS registry native CLI: 587 checks; native engine, restart replay, scoped cancellation and private configuration

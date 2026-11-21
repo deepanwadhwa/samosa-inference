@@ -1,0 +1,33 @@
+{
+  "execution_os": "26.5.1",
+  "execution_os_build": "25F80",
+  "format": "samosa.inference.text-distribution-qualification.v1",
+  "index_sha256": "f5a6faa589c9478f29cb5fe343be224152780fc0264a20a3ff5d9a8a0d3a7c22",
+  "instrumentation": "normal/ASan+UBSan native hosts; external engine is release-built",
+  "minimum_os": "26.0",
+  "modes": {
+    "normal": {
+      "executables": {
+        "harness": "44e2f9f99e05ac8d009ae07d211e16e60ff5c396d818d59d239177f3228615d7",
+        "managed": "3b111ca486d6251daced466c7908584e43b21cb7b8f529ced1839ec7561a4de6",
+        "offline": "19c5b23a2bc0374f0050e13e598ab6ddba0e0e8da402fc0985cdb2f596ba9f10",
+        "public": "81cb857837808dee66a55e5137a422b11a626869e91f719fe40dc25e91a4ae3a",
+        "setup": "ec32b47ec6e49ffb3667e44ff973a3642f56f65008b149837db8b063dcd0d1fa"
+      },
+      "log_sha256": "d8172a71695a6354a28b29cf6916124f7c88785e97c478a7624252cbbc5c5ff8",
+      "status": "passed"
+    },
+    "sanitize": {
+      "executables": {
+        "harness": "44e2f9f99e05ac8d009ae07d211e16e60ff5c396d818d59d239177f3228615d7",
+        "managed": "19c2a65589bb9edcc60ddd89e4fc077f90ecd69c7040243bd34280183c6ab670",
+        "offline": "f3d146ece74a56f69bf59a64f879dcaadaace25f0ed4a0df4a146055cd14761c",
+        "public": "e98607e27f507bb0f99434a1b8076c34dcc64ef9423fa7f94a4d6966ef185c7d",
+        "setup": "b3dc41729f375c96629d21dae4c2ec8ca71e0961cf0a3561371a4ed0be741f9d"
+      },
+      "log_sha256": "476fcae2501ff565eb111c8a6cec451f9246bdfcbf8555a009f986b62c4ee3e2",
+      "status": "passed"
+    }
+  },
+  "platform": "macos-arm64"
+}

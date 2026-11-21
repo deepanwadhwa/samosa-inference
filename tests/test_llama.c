@@ -17,79 +17,7 @@
 extern char **environ;
 static unsigned checks;
 #define CHECK(x) do{checks++;if(!(x)){fprintf(stderr,"FAIL %d: %s\n",__LINE__,#x);exit(1);}}while(0)
-static int send_all(int fd,const void *data,size_t n) {
-    const char *p=data;while(n){ssize_t got=send(fd,p,n,0);if(got<0&&errno==EINTR)continue;if(got<=0)return 0;p+=got;n-=(size_t)got;}return 1;
-}
-static int server(const char *portfile,const char *mode,const char *logfile) {
-    signal(SIGPIPE,SIG_IGN);
-    int listener=socket(AF_INET,SOCK_STREAM,0);if(listener<0)return 3;
-    struct sockaddr_in address={.sin_family=AF_INET,.sin_addr.s_addr=htonl(INADDR_LOOPBACK)};
-    if(bind(listener,(struct sockaddr*)&address,sizeof(address))||listen(listener,8))return 3;
-    socklen_t n=sizeof(address);if(getsockname(listener,(struct sockaddr*)&address,&n))return 3;
-    FILE *file=fopen(portfile,"w");if(!file)return 3;fprintf(file,"%u\n",ntohs(address.sin_port));fclose(file);
-    unsigned completions=0,budget_blocked=0;
-    for(;;) {
-        int fd=accept(listener,NULL,NULL);if(fd<0){if(errno==EINTR)continue;return 3;}
-        char headers[4096];size_t used=0;int complete=0;
-        while(used<sizeof(headers)-1){ssize_t got=recv(fd,headers+used,1,0);if(got!=1)break;used++;if(used>=4&&!memcmp(headers+used-4,"\r\n\r\n",4)){complete=1;break;}}
-        headers[used]=0;if(!complete)return 3;
-        int unauthorized=!strcmp(mode,"auth")&&!strstr(headers,"Authorization: Bearer fixture-secret\r\n");
-        int props=strstr(headers,"GET /props ")!=NULL;
-        char *length=strstr(headers,"Content-Length:");if(!length&&!props)return 3;
-        unsigned long bytes=length?strtoul(length+15,NULL,10):0;if(bytes>1048576)return 3;
-        char *body=malloc(bytes+1);if(!body)return 3;
-        size_t read_bytes=0;while(read_bytes<bytes){ssize_t got=recv(fd,body+read_bytes,bytes-read_bytes,0);if(got<=0)return 3;read_bytes+=(size_t)got;}body[bytes]=0;
-        Json request;if(!props&&!json_parse(&request,body,bytes))return 3;
-        file=fopen(logfile,"a");if(!file)return 3;fprintf(file,"%s\n",body);fclose(file);
-        if(!strcmp(mode,"budget-aggregate")){struct timespec wait={0,150000000};nanosleep(&wait,NULL);}
-        int stage=(!strcmp(mode,"budget-props")&&props)||(!strcmp(mode,"budget-template")&&strstr(headers,"POST /apply-template "))||(!strcmp(mode,"budget-tokenize")&&strstr(headers,"POST /tokenize "))||(!strcmp(mode,"budget-generate")&&strstr(headers,"POST /completion "));
-        if(stage&&!budget_blocked++){
-            struct timeval timeout={5,0};setsockopt(fd,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));char byte;ssize_t closed=recv(fd,&byte,1,0);free(body);close(fd);if(closed!=0)return 3;continue;
-        }
-        char *reply=NULL;size_t reply_bytes=0;FILE *out=open_memstream(&reply,&reply_bytes);if(!out)return 3;
-        if(!strcmp(mode,"oversize")){for(size_t i=0;i<1048577;i++)fputc('x',out);}
-        else if(props){
-            if(!strcmp(mode,"props-missing"))fputs("{}",out);
-            else if(!strcmp(mode,"props-malformed"))fputs("[]",out);
-            else fprintf(out,"{\"model_alias\":\"%s\",\"default_generation_settings\":{\"n_ctx\":%u}}",!strcmp(mode,"model-changed")?"foreign.gguf":"fixture-native.gguf",!strcmp(mode,"context-changed")?256:128);
-        }
-        else if(strstr(headers,"POST /apply-template ")) {
-            int thinking=json_get(&request,0,"enable_thinking");
-            if(thinking<0||request.tokens[thinking].type!=JT_BOOL||memcmp(body+request.tokens[thinking].begin,"false",5))return 3;
-            int messages=json_get(&request,0,"messages");if(messages<0||request.tokens[messages].type!=JT_ARRAY||request.tokens[messages].count!=1)return 3;
-            char *prompt=json_string(&request,json_get(&request,messages+1,"content"));if(!prompt)return 3;
-            fputs("{\"prompt\":",out);size_t total=strlen(prompt)+10;char *rendered=malloc(total);if(!rendered)return 3;snprintf(rendered,total,"RENDERED %s",prompt);json_quote(out,rendered,strlen(rendered));fputc('}',out);free(prompt);free(rendered);
-        } else if(strstr(headers,"POST /tokenize ")) {
-            char *content=json_string(&request,json_get(&request,0,"content"));if(!content)return 3;int embedding=!strncmp(content,"task: search result | query: ",28)||!strncmp(content,"title: ",7);if(!embedding&&strncmp(content,"RENDERED ",9))return 3;free(content);
-            int special=json_get(&request,0,"add_special"),parse=json_get(&request,0,"parse_special");if(special<0||parse<0||memcmp(body+request.tokens[special].begin,"true",4)||memcmp(body+request.tokens[parse].begin,embedding?"false":"true",embedding?5:4))return 3;
-            fputs(!strcmp(mode,"negative-tokens")?"{\"tokens\":[-1,2]}":"{\"tokens\":[10,20,30]}",out);
-        } else if(strstr(headers,"POST /v1/embeddings ")) {
-            int input=json_get(&request,0,"input");if(input<0||request.tokens[input].type!=JT_ARRAY||request.tokens[input].count!=3)return 3;
-            if(!strcmp(mode,"embedding-zero"))fputs("{\"data\":[{\"index\":0,\"embedding\":[0,0]}],\"usage\":{\"prompt_tokens\":3}}",out);
-            else if(!strcmp(mode,"embedding-overflow"))fputs("{\"data\":[{\"index\":0,\"embedding\":[1e100,0]}],\"usage\":{\"prompt_tokens\":3}}",out);
-            else if(!strcmp(mode,"embedding-clipped"))fputs("{\"data\":[{\"index\":0,\"embedding\":[1,0]}],\"usage\":{\"prompt_tokens\":2}}",out);
-            else fputs("{\"data\":[{\"index\":0,\"embedding\":[1,0]}],\"usage\":{\"prompt_tokens\":3}}",out);
-
-        } else if(strstr(headers,"POST /completion ")) {
-
-            if(!strcmp(mode,"cancel-active")&&++completions==1){
-                char marker[1024];snprintf(marker,sizeof(marker),"%s.blocked",logfile);
-                FILE *started=fopen(marker,"w");if(!started)return 3;fclose(started);
-                struct timeval timeout={10,0};setsockopt(fd,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
-                char byte;ssize_t closed=recv(fd,&byte,1,0);
-                fclose(out);free(reply);free(body);close(fd);
-                if(closed!=0)return 3;
-                continue;
-            }
-            int tokens=json_get(&request,0,"prompt");if(tokens<0||request.tokens[tokens].type!=JT_ARRAY||request.tokens[tokens].count!=3)return 3;
-            size_t expected=10;for(int t=tokens+1;t<request.tokens[tokens].next;t=request.tokens[t].next){size_t value;if(!json_uint(&request,t,&value)||value!=expected)return 3;expected+=10;}
-            fputs(!strcmp(mode,"usage-overflow")?"{\"content\":\"7319\",\"tokens_predicted\":999,\"timings\":{\"prompt_n\":3}}":"{\"content\":\"7319\",\"tokens_predicted\":4,\"timings\":{\"prompt_n\":2}}",out);
-        } else return 3;
-        fclose(out);char response_header[256];int h=snprintf(response_header,sizeof(response_header),"HTTP/1.1 %s\r\nContent-Type: application/json\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n",!strcmp(mode,"http-error")?"503 Unavailable":"200 OK",reply_bytes);
-        if(unauthorized)h=snprintf(response_header,sizeof(response_header),"HTTP/1.1 401 Unauthorized\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n",reply_bytes);
-        int sent=send_all(fd,response_header,(size_t)h)&&send_all(fd,reply,reply_bytes);close(fd);free(body);free(reply);if(!sent&&strcmp(mode,"budget-aggregate"))return 3;
-    }
-}
+#include "llama_http_fixture.h"
 static pid_t start(const char *executable,const char *fixture,const char *mode,char endpoint[128]) {
     char port[512],log[512];snprintf(port,sizeof(port),"%s/%s.port",fixture,mode);snprintf(log,sizeof(log),"%s/%s.log",fixture,mode);
     CHECK(!unlink(port)||errno==ENOENT);
@@ -98,6 +26,7 @@ static pid_t start(const char *executable,const char *fixture,const char *mode,c
     kill(pid,SIGKILL);waitpid(pid,NULL,0);CHECK(0);return -1;
 }
 static void stop(pid_t pid){CHECK(kill(pid,SIGTERM)==0);int status;CHECK(waitpid(pid,&status,0)==pid);}
+static int cancel_probe(void *context){(void)context;return 1;}
 static char *run(const InferenceConfig *cfg,const char *body,int expected) {
     char *out=NULL;size_t n;FILE *stream=open_memstream(&out,&n);CHECK(stream);CHECK(inference_dispatch_config(cfg,body,strlen(body),stream)==expected);CHECK(!fclose(stream));Json j;CHECK(json_parse(&j,out,n));return out;
 }
@@ -113,7 +42,7 @@ static void embedding_cli(const char *fixture,const char *endpoint,const char *s
  }
 }
 int main(int argc,char **argv) {
-    if(argc==5&&!strcmp(argv[1],"--server"))return server(argv[2],argv[3],argv[4]);
+    if(argc==5&&!strcmp(argv[1],"--server"))return llama_fixture_server(argv[2],argv[3],argv[4],0,NULL);
     if(argc==6&&!strcmp(argv[1],"--cancel-worker")){
         InferenceConfig worker_cfg={.endpoint=argv[3],.provider_id="native-arbitrary-v7",.admission_state=argv[2],.context_tokens=128,.model_alias="fixture-native.gguf",.owner="alice",.queue_capacity=4};
         char request[1024];snprintf(request,sizeof(request),"{\"contract_version\":1,\"op\":\"generate\",\"operation_id\":\"active-native\",\"provider_id\":\"native-arbitrary-v7\",\"prompt\":\"Code question\",\"max_output_tokens\":16,\"session_id\":\"%s\",\"expected_session_revision\":1}",argv[4]);
@@ -121,10 +50,12 @@ int main(int argc,char **argv) {
     }
     char fixture[]="/tmp/samosa-native-llama-XXXXXX";CHECK(mkdtemp(fixture));char state[512],endpoint[128];snprintf(state,sizeof(state),"%s/admission",fixture);
     pid_t pid=start(argv[0],fixture,"good",endpoint);InferenceConfig cfg={.endpoint=endpoint,.provider_id="native-arbitrary-v7",.admission_state=state,.context_tokens=128,.model_alias="fixture-native.gguf",.owner="alice"};
+    CHECK(!llama_probe(&cfg));
     float *embedded=NULL;size_t embedded_tokens=0;
     CHECK(!llama_embed(&cfg,"task: search result | query: code",2,&embedded,&embedded_tokens));CHECK(embedded&&embedded[0]==1&&embedded[1]==0&&embedded_tokens==3);free(embedded);
     CHECK(llama_embed(&cfg,"task: search result | query: code",3,&embedded,&embedded_tokens)&&!embedded);
     EmbeddingConfig embedding={.model_id="fixture/embed",.model_revision="v1",.model_sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",.engine_sha256="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",.tokenizer_hash="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",.query_prefix="task: search result | query: ",.document_prefix="",.recipe="fixture-search-v1",.dimensions=2};cfg.embedding=&embedding;
+    CHECK(!llama_probe(&cfg));
     char embedding_file[600],embedding_link[600];snprintf(embedding_file,sizeof(embedding_file),"%s/embedding.json",fixture);snprintf(embedding_link,sizeof(embedding_link),"%s/embedding-link",fixture);
     FILE *embedding_config=fopen(embedding_file,"w");CHECK(embedding_config&&!fchmod(fileno(embedding_config),0600));
     fprintf(embedding_config,"{\"model_id\":\"fixture/embed\",\"model_revision\":\"v1\",\"model_sha256\":\"%s\",\"engine_sha256\":\"%s\",\"tokenizer_hash\":\"%s\",\"query_prefix\":\"task: search result | query: \",\"document_prefix\":\"\",\"recipe\":\"fixture-search-v1\",\"dimensions\":2}",embedding.model_sha256,embedding.engine_sha256,embedding.tokenizer_hash);CHECK(!fclose(embedding_config));
@@ -192,6 +123,22 @@ int main(int argc,char **argv) {
     }
     const char *embedding_modes[]={"embedding-zero","embedding-overflow","embedding-clipped"};
     for(unsigned i=0;i<3;i++){pid=start(argv[0],fixture,embedding_modes[i],endpoint);const char *embedding_error=llama_embed(&cfg,"task: search result | query: code",2,&embedded,&embedded_tokens);CHECK(embedding_error&&!strcmp(embedding_error,"invalid_provider_response")&&!embedded);stop(pid);}
+    const char *probe_modes[]={"probe-empty","probe-zero","probe-error","usage-overflow"};
+    for(unsigned i=0;i<4;i++){
+        pid=start(argv[0],fixture,probe_modes[i],endpoint);
+        InferenceConfig probe=cfg;probe.embedding=NULL;
+        size_t counted=0;CHECK(!llama_count(&probe,"x",&counted)&&counted==3);
+        const char *failure=llama_probe(&probe);
+        CHECK(failure&&!strcmp(failure,i==2?"provider_http_error":"invalid_provider_response"));
+        CHECK(!llama_count(&probe,"x",&counted));stop(pid);
+    }
+    pid=start(argv[0],fixture,"good",endpoint);
+    InferenceConfig probe=cfg;probe.embedding=NULL;
+    CHECK(!llama_probe(&probe));probe.cancelled=cancel_probe;
+    const char *failure=llama_probe(&probe);CHECK(failure&&!strcmp(failure,"cancelled"));
+    probe.cancelled=NULL;probe.deadline_monotonic=inference_now()-1;
+    failure=llama_probe(&probe);CHECK(failure&&!strcmp(failure,"deadline_exceeded"));
+    probe.deadline_monotonic=0;CHECK(!llama_probe(&probe));stop(pid);
     cfg.endpoint="http://example.com:9999";
 error(&cfg,count,"invalid_configuration");
     free(session);

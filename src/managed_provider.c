@@ -11,32 +11,10 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
-static int unchanged(int fd,const char *path,const struct stat *before){
-    struct stat current,named;
-    if(fstat(fd,&current)||lstat(path,&named)||current.st_dev!=before->st_dev||current.st_ino!=before->st_ino||
-        named.st_dev!=current.st_dev||named.st_ino!=current.st_ino||current.st_size!=before->st_size||
-        current.st_mode!=before->st_mode)return 0;
-#ifdef __APPLE__
-    return current.st_mtimespec.tv_sec==before->st_mtimespec.tv_sec&&current.st_mtimespec.tv_nsec==before->st_mtimespec.tv_nsec&&
-        current.st_ctimespec.tv_sec==before->st_ctimespec.tv_sec&&current.st_ctimespec.tv_nsec==before->st_ctimespec.tv_nsec;
-#else
-    return current.st_mtim.tv_sec==before->st_mtim.tv_sec&&current.st_mtim.tv_nsec==before->st_mtim.tv_nsec&&
-        current.st_ctim.tv_sec==before->st_ctim.tv_sec&&current.st_ctim.tv_nsec==before->st_ctim.tv_nsec;
-#endif
-}
 const char *managed_provider_status(void *opaque){
     ManagedProvider *p=opaque;
-    if(!p||!p->qualified||p->activation.process.response<0)return "provider_unavailable";
-    struct pollfd terminal={p->activation.process.response,POLLIN|POLLHUP,0};
-    if(poll(&terminal,1,0)!=0)return "owned_engine_exited";
-    struct stat root,named,lease,current;
-    if(fstat(p->activation.root,&root)||lstat(p->state_path,&named)||root.st_dev!=named.st_dev||root.st_ino!=named.st_ino||
-        root.st_uid!=geteuid()||(root.st_mode&077)||fstat(p->activation.lease,&lease)||
-        fstatat(p->activation.root,"residency.lock",&current,AT_SYMLINK_NOFOLLOW)||lease.st_dev!=current.st_dev||lease.st_ino!=current.st_ino||
-        lease.st_nlink!=1||lease.st_uid!=geteuid()||(lease.st_mode&077))return "provider_state_changed";
-    if(!unchanged(p->activation.engine_fd,p->engine_path,&p->engine)||!unchanged(p->activation.model_fd,p->model_path,&p->model))
-        return "provider_artifact_changed";
-    return NULL;
+    if(!p||!p->qualified)return "provider_unavailable";
+    return activation_owned_status(&p->activation,p->state_path,p->engine_path,p->model_path,&p->engine,&p->model);
 }
 static int monotonic(double *value){struct timespec t;if(clock_gettime(CLOCK_MONOTONIC,&t))return 0;*value=(double)t.tv_sec+(double)t.tv_nsec/1e9;return 1;}
 const char *managed_provider_identity(const ActivationConfig *a,const InferenceConfig *i,char identity[100]){
@@ -74,13 +52,11 @@ static const char *qualify(void *opaque){
             if(!strcmp(probe.api_key,wrong.api_key))wrong.api_key="another-wrong-managed-key";
             e=llama_properties(&wrong);
             if(!e||strcmp(e,"provider_auth_failed"))return "unqualified_endpoint";
-            size_t tokens=0;e=llama_count(&probe,"x",&tokens);
+            InferenceConfig capability=probe;capability.transfer_timeout_ms=30000;
+            if(capability.deadline_monotonic<=0||capability.deadline_monotonic>start+120)
+                capability.deadline_monotonic=start+120;
+            e=llama_probe(&capability);
             if(e)return e;
-            if(!tokens||tokens>probe.context_tokens)return "invalid_provider_response";
-            if(probe.embedding){float *vector=NULL;size_t embedded_tokens=0;
-                e=llama_embed(&probe,"task: search result | query: runtime readiness",probe.embedding->dimensions,&vector,&embedded_tokens);free(vector);
-                if(e)return e;
-                if(!embedded_tokens)return "invalid_provider_response";}
             if(fstat(p->activation.engine_fd,&p->engine)||fstat(p->activation.model_fd,&p->model))return "provider_artifact_changed";
             return NULL;}
         if(strcmp(e,"provider_unavailable")&&strcmp(e,"provider_http_error")&&strcmp(e,"deadline_exceeded"))return e;

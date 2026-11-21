@@ -1,0 +1,6 @@
+PASS owned summary transport: 274 checks; guardian residency, scalar/batch/coalescing, bounded I/O, scoped cancellation and pending cleanup
+PASS owned summary transport: 354 checks; guardian residency, scalar/batch/coalescing, bounded I/O, scoped cancellation and pending cleanup
+summary process: PASS (reuse, descriptors, crash/restart, scalar/batch, failure recovery, stop/reap)
+summary process: PASS (reuse, descriptors, crash/restart, scalar/batch, failure recovery, stop/reap)
+PASS public speech registry: 175 checks; native PCM, owner/range controls, replay, cancellation and recovery
+PASS public speech registry: 175 checks; native PCM, owner/range controls, replay, cancellation and recovery

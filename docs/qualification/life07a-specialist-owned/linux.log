@@ -1,0 +1,18 @@
+make: Entering directory '/host-tmp/inference-life03-linux-siqynlpg'
+clang  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -Isrc tests/test_specialist_owned.c src/engine_process.c build/libsamosa-inference-specialist.a -o build/test-specialist-owned
+tests/test_specialist_owned.c:141:27: error: implicit declaration of function 'posix_spawn' is invalid in C99 [-Werror,-Wimplicit-function-declaration]
+    pid_t parent; assert(!posix_spawn(&parent, argv[0], NULL, NULL, arguments, environ));
+                          ^
+tests/test_specialist_owned.c:141:80: error: use of undeclared identifier 'environ'; did you mean '__environ'?
+    pid_t parent; assert(!posix_spawn(&parent, argv[0], NULL, NULL, arguments, environ));
+                                                                               ^~~~~~~
+                                                                               __environ
+/usr/include/assert.h:98:7: note: expanded from macro 'assert'
+    ((expr)                                                             \
+      ^
+/usr/include/unistd.h:564:15: note: '__environ' declared here
+extern char **__environ;
+              ^
+2 errors generated.
+make: *** [Makefile:1021: build/test-specialist-owned] Error 1
+make: Leaving directory '/host-tmp/inference-life03-linux-siqynlpg'

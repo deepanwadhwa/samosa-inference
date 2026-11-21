@@ -1,0 +1,10 @@
+PASS native speech runtime: 324 checks; Kokoro/Pocket ABI, PCM, fallback, cancellation and malformed audio
+PASS native speech runtime: 324 checks; Kokoro/Pocket ABI, PCM, fallback, cancellation and malformed audio
+PASS speech loader: 2713 checks; pinned transitive graph, versions, controls and foreign-path refusal
+PASS speech loader: 2713 checks; pinned transitive graph, versions, controls and foreign-path refusal
+PASS package recipe dispatch: 7 checks; unknown recipe, manifest role, control and private context refusal
+PASS staged native speech publication: 11 files; compatibility, completion, revalidation and cancellation
+PASS pinned native speech package compatibility: index c7894df8a2056544aae0f676730ce24480d70582f54f8c1971414a226249b319; closed manifest/graph/host inspection, no model load or readiness claim
+PASS package recipe dispatch: 7 checks; unknown recipe, manifest role, control and private context refusal
+PASS staged native speech publication: 11 files; compatibility, completion, revalidation and cancellation
+PASS pinned native speech package compatibility: index c7894df8a2056544aae0f676730ce24480d70582f54f8c1971414a226249b319; closed manifest/graph/host inspection, no model load or readiness claim

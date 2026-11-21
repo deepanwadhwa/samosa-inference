@@ -1,0 +1,4 @@
+PASS decision registry lifecycle: 5 scenarios; /private/tmp/inference-life06a-actual-normal
+PASS decision registry lifecycle: 5 scenarios; /private/tmp/inference-life06a-actual-sanitize
+PASS public native decision: 10 actual-model cases/replay/routing/refusal; max result error 0.000583839146
+PASS public native decision: 10 actual-model cases/replay/routing/refusal; max result error 0.000583839146

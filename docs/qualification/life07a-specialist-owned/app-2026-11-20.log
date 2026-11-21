@@ -1,0 +1,18 @@
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/fake-native-summarizer
+make[1]: `build/fake-native-summarizer' is up to date.
+cp components/samosa-inference/build/fake-native-summarizer build/test_fake_native_summarizer
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference specialist
+make[1]: Nothing to be done for `specialist'.
+cc -O1 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  tests/test_native_summarizer_supervisor.c components/samosa-inference/build/libsamosa-inference-specialist.a src/samosa_evidence.c src/samosa_html.c -o build/test_native_summarizer_supervisor 
+build/test_native_summarizer_supervisor \
+	  build/test_fake_native_summarizer tests/fixtures/native-summarizer/model.gguf
+test_native_summarizer_supervisor: PASS
+cc -O1 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  tests/test_runtime_settings.c components/samosa-inference/build/libsamosa-inference-specialist.a src/samosa_evidence.c src/samosa_html.c -o build/test_runtime_settings 
+build/test_runtime_settings
+test_runtime_settings: PASS
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C "vendor/chutni" BUILD="/Users/deepanwadhwa/Documents/samosa-chat/build/chutni" OPT="-O2 -Wno-error=implicit-function-declaration" "/Users/deepanwadhwa/Documents/samosa-chat/build/chutni/chutni-mcp"
+make[1]: `/Users/deepanwadhwa/Documents/samosa-chat/build/chutni/chutni-mcp' is up to date.
+cc -O2 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  src/samosa_gateway.c components/samosa-inference/build/libsamosa-inference-specialist.a src/samosa_evidence.c src/samosa_html.c -o build/samosa-gateway 

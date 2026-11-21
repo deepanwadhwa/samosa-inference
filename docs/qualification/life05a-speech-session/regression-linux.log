@@ -1,0 +1,11 @@
+PASS native speech runtime: 324 checks; Kokoro/Pocket ABI, PCM, fallback, cancellation and malformed audio
+PASS native speech runtime: 324 checks; Kokoro/Pocket ABI, PCM, fallback, cancellation and malformed audio
+PASS speech loader: 2713 checks; pinned transitive graph, versions, controls and foreign-path refusal
+PASS speech loader: 2713 checks; pinned transitive graph, versions, controls and foreign-path refusal
+PASS package recipe dispatch: 7 checks; unknown recipe, manifest role, control and private context refusal
+PASS staged native speech publication: 11 files; compatibility, completion, revalidation and cancellation
+PASS pinned native speech package compatibility: index bfbdc0183b5b53d3973cb5b42633fae7b7214f9a121cacf10a9c4a1348a5e7dd; closed manifest/graph/host inspection, no model load or readiness claim
+PASS package recipe dispatch: 7 checks; unknown recipe, manifest role, control and private context refusal
+PASS staged native speech publication: 11 files; compatibility, completion, revalidation and cancellation
+PASS pinned native speech package compatibility: index bfbdc0183b5b53d3973cb5b42633fae7b7214f9a121cacf10a9c4a1348a5e7dd; closed manifest/graph/host inspection, no model load or readiness claim
+make: Leaving directory '/host-tmp/inference-life03-linux-siqynlpg'

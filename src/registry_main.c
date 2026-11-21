@@ -5,12 +5,17 @@
 #include "engine_process.h"
 #include "speech_worker.h"
 #include "budget.h"
+#include "managed_stream.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <poll.h>
 #include <signal.h>
 #include <unistd.h>
+_Static_assert(ATOMIC_INT_LOCK_FREE==2,"Signal cancellation requires lock-free atomics");
+static atomic_int stopping,session_stop;
+static void stop_signal(int number){(void)number;atomic_store(&stopping,1);}
+static int host_cancelled(void *unused){(void)unused;return atomic_load(&stopping)||atomic_load(&session_stop);}
 
 typedef struct {const char *provider,*operation;size_t sequence,offset;int broken;} SpeechEvents;
 static int stream_disconnected(void *context){
@@ -103,13 +108,26 @@ int main(int argc,char **argv) {
     bridge=vision_bridge_dispatch(argc,argv);if(bridge>=0)return bridge;
     int guardian=engine_guardian_dispatch(argc,argv);if(guardian>=0)return guardian;
     int stream=argc==4&&!strcmp(argv[3],"--stream");
-    if((argc!=3&&!stream)||strcmp(argv[1],"--config")){fputs("usage: samosa-inference-providers --config ABSOLUTE_PRIVATE_JSON [--stream]\n",stderr);return 2;}
+    int session=argc==4&&!strcmp(argv[3],"--session");
+    if((argc!=3&&!stream&&!session)||strcmp(argv[1],"--config")){fputs("usage: samosa-inference-providers --config ABSOLUTE_PRIVATE_JSON [--stream | --session]\n",stderr);return 2;}
     char self[PATH_MAX];if(!realpath(argv[0],self))return 2;
     InferenceRegistryHost host;const char *error=inference_registry_host_load(argv[2],self,&host);
     if(error){fprintf(stdout,"{\"contract_version\":1,\"error\":{\"code\":\"%s\"}}\n",error);return 2;}
     signal(SIGPIPE,SIG_IGN);
+    struct sigaction action={.sa_handler=stop_signal};sigemptyset(&action.sa_mask);
+    sigaction(SIGTERM,&action,NULL);sigaction(SIGINT,&action,NULL);
+    host.cancelled=host_cancelled;
+    for(size_t i=0;i<host.registry.count;i++)if(host.managed[i]||host.resident_summaries[i]||host.resident_speeches[i]||host.resident_decisions[i])host.providers[i].cancelled=host_cancelled;
+    if(session){
+        ManagedStreamConfig transport={.input=STDIN_FILENO,.output=STDOUT_FILENO,
+            .dispatch=inference_registry_host_dispatch,.context=&host,
+            .interrupted=host_cancelled,.stop=&session_stop};
+        int rc=managed_stream_run(&transport);
+        if(rc==2)_exit(1);
+        error=inference_registry_host_close(&host);return error?2:rc;
+    }
     char *request=malloc(INFERENCE_REQUEST_MAX+1);if(!request){inference_registry_host_free(&host);return 2;}
     size_t bytes=fread(request,1,INFERENCE_REQUEST_MAX+1,stdin);
-    int rc=ferror(stdin)?2:stream?stream_dispatch(&host,request,bytes):inference_registry_dispatch(&host.registry,request,bytes,stdout);
-    free(request);inference_registry_host_free(&host);return rc;
+    int rc=ferror(stdin)?2:stream?stream_dispatch(&host,request,bytes):inference_registry_host_dispatch(&host,request,bytes,stdout);
+    free(request);error=inference_registry_host_close(&host);return error?2:rc;
 }

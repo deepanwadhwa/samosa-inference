@@ -121,6 +121,94 @@ Changing a model/configuration still follows existing operation conflict rules.
 Already saved results can replay without the model/engine when the pinned config
 and normalized request match. No new replay or storage schema is introduced.
 
+## Managed engine lifecycle
+
+Trusted text/embedding entries may use `managed_config_file` instead of endpoint,
+alias, credentials and embedding config fields. This names the existing private
+managed-v1 configuration; it is never a public request field. The declared
+provider ID must equal the existing managed identity, owner must match, context
+must match, and registry state must equal the managed state's `admission` child.
+The provider kind must match its managed profile. Mixed endpoint/managed fields
+refuse. Configuration loading/discovery neither creates state nor starts engines.
+The host retains the parsed configuration for its lifetime.
+
+Host `describe` adds `managed_lifecycle.operations` and `provider_ids` for the
+configured owned providers. The pure `inference_registry_dispatch` API retains
+its existing routing/discovery contract; lifecycle ownership belongs to
+`inference_registry_host_dispatch` in registry_host.h.
+
+Requests contain exactly `contract_version`, `op` and `provider_id`:
+
+- `provider_start` uses existing managed activation/guardian and actual provider
+  qualification. A healthy repeated start is idempotent. Failed startup leaves
+  last-good activation unchanged and retains the parsed configuration for retry.
+  Restart advances the existing current activation revision under its lease.
+- `provider_lifecycle_status` observes live owned identity/process/artifacts.
+  A saved installation/activation never grants readiness.
+- `provider_stop` stops/reaps the owned engine and removes credentials while
+  retaining the host's parsed configuration. Repeated stop is safe.
+  A confirmed crashed/reaped engine reports its terminal error once while
+  releasing residency; status then reports stopped and another start can qualify.
+  Unconfirmed shutdown retains ownership and must be retried before replacement.
+
+Successful replies include `provider_id`, boolean `ready`, `state` (`stopped`,
+`ready` or `unavailable`) and `health_error` (null or a typed reason). An engine
+exit or artifact mutation reports unavailable. Start refuses a stale attempted
+engine; stop before restarting it. Unmanaged entries return
+`provider_lifecycle_unmanaged`. New starts honor configured platform policy.
+Start/stop/status refuse `provider_busy` while requests use that provider;
+ordinary operation reads/cancellation remain concurrent. Lifecycle transitions
+exclude new same-provider requests until the transition completes. Existing
+per-provider tracked receipts can still replay after stopping the engine.
+
+`samosa-inference-providers --config PRIVATE_JSON --session` reuses the managed
+CLI's bounded correlated JSON-lines transport, with `request_id`/`request`
+envelopes and `request_id`/`response` replies. Keep stdin open between requests.
+Use it to start, infer, control and stop within the same owner lifetime. EOF,
+signal, output failure and owner death use existing cancellation/guardian cleanup.
+A single-request invocation also cleans its owned engines before exit.
+`--session` is separate from the existing speech PCM `--stream` mode.
+
+This initial integration covers managed text/embedding ownership wiring. Other
+modalities' common residency and full area3 qualification remain required;
+configuration support alone does not assert actual-model lifecycle acceptance.
+
+## Optional resident summary and speech ownership
+
+Summary entries may select `lifecycle: "resident-budget-v1"` with separately
+pinned engine/model byte sizes. Speech entries may select
+`lifecycle: "resident-speech-v1"` with `worker_sha256`, `worker_size` and
+`manifest_size` in addition to the existing package/manifest pin. The worker is
+the trusted running registry host executable; libraries and model/voice files
+remain pinned by the complete speech manifest. Loading the private configuration
+performs no startup/model work. Entries omitting lifecycle retain their existing
+one-shot behavior.
+
+Both adapters consume the same public identity-only start/status/stop controls
+and per-provider request lifetime gate. Start commits existing activation state
+only after an actual bounded successful summary/synthesis and identity recheck.
+Speech records `pinned-host-adapter-v1` for the verified host executable plus
+qualified native bundle, keeping external model-engine system-runtime policy
+unchanged. Saved activation never substitutes for observed live readiness.
+Operation replay and retained speech audio reads remain available after stop
+without reopening model/package inputs. Precise private configuration and
+qualification scope: [registry lifecycle](../docs/REGISTRY_LIFECYCLE.md).
+
+Persistent correlated session replies currently carry complete speech receipts;
+incremental resident PCM events on that transport remain open. Existing one-shot
+speech `--stream` behavior is unchanged. Other modalities, global scheduling,
+service/authentication and release acceptance remain separate requirements.
+
+Text decision entries may select `lifecycle: "resident-text-decision-v1"` with
+separate engine/model byte sizes and their existing four native asset pins.
+This reuses the unchanged persistent decision worker through common lifecycle
+controls. Readiness requires successful native typed inference and full asset/
+loader verification. The last-good activation stores all four pins/profile as a
+hash-bound bundle snapshot under `closed-native-bundle-v1`. Exact normalized
+results/provenance and stopped-worker replay remain unchanged; complete typed
+context refusals preserve worker framing. Image decisions retain their existing
+one-shot path until their changing-image resident boundary is qualified.
+
 ## Qualification and remaining work
 
 `make test-registry sanitize-registry test-registry-modalities
@@ -142,3 +230,14 @@ multi-engine activation/residency, global scheduling,
 incremental public events and authenticated network service remain separate
 unfinished acceptance gates. Per-provider state/queues do not prove global
 memory admission or fairness. This interface does not close area1 or release7.
+
+
+Image decision entries may opt into `lifecycle: "resident-image-decision-v1"`
+with their existing four pins plus engine_size/model_size. The same private
+DecisionHost requires verified native warm inference before readiness and serves
+changing prepared images on one loaded context. All existing public dimensions,
+RGBA/typed request limits, normalization, result/provenance and replay rules
+remain. The versioned private image envelope is a trusted adapter detail, never
+a public command or caller-chosen path. Old engines fail this mode's readiness;
+new candidate engines need independent distribution qualification. Full remaining
+modality lifecycle and later numbered areas stay open.

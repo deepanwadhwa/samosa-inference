@@ -1,0 +1,5 @@
+PASS decision registry lifecycle: 8 scenarios; /tmp/samosa-decision-registry-cyh2gswi
+PASS decision registry lifecycle: 8 scenarios; /tmp/samosa-decision-registry-ynl7kn62
+PASS activation: 126 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation
+PASS activation: 184 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation
+make: Leaving directory '/host-tmp/inference-life03-linux-siqynlpg'

@@ -1,0 +1,5 @@
+Collection: /private/tmp/inference-life03e-native-linux.log
+Terminal exit: 0 (process handle observed)
+PASS registry embedding lifecycle: 333 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry text lifecycle: 261 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry embedding lifecycle: 333 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor

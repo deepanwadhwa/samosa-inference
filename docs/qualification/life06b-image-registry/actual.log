@@ -1,0 +1,16 @@
+BEGIN resident actual image normal
+PASS decision registry lifecycle: 5 scenarios; /private/tmp/inference-life06b-actual-image-normal
+BEGIN resident actual image -sanitize
+PASS decision registry lifecycle: 5 scenarios; /private/tmp/inference-life06b-actual-image-sanitize
+BEGIN legacy actual image normal
+PASS public native decision: 20 actual-model cases/replay/routing/refusal; max result error 5.95896272e-05
+BEGIN legacy actual image -sanitize
+PASS public native decision: 20 actual-model cases/replay/routing/refusal; max result error 5.95896272e-05
+BEGIN resident actual text normal
+PASS decision registry lifecycle: 5 scenarios; /private/tmp/inference-life06b-actual-text-normal
+BEGIN resident actual text -sanitize
+PASS decision registry lifecycle: 5 scenarios; /private/tmp/inference-life06b-actual-text-sanitize
+BEGIN legacy actual text normal
+PASS public native decision: 10 actual-model cases/replay/routing/refusal; max result error 0.000583839146
+BEGIN legacy actual text -sanitize
+PASS public native decision: 10 actual-model cases/replay/routing/refusal; max result error 0.000583839146

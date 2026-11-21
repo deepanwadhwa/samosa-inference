@@ -1,0 +1,51 @@
+{
+  "assignment": "LIFE-03E registry-owned embeddings",
+  "date": "2026-10-24",
+  "status": "qualified embedding slice; other-modality common lifecycle and full area3 remain open",
+  "production_changes": "none; reused registry/managed/embedding owner",
+  "platforms": [
+    "macOS 26.5.1 ARM64 actual model and native controls",
+    "Debian 12 ARM64 native controls"
+  ],
+  "instrumentation": "C hosts/adapters/guardian ASan+UBSan; external model engine and Rust tokenizer release builds",
+  "linux_export": "/private/tmp/inference-life03-linux-siqynlpg",
+  "model_sha256": "2188ac1deca4b77dffefd603c2776a9d76d9d74ec01841392982ebb840b09135",
+  "engine_sha256": "958601dbd22ab2f5857e09860247f30c74153cb0f3914b8d62f2bacbba9aab97",
+  "sha256": {
+    "Makefile": "6bbe47cb1527e88d53ef6e111bd475406b63e1b853365dd62b017d8bd574d5e4",
+    "tests/test_registry_lifecycle.c": "8405ab7474e6ca2fd5096ed6ce18911afdd78d7921d23bb4a7d680260fe08e74",
+    "tests/llama_http_fixture.h": "a9adebd9d63561a86c0b4efb483388492faa9e11ad59138750f9c7fe8f255fa5",
+    "tests/embedding_real.py": "de33dc4cd4594c336ca6cba43ed91474d29b89e52f2ba48b2bc27f406fbd5c6f",
+    "src/managed_host.c": "feaaca7423ec730052820675c45e6b277c7c6e30c02a1ccdc978e2beda76259e",
+    "src/managed_host.h": "289a26da5e582408339652ed5d16a93879122faac7274466273aca84f8a08593",
+    "src/managed_provider.c": "858969921375bc25e9a0ba44b38f56863a346310e659b327638417c88a051d42",
+    "src/registry_host.c": "580bbbebd74f82c18bf3c3f080f7a5d4c4e36e9dda34b0783e2cc6d4d7607982",
+    "src/registry_host.h": "d41ef812fc9642970d21756bce98e2b0c0bcb8f7b2e064ccf5eef2315ec45f0f",
+    "src/registry_main.c": "b4d47f5943c19624bd208a21e8279eaebe2c1f028899690f59443fb723a274f2",
+    "src/embedding.c": "a615d05ed2f141691c9fa7499832a37955cd853a46933e8bac20a0dadc4842b1",
+    "src/llama.c": "7e498ac81c1a6ee746593b6dbbc22b98bcde61ee180b1b97c9d3f5118a6054b7"
+  },
+  "evidence_sha256": {
+    "regression-mac.log": "25d37e5d7c3b9833421d3b11f209aa938ef37063106b31369c8e082c534379aa",
+    "actual-normal.log": "e490ff7b8f59ff9e7624e2f28590b01e80c93e2911a6a3de52a0b3512731fc92",
+    "native-mac.log": "330226cc6fe23714a2d7288908f0636cba208f08b947e6d0b3b02f7ab1befd93",
+    "native-linux.log": "f2d7a1898090123b6bf1eb169385a54532b683b3c9ffcc85778de6837d6ce630",
+    "actual-sanitize.log": "c7584e840e59f1d279d7dd9fbe7215756d996dcf7527dcfbe74c5ec385d9a1ae",
+    "regression-linux.log": "51df17bbce066f5829e1daef414684f7365cbae3ed938656eca20696af112571",
+    "actual-legacy-normal.log": "284cebbb9fe509cb419f25e93f13a7eb7fd159c735f0711536da2edfc1d61b70",
+    "sanitize/registry-offline-replay.json": "85e63b7fdd624fb93c966da235b19b24f45f49e63eac623a2e8ca94ee1c1ad4a",
+    "sanitize/single-response.json": "85e63b7fdd624fb93c966da235b19b24f45f49e63eac623a2e8ca94ee1c1ad4a",
+    "sanitize/lifecycle.json": "57a218499a146592009825eb6278a1dadf4fb0c2d696c72b5e1890f61a1e5ad7",
+    "sanitize/receipts.json": "48e041ba6ece1caccfc59a0c90055652a094e9600fdb5aa47f5da4011edf2aa9",
+    "sanitize/long-input-refusal.json": "c592d68a779478fe0a329c111db2cdb25e083a04a8e0ed71a1f5070a3f3a5f3e",
+    "sanitize/rankings.json": "780910778e523f68e91cc9de535e078a492ec4093444ad3a87291f7abdd8b461",
+    "sanitize/offline-replay.json": "85e63b7fdd624fb93c966da235b19b24f45f49e63eac623a2e8ca94ee1c1ad4a",
+    "normal/registry-offline-replay.json": "85e63b7fdd624fb93c966da235b19b24f45f49e63eac623a2e8ca94ee1c1ad4a",
+    "normal/single-response.json": "85e63b7fdd624fb93c966da235b19b24f45f49e63eac623a2e8ca94ee1c1ad4a",
+    "normal/lifecycle.json": "57a218499a146592009825eb6278a1dadf4fb0c2d696c72b5e1890f61a1e5ad7",
+    "normal/receipts.json": "48e041ba6ece1caccfc59a0c90055652a094e9600fdb5aa47f5da4011edf2aa9",
+    "normal/long-input-refusal.json": "c592d68a779478fe0a329c111db2cdb25e083a04a8e0ed71a1f5070a3f3a5f3e",
+    "normal/rankings.json": "780910778e523f68e91cc9de535e078a492ec4093444ad3a87291f7abdd8b461",
+    "normal/offline-replay.json": "85e63b7fdd624fb93c966da235b19b24f45f49e63eac623a2e8ca94ee1c1ad4a"
+  }
+}

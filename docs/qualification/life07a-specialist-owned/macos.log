@@ -1,0 +1,9 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -Isrc tests/test_specialist_owned.c src/engine_process.c build/libsamosa-inference-specialist.a -o build/test-specialist-owned
+tests/test_specialist_owned.c:141:27: error: call to undeclared function 'posix_spawn'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+  141 |     pid_t parent; assert(!posix_spawn(&parent, argv[0], NULL, NULL, arguments, environ));
+      |                           ^
+tests/test_specialist_owned.c:141:80: error: use of undeclared identifier 'environ'
+  141 |     pid_t parent; assert(!posix_spawn(&parent, argv[0], NULL, NULL, arguments, environ));
+      |                                                                                ^~~~~~~
+2 errors generated.
+make: *** [build/test-specialist-owned] Error 1

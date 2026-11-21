@@ -1,0 +1,19 @@
+2026-11-20 20:36:28.724 xcodebuild[35202:2981228]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-11-20 20:36:29.085 xcodebuild[35202:2981227] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -Isrc tests/test_specialist_owned.c src/engine_process.c build/libsamosa-inference-specialist.a -o build/test-specialist-owned
+2026-11-20 20:36:30.742 xcodebuild[35212:2981274]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-11-20 20:36:30.965 xcodebuild[35212:2981273] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread tests/fake_multimodal_helper.c -o build/fake-multimodal-helper
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-owned /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+specialist owned guardian: PASS (both protocols, reuse, reservation, pending close, failed open, deadline, crash/reap, workspace, cache cap, owner death)
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_owned.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-owned-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-owned-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+specialist owned guardian: PASS (both protocols, reuse, reservation, pending close, failed open, deadline, crash/reap, workspace, cache cap, owner death)
+./build/test-specialist-supervisor /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+multimodal supervisor: PASS
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_multimodal_supervisor.c src/specialist_supervisor.c -o build/test-specialist-supervisor-sanitize
+./build/test-specialist-supervisor-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+multimodal supervisor: PASS
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_summary_process.c build/libsamosa-inference-specialist.a -o build/test-summary-process
+./build/test-summary-process /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-native-summarizer
+summary process: PASS (reuse, descriptors, crash/restart, scalar/batch, failure recovery, stop/reap)

@@ -38,7 +38,25 @@ static const char *public_pcm(void *context,const unsigned char *pcm,size_t byte
     const InferenceConfig *c=context;
     return c->speech->pcm_sink(c->speech->pcm_context,pcm,bytes,rate,control,context);
 }
+static void request_write(FILE *f,const char *text,const char *voice) {
+    fputs("{\"text\":",f);json_quote(f,text,strlen(text));
+    if(voice){fputs(",\"voice\":",f);json_quote(f,voice,strlen(voice));}fputc('}',f);
+}
+static const char *owned_run(const InferenceConfig *c,const char *text,const char *voice,
+        const char *id,const char *pin,AudioReceipt *receipt) {
+    int lease=-1;const char *e=inference_schedule(c,&lease);char *request=NULL;size_t bytes=0;
+    FILE *body=!e?open_memstream(&request,&bytes):NULL,*spool=NULL;
+    if(!e&&!body)e="resource_limit";
+    if(body){request_write(body,text,voice);if(fclose(body))e="resource_limit";}
+    if(!e){spool=tmpfile();if(!spool)e="engine_io_failed";}
+    if(!e){SpeechRuntimeResult native;e=c->speech->run(c->speech->context,c,request,bytes,fileno(spool),
+        c->speech->pcm_sink?public_pcm:NULL,(void *)c,&native);}
+    if(!e){AudioStoreConfig store={c->admission_state,c->owner,c->provider_id};
+        e=audio_store_publish(&store,id,pin,fileno(spool),control,(void *)c,receipt);}
+    if(spool)fclose(spool);free(request);if(lease>=0)close(lease);return e;
+}
 static const char *run(const InferenceConfig *c,const char *text,const char *voice,const char *id,const char *pin,AudioReceipt *receipt) {
+    if(c->speech->run)return owned_run(c,text,voice,id,pin,receipt);
     int lease=-1,package=-1,dir=-1,input=-1,output=-1,writer=-1;char workspace[]="/tmp/samosa-inference-speech-XXXXXX";int created=0;
     const char *e=inference_schedule(c,&lease);
     if(!e){package=open(c->speech->package,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);if(package<0)e="speech_package_unavailable";}
@@ -46,8 +64,7 @@ static const char *run(const InferenceConfig *c,const char *text,const char *voi
     if(!e){dir=open(workspace,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);if(dir<0)e="engine_io_failed";}
     if(!e){writer=openat(dir,"request.frame",O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC,0600);output=openat(dir,"result.frame",O_RDWR|O_CREAT|O_EXCL|O_CLOEXEC,0600);
         if(writer<0||output<0)e="engine_io_failed";}
-    if(!e){FILE *f=fdopen(writer,"w");if(!f)e="engine_io_failed";else{writer=-1;fputs("{\"text\":",f);json_quote(f,text,strlen(text));
-        if(voice){fputs(",\"voice\":",f);json_quote(f,voice,strlen(voice));}fputc('}',f);if(fclose(f))e="engine_io_failed";}}
+    if(!e){FILE *f=fdopen(writer,"w");if(!f)e="engine_io_failed";else{writer=-1;request_write(f,text,voice);if(fclose(f))e="engine_io_failed";}}
     if(!e){input=openat(dir,"request.frame",O_RDONLY|O_NOFOLLOW|O_CLOEXEC);if(input<0)e="engine_io_failed";}
     EngineProcess p={.guardian=-1,.control=-1,.response=-1};
     if(!e){double left=c->deadline_monotonic?c->deadline_monotonic-inference_now():60;

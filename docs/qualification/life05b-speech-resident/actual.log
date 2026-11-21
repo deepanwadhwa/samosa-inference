@@ -1,0 +1,16 @@
+PASS actual owned Pocket caro: samples=78720 callbacks=3 pcm_sha256=5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4
+PASS actual owned Pocket cancellation after PCM; no successful receipt
+PASS actual owned Pocket stuart: samples=90240 callbacks=4 pcm_sha256=0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc
+PASS actual resident Pocket caro: same guardian, samples=78720 chunks=22 pcm_sha256=5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4
+PASS actual resident Pocket stuart: same guardian, samples=90240 chunks=25 pcm_sha256=0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc
+PASS actual resident Pocket interrupted PCM: worker invalidated and reaped
+PASS actual resident Pocket stuart: same guardian, samples=90240 chunks=25 pcm_sha256=0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc
+PASS actual speech guardian: 135 checks; package/ABI verification, output integrity, cancellation, cleanup and recovery
+PASS actual owned Pocket caro: samples=78720 callbacks=3 pcm_sha256=5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4
+PASS actual owned Pocket cancellation after PCM; no successful receipt
+PASS actual owned Pocket stuart: samples=90240 callbacks=4 pcm_sha256=0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc
+PASS actual resident Pocket caro: same guardian, samples=78720 chunks=22 pcm_sha256=5a854797b1ebc66817950c875966dc8eefbd0ae10c143e0964546fbbdd7270c4
+PASS actual resident Pocket stuart: same guardian, samples=90240 chunks=25 pcm_sha256=0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc
+PASS actual resident Pocket interrupted PCM: worker invalidated and reaped
+PASS actual resident Pocket stuart: same guardian, samples=90240 chunks=25 pcm_sha256=0687ebda438c0f27ae2279306a51b8c2ceae8b0c02bdf4880c6a842a6cadb3fc
+PASS actual speech guardian: 135 checks; package/ABI verification, output integrity, cancellation, cleanup and recovery

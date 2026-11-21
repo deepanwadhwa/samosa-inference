@@ -23,6 +23,30 @@ def digest(path):
     return h.hexdigest()
 
 
+def reference_difference(actual, expected):
+    maximum = 0.0
+    def compare(actual, expected):
+        nonlocal maximum
+        if isinstance(expected, (int, float)) and not isinstance(expected, bool):
+            assert isinstance(actual, (int, float)) and not isinstance(actual, bool)
+            assert math.isfinite(actual)
+            difference = abs(actual-expected)
+            maximum = max(maximum, difference)
+            assert difference <= 0.005, (actual, expected)
+        elif isinstance(expected, dict):
+            assert isinstance(actual, dict) and list(actual) == list(expected)
+            for k in expected:
+                compare(actual[k], expected[k])
+        elif isinstance(expected, list):
+            assert isinstance(actual, list) and len(actual) == len(expected)
+            for a, e in zip(actual, expected):
+                compare(a, e)
+        else:
+            assert actual == expected
+    compare(actual, expected)
+    return maximum
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('executable', type=Path)
@@ -53,24 +77,6 @@ def main():
             raise ValueError('Duplicate or unknown selected reference case')
         cases = [case for case in cases if case['name'] in selected]
     maximum = 0.0
-    def compare(actual, expected):
-        nonlocal maximum
-        if isinstance(expected, (int, float)) and not isinstance(expected, bool):
-            assert isinstance(actual, (int, float)) and not isinstance(actual, bool)
-            assert math.isfinite(actual)
-            difference = abs(actual-expected)
-            maximum = max(maximum, difference)
-            assert difference <= 0.005, (actual, expected)
-        elif isinstance(expected, dict):
-            assert isinstance(actual, dict) and list(actual) == list(expected)
-            for k in expected:
-                compare(actual[k], expected[k])
-        elif isinstance(expected, list):
-            assert isinstance(actual, list) and len(actual) == len(expected)
-            for a, e in zip(actual, expected):
-                compare(a, e)
-        else:
-            assert actual == expected
     with tempfile.TemporaryDirectory(prefix='samosa-decision-public-') as folder:
         folder = Path(folder)
         config = folder / 'host.json'
@@ -111,7 +117,7 @@ def main():
                 request.update(width=state['width'], height=state['height'], image_rgba_base64=base64.b64encode(rgba).decode())
                 request['request']['state'] = 'prepared-frame'
             response = run(request)
-            compare(response['result'], case['result'])
+            maximum = max(maximum, reference_difference(response['result'], case['result']))
             assert response['operation_id'] == f'case-{i}'
             assert response['provenance']['asset_sha256'] == pins
             assert run(request) == response

@@ -7,5 +7,7 @@ unsigned char *summary_prompt_frame(const char *, size_t, size_t *);
 /* Existing batch protocol, one opening sample. Engine partitions the complete
  * prompt into tokenizer-bounded chunks and uses its memory output budget. */
 unsigned char *summary_opening_frame(const char *, size_t, size_t *);
+/* Optional budget-v1 envelope around the unchanged scalar/opening frame. */
+unsigned char *summary_budget_frame(const char *,size_t,size_t,int,size_t *);
 char *summary_reply_frame(const unsigned char *, size_t, size_t *);
 #endif

@@ -1,0 +1,4 @@
+Collection: /private/tmp/inference-life03e-qualified-mac-r2.log
+Terminal exit: 0 (process handle observed)
+PASS registry embedding lifecycle: 332 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
+PASS registry embedding lifecycle: 332 checks; lazy discovery, actual qualification, stop/restart, last-good failure, mutation and survivor
