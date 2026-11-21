@@ -12,6 +12,7 @@
 /* Native generated "quick brown fox" recording and retained installed assets.
  * This is bounded recognition evidence, not a general model-quality claim. */
 int main(int argc,char **argv) {
+    int dispatched=samosa_whisper_process_dispatch(argc,argv);if(dispatched>=0)return dispatched;
     assert(argc==4&&argv[1][0]=='/'&&argv[2][0]=='/'&&argv[3][0]=='/');alarm(180);
     char temporary[]="/tmp/samosa-whisper-process-real-XXXXXX";assert(mkdtemp(temporary));
     SamosaWhisperProcessConfig config={argv[1],argv[2],temporary};

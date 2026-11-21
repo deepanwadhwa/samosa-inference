@@ -1,0 +1,1 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_whisper_process.c build/libsamosa-inference-specialist.a -o build/test-whisper-process

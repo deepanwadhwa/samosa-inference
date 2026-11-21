@@ -1,0 +1,21 @@
+{
+  "root": "/private/tmp/samosa-whisper-gateway.3wUyuP",
+  "gateway": "/private/tmp/samosa-life07l-before-owned-gateway",
+  "engine": "/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-whisper-process",
+  "worker": 53347,
+  "helper": 53348,
+  "guardian": 53346,
+  "prepared": "/private/tmp/samosa-whisper-gateway.3wUyuP/home/voice/tmp/transcribe-EKOZsa.wav",
+  "workspace": "/private/tmp/samosa-whisper-gateway.3wUyuP/home/voice/tmp/result-v53GUj",
+  "workerGone": true,
+  "helperGone": true,
+  "guardianGone": true,
+  "outputGone": true,
+  "workspaceGone": true,
+  "preparedGone": false,
+  "modelRetained": true,
+  "uploadRetained": true,
+  "request": {
+    "error": "TypeError"
+  }
+}

@@ -1,0 +1,14 @@
+node:internal/modules/run_main:104
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Gateway death left an owned process or prepared/result file
+    at file:///Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/docs/qualification/life07l-whisper-guardian/qualify-gateway.mjs:30:3 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '=='
+}
+
+Node.js v23.10.0

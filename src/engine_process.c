@@ -12,8 +12,20 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/resource.h>
+#include <limits.h>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
 extern char **environ;
 
+int engine_process_executable(char self[PATH_MAX]) {
+#ifdef __APPLE__
+    uint32_t size=PATH_MAX;char path[PATH_MAX];
+    return !_NSGetExecutablePath(path,&size)&&realpath(path,self)!=NULL;
+#else
+    ssize_t n=readlink("/proc/self/exe",self,PATH_MAX-1);if(n<=0)return 0;self[n]=0;return 1;
+#endif
+}
 static double monotonic(void) {
     struct timespec t;
     return clock_gettime(CLOCK_MONOTONIC,&t)?-1:(double)t.tv_sec+(double)t.tv_nsec/1e9;
@@ -39,7 +51,7 @@ static void finish_child(pid_t child) {
 static void clean_workspace(const char *path){
     struct stat retained,current;
     if(fstat(6,&retained)||lstat(path,&current)||!S_ISDIR(retained.st_mode)||retained.st_uid!=geteuid()||(retained.st_mode&077)||retained.st_dev!=current.st_dev||retained.st_ino!=current.st_ino)return;
-    (void)unlinkat(6,"input.wav",0);(void)unlinkat(6,"result.srt",0);
+    (void)unlinkat(6,"input.wav",0);(void)unlinkat(6,"result.srt",0);(void)unlinkat(6,"result.txt",0);
     (void)unlinkat(6,"request.frame",0);(void)unlinkat(6,"result.frame",0);
     (void)unlinkat(6,"input.rgba",0);(void)unlinkat(6,"input.ppm",0);(void)unlinkat(6,"request.json",0);(void)unlinkat(6,"result.json",0);
     /* Temporal adapters create only these sixteen owned frame names. */
@@ -68,21 +80,22 @@ static void server_term(pid_t child) {
     }
 }
 int engine_guardian_dispatch(int argc,char **argv) {
+    int command_profile=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-command");
     int server=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-server");
     int workspace_duplex=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace-duplex");
     int duplex=workspace_duplex||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-duplex"));
     int captured=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace-captured");
     int sized=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-protocol-sized");
     int protocol=sized||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-protocol"));
-    int workspace=workspace_duplex||captured||protocol||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace"));
-    int bound=duplex||workspace||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-bound"));
+    int workspace=command_profile||workspace_duplex||captured||protocol||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace"));
+    int bound=duplex||(!command_profile&&workspace)||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-bound"));
     int leased=server||bound||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-leased"));
-    if(argc<2 || (!leased&&strcmp(argv[1],"--inference-owned-engine")))return -1;
+    if(argc<2 || (!leased&&!command_profile&&strcmp(argv[1],"--inference-owned-engine")))return -1;
     if(argc<(sized?7:(workspace||server)?6:5) || argc>(sized?38:(workspace||server)?37:36) || fcntl(3,F_GETFD)<0)return 2;
     /* Only our bounded bridge may opt out of the process-wide file cap. */
     if(captured&&(argc!=11||strcmp(argv[5],argv[0])||strcmp(argv[6],"--vision-engine-bounded-bridge")))return 2;
     char *end;errno=0;double lifetime=strtod(argv[2],&end);
-    if(errno||*end||end==argv[2]||(server?lifetime!=0:(!(lifetime>0)||lifetime>86400)))return 2;
+    if(errno||*end||end==argv[2]||((server||command_profile)?lifetime!=0:(!(lifetime>0)||lifetime>86400)))return 2;
     errno=0;unsigned long limit=strtoul(argv[3],&end,10);
     if(errno||*end||end==argv[3]||!limit||limit>1048576)return 2;
     unsigned long result_limit=8196;
@@ -106,7 +119,7 @@ int engine_guardian_dispatch(int argc,char **argv) {
      * owned workspace: a file cap would also constrain the Metal cache.
      * Sized protocols additionally get an exact kernel-enforced file cap.
      * Legacy workspace/summary limits remain unchanged. */
-    if(workspace&&!captured&&!duplex){rlim_t cap=sized?(rlim_t)result_limit:67108864;
+    if(workspace&&!command_profile&&!captured&&!duplex){rlim_t cap=sized?(rlim_t)result_limit:67108864;
         struct rlimit size={cap,cap};if(setrlimit(RLIMIT_FSIZE,&size))return 2;}
     if(sized||captured){struct rlimit core={0,0};if(setrlimit(RLIMIT_CORE,&core))return 2;}
     /* An orphaned stopped guardian group receives SIGHUP/SIGCONT when its
@@ -123,8 +136,8 @@ int engine_guardian_dispatch(int argc,char **argv) {
     int ok=ar&&at;pid_t child=-1;
     if(ok)ok=spawn_attributes(&attributes) &&
         !((protocol||duplex)?posix_spawn_file_actions_adddup2(&actions,7,STDIN_FILENO):posix_spawn_file_actions_addopen(&actions,STDIN_FILENO,"/dev/null",O_RDONLY,0)) &&
-        !posix_spawn_file_actions_adddup2(&actions,server?10:captured?capture[1]:(protocol||duplex)?8:output[1],STDOUT_FILENO) &&
-        !posix_spawn_file_actions_adddup2(&actions,server?11:output[1],STDERR_FILENO) &&
+        !(command_profile?posix_spawn_file_actions_addopen(&actions,STDOUT_FILENO,"/dev/null",O_WRONLY,0):posix_spawn_file_actions_adddup2(&actions,server?10:captured?capture[1]:(protocol||duplex)?8:output[1],STDOUT_FILENO)) &&
+        !(command_profile?posix_spawn_file_actions_addopen(&actions,STDERR_FILENO,"/dev/null",O_WRONLY,0):posix_spawn_file_actions_adddup2(&actions,server?11:output[1],STDERR_FILENO)) &&
         !posix_spawn_file_actions_addclose(&actions,3);
     if(ok && output[0]>3)ok=!posix_spawn_file_actions_addclose(&actions,output[0]);
     if(ok && output[1]>3)ok=!posix_spawn_file_actions_addclose(&actions,output[1]);
@@ -139,8 +152,9 @@ int engine_guardian_dispatch(int argc,char **argv) {
      * lost caller must reach the resident worker and host independently. */
     if(duplex){close(7);close(8);}
     if(!ok){close(output[0]);if(capture[0]>=0)close(capture[0]);if(workspace)clean_workspace(argv[4]);fputs("exec_failed\n",stdout);fflush(stdout);return 2;}
-    if((server?fprintf(stdout,"started:%ld\n",(long)child):fputs("started\n",stdout))<0 || fflush(stdout)){finish_child(child);close(output[0]);if(capture[0]>=0)close(capture[0]);if(workspace)clean_workspace(argv[4]);return 2;}
-    if(server){close(9);close(10);close(11);close(output[0]);output[0]=-1;}
+    if(((server||command_profile)?fprintf(stdout,"started:%ld\n",(long)child):fputs("started\n",stdout))<0 || fflush(stdout)){finish_child(child);close(output[0]);if(capture[0]>=0)close(capture[0]);if(workspace)clean_workspace(argv[4]);return 2;}
+    if(server){close(9);close(10);close(11);}
+    if(server||command_profile){close(output[0]);output[0]=-1;}
     double start=monotonic(),deadline=start+lifetime;const char *reason="stopped";
     if(start<0)reason="clock_failed";
     size_t logged=0,captured_bytes=0;int exited=0;
@@ -159,7 +173,7 @@ int engine_guardian_dispatch(int argc,char **argv) {
             (void)kill(-child,SIGKILL);}
         if(exited&&captured&&capture[0]<0)break;
         double now=monotonic();if(now<0){reason="clock_failed";break;}
-        if(!server&&now>=deadline){reason="lifetime_exceeded";break;}
+        if(!server&&!command_profile&&now>=deadline){reason="lifetime_exceeded";break;}
         struct pollfd fds[3]={{3,POLLIN|POLLHUP,0},{output[0],POLLIN|POLLHUP,0},{capture[0],POLLIN|POLLHUP,0}};
         int rc=poll(fds,captured?3:2,10);
         if(rc<0){if(errno==EINTR)continue;reason="poll_failed";break;}
@@ -187,8 +201,8 @@ int engine_guardian_dispatch(int argc,char **argv) {
             close(output[0]);output[0]=-1;
         }
     }
-    if(server){
-        if(!exited)server_term(child);
+    if(server||command_profile){
+        if(server&&!exited)server_term(child);
         /* Keep the PID reserved through marker cleanup and host acknowledgement.
          * Closing the lifeline after owner death also releases this wait. */
         (void)kill(-child,SIGKILL);
@@ -197,13 +211,13 @@ int engine_guardian_dispatch(int argc,char **argv) {
             if(rc<0&&errno==EINTR)continue;
             if(rc<0||owner.revents)break;
         }
-        clean_server_marker(argv[4],child);
+        if(server)clean_server_marker(argv[4],child);
     }
     finish_child(child);close(output[0]);if(capture[0]>=0)close(capture[0]);if(captured)close(8);close(3);
     if(workspace){clean_workspace(argv[4]);close(6);}
     if(leased)close(4);
     if(bound)close(5);
-    if(!server){fprintf(stdout,"%s\n",reason);fflush(stdout);}
+    if(!server&&!command_profile){fprintf(stdout,"%s\n",reason);fflush(stdout);}
     return !strcmp(reason,"stopped") || (exited&&!strcmp(reason,"completed"))?0:1;
 }
 
@@ -221,10 +235,10 @@ static int line(int fd,char buffer[64],double deadline) {
 }
 static const char *start(const char *self,const char *argv_json,double lifetime,
                         size_t limit,int residency,int model,const char *workspace,int directory,int input,int result,size_t result_limit,int transport,const EngineServer *server,EngineProcess *p) {
-    int captured=transport==1,duplex=transport==2;
+    int captured=transport==1,duplex=transport==2,command_profile=transport==4;
     *p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};
-    if(!self || self[0]!='/' || !argv_json || strlen(argv_json)>16384 ||
-       (server?lifetime!=0:(!(lifetime>0)||lifetime>86400))||!limit||limit>1048576)return "invalid_engine_configuration";
+    if(!self || self[0]!='/' || !argv_json || strlen(argv_json)>(command_profile?65536:16384) ||
+       ((server||command_profile)?lifetime!=0:(!(lifetime>0)||lifetime>86400))||!limit||limit>1048576)return "invalid_engine_configuration";
     Json j;if(!json_parse(&j,argv_json,strlen(argv_json))||j.tokens[0].type!=JT_ARRAY||
         j.tokens[0].count<1||j.tokens[0].count>32)return "invalid_engine_configuration";
     int sized=result_limit!=0;
@@ -232,11 +246,11 @@ static const char *start(const char *self,const char *argv_json,double lifetime,
     char *args[39]={0};int first=sized?6:(workspace||server)?5:4,count=first;char seconds[32],bytes[32],result_bytes[32];
     snprintf(result_bytes,sizeof(result_bytes),"%zu",result_limit);
     snprintf(seconds,sizeof(seconds),"%.6f",lifetime);snprintf(bytes,sizeof(bytes),"%zu",limit);
-    args[0]=(char*)self;args[1]=server?"--inference-owned-engine-server":duplex?(workspace?"--inference-owned-engine-workspace-duplex":"--inference-owned-engine-duplex"):captured?"--inference-owned-engine-workspace-captured":sized?"--inference-owned-engine-protocol-sized":input>=0?"--inference-owned-engine-protocol":workspace?"--inference-owned-engine-workspace":model>=0?"--inference-owned-engine-bound":residency>=0?"--inference-owned-engine-leased":"--inference-owned-engine";args[2]=seconds;args[3]=bytes;if(workspace)args[4]=(char*)workspace;if(server)args[4]=(char*)server->marker;if(sized)args[5]=result_bytes;
+    args[0]=(char*)self;args[1]=command_profile?"--inference-owned-engine-command":server?"--inference-owned-engine-server":duplex?(workspace?"--inference-owned-engine-workspace-duplex":"--inference-owned-engine-duplex"):captured?"--inference-owned-engine-workspace-captured":sized?"--inference-owned-engine-protocol-sized":input>=0?"--inference-owned-engine-protocol":workspace?"--inference-owned-engine-workspace":model>=0?"--inference-owned-engine-bound":residency>=0?"--inference-owned-engine-leased":"--inference-owned-engine";args[2]=seconds;args[3]=bytes;if(workspace)args[4]=(char*)workspace;if(server)args[4]=(char*)server->marker;if(sized)args[5]=result_bytes;
     const char *error=NULL;
     for(int t=1;t<j.tokens[0].next;t=j.tokens[t].next){args[count]=json_string(&j,t);
         if(!args[count]||strlen(args[count])>4096){error="invalid_engine_configuration";break;}count++;}
-    if(!error && args[first][0]!='/')error="invalid_engine_configuration";
+    if(!error && !command_profile && args[first][0]!='/')error="invalid_engine_configuration";
     int server_copy[3]={-1,-1,-1};
     if(server){int source[3]={server->configuration,server->output,server->error};
         for(size_t i=0;i<3;i++){server_copy[i]=fcntl(source[i],F_DUPFD_CLOEXEC,20);if(server_copy[i]<0)error="engine_io_failed";}}
@@ -294,7 +308,7 @@ static const char *start(const char *self,const char *argv_json,double lifetime,
     if(p->guardian>0){p->control=control[1];p->response=response[0];char reply[64];
         double now=monotonic();
         if(now<0 || !line(p->response,reply,now+2))error="engine_exec_failed";
-        else if(server){char *end=NULL;long pid=!strncmp(reply,"started:",8)?strtol(reply+8,&end,10):0;
+        else if(server||command_profile){char *end=NULL;long pid=!strncmp(reply,"started:",8)?strtol(reply+8,&end,10):0;
             if(pid<=1||pid>INT32_MAX||!end||*end)error="engine_exec_failed";else p->engine=(pid_t)pid;
         }else if(strcmp(reply,"started"))error="engine_exec_failed";
         if(error){const char *stopped=engine_process_stop(p);
@@ -367,6 +381,15 @@ const char *engine_process_start_server(const char *self,const char *argv,int le
     *p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};
     if(!server||!server->marker||server->marker[0]!='/'||lease<0||server->configuration<0||server->output<0||server->error<0)return "invalid_engine_configuration";
     return start(self,argv,0,1,lease,-1,NULL,-1,-1,-1,0,3,server,p);
+}
+const char *engine_process_start_command(const char *self,const char *argv,const char *workspace,int directory,EngineProcess *p) {
+    if(!p)return "invalid_engine_configuration";
+    *p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};
+    struct stat retained,named;
+    if(!workspace||workspace[0]!='/'||directory<0||fstat(directory,&retained)||lstat(workspace,&named)||
+       !S_ISDIR(retained.st_mode)||retained.st_uid!=geteuid()||(retained.st_mode&077)||
+       retained.st_dev!=named.st_dev||retained.st_ino!=named.st_ino)return "invalid_engine_configuration";
+    return start(self,argv,0,1,-1,-1,workspace,directory,-1,-1,0,4,NULL,p);
 }
 int engine_process_running(EngineProcess *p) {
     if(p->guardian<=0||p->terminal||p->reason[0])return 0;

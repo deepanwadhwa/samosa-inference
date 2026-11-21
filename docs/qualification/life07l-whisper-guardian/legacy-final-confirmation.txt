@@ -1,0 +1,1 @@
+Confirmed final legacy exit 1; controlled engine/helper/results explicitly cleaned.

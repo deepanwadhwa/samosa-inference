@@ -1098,7 +1098,7 @@ sanitize-backend-process: build/test-backend-process-sanitize build/test-backend
 	$(abspath build/test-backend-process-sanitize) $(abspath build/test-backend-process)
 test: test-backend-process
 sanitize: sanitize-backend-process
-build/whisper-process.o: src/whisper_process.c include/samosa_inference/whisper_process.h | build
+build/whisper-process.o: src/whisper_process.c src/engine_process.h src/json.h include/samosa_inference/whisper_process.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
 build/vision-budget.o: src/vision_budget.c include/samosa_inference/vision_budget.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
@@ -1118,14 +1118,14 @@ build/test-whisper-process: tests/test_whisper_process.c include/samosa_inferenc
 test-whisper-process: build/test-whisper-process
 	$(abspath build/test-whisper-process) $(abspath build/test-whisper-process)
 sanitize-whisper-process: build/test-whisper-process | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_process.c src/whisper_process.c -o build/test-whisper-process-sanitize
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_process.c src/whisper_process.c src/engine_process.c -o build/test-whisper-process-sanitize
 	$(abspath build/test-whisper-process-sanitize) $(abspath build/test-whisper-process)
 test: test-whisper-process
 sanitize: sanitize-whisper-process
 build/test-whisper-process-real: tests/test_whisper_process_real.c include/samosa_inference/whisper_process.h build/libsamosa-inference-specialist.a
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude $< build/libsamosa-inference-specialist.a -o $@
-build/test-whisper-process-real-sanitize: tests/test_whisper_process_real.c src/whisper_process.c include/samosa_inference/whisper_process.h | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_process_real.c src/whisper_process.c -o $@
+build/test-whisper-process-real-sanitize: tests/test_whisper_process_real.c src/whisper_process.c src/engine_process.c src/engine_process.h src/json.h include/samosa_inference/whisper_process.h | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_process_real.c src/whisper_process.c src/engine_process.c -o $@
 .PHONY: test-llama-launch sanitize-llama-launch
 build/test-llama-launch: tests/test_llama_launch.c src/llama_launch.c include/samosa_inference/llama_launch.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude tests/test_llama_launch.c src/llama_launch.c -o $@

@@ -1,0 +1,2 @@
+PASS six original helpers, full result validation/return mapping, original txt/SRT CLI argv, 54 original fixture assertions and unchanged actual-recognition assertions
+PASS existing guardian reused; complete primary owner unchanged except self-helper move; entire Gateway unchanged except PID withdrawal before guardian acknowledgement and explicit prepared-input ownership

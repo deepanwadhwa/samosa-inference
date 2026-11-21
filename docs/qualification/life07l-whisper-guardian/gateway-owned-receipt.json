@@ -1,0 +1,21 @@
+{
+  "root": "/private/tmp/samosa-whisper-gateway.zQcpEv",
+  "gateway": "/Users/deepanwadhwa/Documents/samosa-chat/build/samosa-gateway",
+  "engine": "/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-whisper-process",
+  "worker": 56734,
+  "helper": 56735,
+  "guardian": 56733,
+  "prepared": "/private/tmp/samosa-whisper-gateway.zQcpEv/home/voice/tmp/result-j9Diry/input.wav",
+  "workspace": "/private/tmp/samosa-whisper-gateway.zQcpEv/home/voice/tmp/result-j9Diry",
+  "workerGone": true,
+  "helperGone": true,
+  "guardianGone": true,
+  "outputGone": true,
+  "workspaceGone": true,
+  "preparedGone": true,
+  "modelRetained": true,
+  "uploadRetained": true,
+  "request": {
+    "error": "TypeError"
+  }
+}

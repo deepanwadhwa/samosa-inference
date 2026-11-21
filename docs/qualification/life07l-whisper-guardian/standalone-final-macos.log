@@ -1,0 +1,18 @@
+mkdir -p build
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Isrc -c src/engine_process.c -o build/engine-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_supervisor.c -o build/specialist-supervisor.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_protocol.c -o build/specialist-protocol.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/summary_process.c -o build/summary-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/llama_launch.c -o build/llama-launch.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/backend_process.c -o build/backend-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/whisper_process.c -o build/whisper-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/vision_budget.c -o build/vision-budget.o
+ar rcs build/libsamosa-inference-specialist.a build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/whisper-process.o build/vision-budget.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_whisper_process.c build/libsamosa-inference-specialist.a -o build/test-whisper-process
+/private/tmp/samosa-life07l-final-source.pHKvXr/build/test-whisper-process /private/tmp/samosa-life07l-final-source.pHKvXr/build/test-whisper-process
+PASS extracted Whisper runner (522 checks): original txt/SRT/argv,271-second input, UTF-8/16-MiB bounds, busy/preserve-cancel, failure, exact-child cancellation/reap and complete result cleanup; guardian parent-death, descendant/foreign-process safety, held-PID/workspace cleanup, stalled guardian, relative/escaped paths and discarded verbose logs
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_process.c src/whisper_process.c src/engine_process.c -o build/test-whisper-process-sanitize
+/private/tmp/samosa-life07l-final-source.pHKvXr/build/test-whisper-process-sanitize /private/tmp/samosa-life07l-final-source.pHKvXr/build/test-whisper-process
+PASS extracted Whisper runner (522 checks): original txt/SRT/argv,271-second input, UTF-8/16-MiB bounds, busy/preserve-cancel, failure, exact-child cancellation/reap and complete result cleanup; guardian parent-death, descendant/foreign-process safety, held-PID/workspace cleanup, stalled guardian, relative/escaped paths and discarded verbose logs
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude tests/test_whisper_process_real.c build/libsamosa-inference-specialist.a -o build/test-whisper-process-real
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_process_real.c src/whisper_process.c src/engine_process.c -o build/test-whisper-process-real-sanitize

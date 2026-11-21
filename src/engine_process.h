@@ -45,6 +45,13 @@ const char *engine_process_start_bound_protocol_sized(const char *,const char *,
  * Startup identifies the actual worker; it does not establish model readiness. */
 typedef struct {int configuration,output,error;const char *marker;} EngineServer;
 const char *engine_process_start_server(const char *,const char *,int,const EngineServer *,EngineProcess *);
+/* Original on-demand CLI compatibility: no clip/lifetime/file/log cap is
+ * invented. stdout/stderr go to /dev/null; host validates its existing result
+ * size/format while the guardian reserves PID/group/workspace until stop.
+ * Caller must keep the record until stop finishes, including pending cleanup. */
+const char *engine_process_start_command(const char *,const char *,const char *,int,EngineProcess *);
+/* Original self-executable discovery; caller supplies PATH_MAX bytes. */
+int engine_process_executable(char *);
 /* Nonblocking terminal observation; server identity stays reserved until stop. */
 int engine_process_running(EngineProcess *);
 const char *engine_process_stop(EngineProcess *);

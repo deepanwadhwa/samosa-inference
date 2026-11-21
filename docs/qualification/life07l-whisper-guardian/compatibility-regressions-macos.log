@@ -1,0 +1,29 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_INFERENCE_TEST_FAULTS -Isrc tests/test_activation.c src/activation.c src/artifact.c src/engine_process.c src/engine_runtime.c -lsqlite3 -o build/test-activation
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-activation
+PASS activation: 124 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_INFERENCE_TEST_FAULTS -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc tests/test_activation.c src/activation.c src/artifact.c src/engine_process.c src/engine_runtime.c -lsqlite3 -o build/test-activation-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-activation-sanitize
+PASS activation: 132 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_WITH_WHISPER src/whisper_main.c src/whisper.c src/artifact.c src/registry.c src/embedding.c src/inference.c src/sessions.c src/admission.c src/operations.c src/engine_process.c src/budget.c -lsqlite3 -o build/samosa-inference-whisper
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-whisper /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/samosa-inference-whisper
+PASS native public Whisper adapter: 508 checks; full30s, replay/owner/input/identity refusals, timed derived text, model mutation, failure/log/deadline/cancel/SIGKILL workspace cleanup; fixture engine only
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_WITH_WHISPER -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer src/whisper_main.c src/whisper.c src/artifact.c src/registry.c src/embedding.c src/inference.c src/sessions.c src/admission.c src/operations.c src/engine_process.c src/budget.c -lsqlite3 -o build/samosa-inference-whisper-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-whisper-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/samosa-inference-whisper-sanitize
+PASS native public Whisper adapter: 511 checks; full30s, replay/owner/input/identity refusals, timed derived text, model mutation, failure/log/deadline/cancel/SIGKILL workspace cleanup; fixture engine only
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_WITH_VISION src/vision_main.c src/vision.c src/visual_assets.c src/visual_bridge.c src/artifact.c src/registry.c src/embedding.c src/inference.c src/sessions.c src/admission.c src/operations.c src/engine_process.c src/budget.c -lsqlite3 -o build/samosa-inference-vision
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-vision /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/samosa-inference-vision
+PASS native public visual adapter: 661 checks; inspect/quit, alpha, input bounds, replay, identity/mutation, failure/deadline/cancel/parent death cleanup; fixture engine only
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_WITH_VISION -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer src/vision_main.c src/vision.c src/visual_assets.c src/visual_bridge.c src/artifact.c src/registry.c src/embedding.c src/inference.c src/sessions.c src/admission.c src/operations.c src/engine_process.c src/budget.c -lsqlite3 -o build/samosa-inference-vision-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-vision-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/samosa-inference-vision-sanitize
+PASS native public visual adapter: 671 checks; inspect/quit, alpha, input bounds, replay, identity/mutation, failure/deadline/cancel/parent death cleanup; fixture engine only
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_WITH_SUMMARY src/summary_main.c src/summary.c src/summary_protocol.c src/artifact.c src/registry.c src/embedding.c src/inference.c src/sessions.c src/admission.c src/operations.c src/engine_process.c src/budget.c -lsqlite3 -o build/samosa-inference-summary
+./build/test-summary-protocol
+summary protocol boundaries PASS
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-summary /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/samosa-inference-summary
+PASS public summary: 478 checks; framing, pins, replay/owner, controls and invalid responses
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_WITH_SUMMARY -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer src/summary_main.c src/summary.c src/summary_protocol.c src/artifact.c src/registry.c src/embedding.c src/inference.c src/sessions.c src/admission.c src/operations.c src/engine_process.c src/budget.c -lsqlite3 -o build/samosa-inference-summary-sanitize
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_summary_protocol.c src/summary_protocol.c -o build/test-summary-protocol-sanitize
+./build/test-summary-protocol-sanitize
+summary protocol boundaries PASS
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-summary-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/samosa-inference-summary-sanitize
+PASS public summary: 478 checks; framing, pins, replay/owner, controls and invalid responses

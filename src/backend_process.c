@@ -4,9 +4,6 @@
 #include "engine_process.h"
 #include "json.h"
 #include <sys/file.h>
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
-#endif
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -118,14 +115,6 @@ static int configuration_read(SamosaBackendLaunch *c) {
     }
     fclose(in);return ok;
 }
-static int executable_path(char self[PATH_MAX]) {
-#ifdef __APPLE__
-    uint32_t size=PATH_MAX;char path[PATH_MAX];
-    return !_NSGetExecutablePath(path,&size)&&realpath(path,self)!=NULL;
-#else
-    ssize_t n=readlink("/proc/self/exe",self,PATH_MAX-1);if(n<=0)return 0;self[n]=0;return 1;
-#endif
-}
 static int owner_lease(const char *marker) {
     char path[PATH_MAX];if(snprintf(path,sizeof(path),"%s.lock",marker)>=(int)sizeof(path))return -1;
     int fd=open(path,O_RDWR|O_CREAT|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC,0600);if(fd<0)return -1;
@@ -225,7 +214,7 @@ int samosa_backend_process_start(const SamosaBackendOwner *owner, const SamosaBa
     char self[PATH_MAX];FILE *configuration=tmpfile();
     if(!configuration){close(lease);return 0;}
     int fd=fileno(configuration);
-    int ok=fcntl(fd,F_SETFD,FD_CLOEXEC)==0&&executable_path(self)&&configuration_write(configuration,config);
+    int ok=fcntl(fd,F_SETFD,FD_CLOEXEC)==0&&engine_process_executable(self)&&configuration_write(configuration,config);
     char *command=NULL;size_t length=0;FILE *args=ok?open_memstream(&command,&length):NULL;
     if(args){fputc('[',args);json_quote(args,self,strlen(self));fputs(",\"--inference-primary-backend\"]",args);ok=!fclose(args);}else ok=0;
     BackendGuard *guard=ok?calloc(1,sizeof(*guard)):NULL;
