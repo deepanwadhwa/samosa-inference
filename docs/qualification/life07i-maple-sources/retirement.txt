@@ -1,0 +1,2 @@
+Retired 32 parent source/test/header copies (7115 lines) after baseline/delegated/owner native checks passed. All source bytes preserved; native test edits are only owner include paths.
+Root reference fixtures remain for legacy drivers awaiting Python removal; ignored local generated data is preserved. Owner fixtures are explicit frozen test inputs for standalone native qualification.

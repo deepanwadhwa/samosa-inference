@@ -1,0 +1,29 @@
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_maple_native MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+cp components/samosa-inference/build/test_maple_native build/test-maple-native
+Testing add_rms_norm...
+add_rms_norm OK!
+Testing qk_norm_rope...
+qk_norm_rope OK!
+Testing fused_router...
+fused_router OK!
+Testing swiglu...
+swiglu OK!
+Testing load_maple_model and tiny generation...
+[Mem] Before loading model: 57 MB
+Warning: lm_head is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.0.self_attn.qkv_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.0.self_attn.o_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.0.mlp.gate_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.0.mlp.up_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.0.mlp.down_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.1.self_attn.qkv_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.1.self_attn.o_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.1.mlp.switch_mlp.up_gate_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.1.mlp.switch_mlp.down_proj is NOT quantized! No .scales or .row_alpha found!
+[Mem] After loading model: 57 MB
+Encoded 5 tokens.
+Running prefill...
+[Mem] Peak during prefill: 94 MB
+Running decode...
+[Mem] Peak during decode: 95 MB
+All Maple tensor ops, model load, and tokenizer passed!

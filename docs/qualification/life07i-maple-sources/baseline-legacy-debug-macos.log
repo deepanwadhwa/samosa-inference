@@ -1,0 +1,160 @@
+In file included from tests/test_maple_gate_c_debug.cpp:1:
+In file included from vendor/mlx/mlx/mlx.h:5:
+In file included from vendor/mlx/mlx/array.h:10:
+vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from tests/test_maple_gate_c_debug.cpp:1:
+In file included from vendor/mlx/mlx/mlx.h:5:
+In file included from vendor/mlx/mlx/array.h:12:
+In file included from vendor/mlx/mlx/dtype.h:9:
+In file included from vendor/mlx/mlx/types/complex.h:5:
+In file included from vendor/mlx/mlx/types/half_types.h:32:
+vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+In file included from tests/test_maple_gate_c_debug.cpp:1:
+In file included from vendor/mlx/mlx/mlx.h:5:
+In file included from vendor/mlx/mlx/array.h:13:
+In file included from vendor/mlx/mlx/event.h:8:
+In file included from vendor/mlx/mlx/stream.h:8:
+vendor/mlx/mlx/device.h:28:42: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   28 |   bool operator==(const Device&) const = default;
+      |                                          ^
+In file included from tests/test_maple_gate_c_debug.cpp:1:
+In file included from vendor/mlx/mlx/mlx.h:5:
+In file included from vendor/mlx/mlx/array.h:13:
+In file included from vendor/mlx/mlx/event.h:8:
+vendor/mlx/mlx/stream.h:18:42: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   18 |   bool operator==(const Stream&) const = default;
+      |                                          ^
+In file included from tests/test_maple_gate_c_debug.cpp:1:
+In file included from vendor/mlx/mlx/mlx.h:15:
+In file included from vendor/mlx/mlx/fast.h:9:
+vendor/mlx/mlx/backend/common/metal_kernel.h:17:50: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   17 |   bool operator==(const CompileOptions&) const = default;
+      |                                                  ^
+tests/test_maple_gate_c_debug.cpp:9:86: warning: unused parameter 'atol' [-Wunused-parameter]
+    9 | void assert_allclose(const array& a, const array& b, const std::string& label, float atol=1e-3, float rtol=1e-3) {
+      |                                                                                      ^
+tests/test_maple_gate_c_debug.cpp:9:103: warning: unused parameter 'rtol' [-Wunused-parameter]
+    9 | void assert_allclose(const array& a, const array& b, const std::string& label, float atol=1e-3, float rtol=1e-3) {
+      |                                                                                                       ^
+tests/test_maple_gate_c_debug.cpp:29:20: error: no member named 'word_embeddings_' in 'samosa::maple::MapleModel'
+   29 |     auto h = model.word_embeddings_(x);
+      |              ~~~~~ ^
+tests/test_maple_gate_c_debug.cpp:33:17: error: use of undeclared identifier 'create_attention_mask'
+   33 |     auto mask = create_attention_mask(x, caches);
+      |                 ^~~~~~~~~~~~~~~~~~~~~
+9 warnings and 2 errors generated.
+In file included from src/maple/maple_model.cpp:1:
+In file included from src/maple/maple_model.h:3:
+In file included from vendor/mlx/mlx/mlx.h:5:
+In file included from vendor/mlx/mlx/array.h:10:
+vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from src/maple/maple_model.cpp:1:
+In file included from src/maple/maple_model.h:3:
+In file included from vendor/mlx/mlx/mlx.h:5:
+In file included from vendor/mlx/mlx/array.h:12:
+In file included from vendor/mlx/mlx/dtype.h:9:
+In file included from vendor/mlx/mlx/types/complex.h:5:
+In file included from vendor/mlx/mlx/types/half_types.h:32:
+vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+In file included from src/maple/maple_model.cpp:1:
+In file included from src/maple/maple_model.h:3:
+In file included from vendor/mlx/mlx/mlx.h:5:
+In file included from vendor/mlx/mlx/array.h:13:
+In file included from vendor/mlx/mlx/event.h:8:
+In file included from vendor/mlx/mlx/stream.h:8:
+vendor/mlx/mlx/device.h:28:42: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   28 |   bool operator==(const Device&) const = default;
+      |                                          ^
+In file included from src/maple/maple_model.cpp:1:
+In file included from src/maple/maple_model.h:3:
+In file included from vendor/mlx/mlx/mlx.h:5:
+In file included from vendor/mlx/mlx/array.h:13:
+In file included from vendor/mlx/mlx/event.h:8:
+vendor/mlx/mlx/stream.h:18:42: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   18 |   bool operator==(const Stream&) const = default;
+      |                                          ^
+In file included from src/maple/maple_model.cpp:1:
+In file included from src/maple/maple_model.h:3:
+In file included from vendor/mlx/mlx/mlx.h:15:
+In file included from vendor/mlx/mlx/fast.h:9:
+vendor/mlx/mlx/backend/common/metal_kernel.h:17:50: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   17 |   bool operator==(const CompileOptions&) const = default;
+      |                                                  ^
+7 warnings generated.
+In file included from src/maple/maple_expert_views.cpp:1:
+In file included from src/maple/maple_expert_views.h:7:
+In file included from vendor/mlx/mlx/mlx.h:5:
+In file included from vendor/mlx/mlx/array.h:10:
+vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from src/maple/maple_expert_views.cpp:1:
+In file included from src/maple/maple_expert_views.h:7:
+In file included from vendor/mlx/mlx/mlx.h:5:
+In file included from vendor/mlx/mlx/array.h:12:
+In file included from vendor/mlx/mlx/dtype.h:9:
+In file included from vendor/mlx/mlx/types/complex.h:5:
+In file included from vendor/mlx/mlx/types/half_types.h:32:
+vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+In file included from src/maple/maple_expert_views.cpp:1:
+In file included from src/maple/maple_expert_views.h:7:
+In file included from vendor/mlx/mlx/mlx.h:5:
+In file included from vendor/mlx/mlx/array.h:13:
+In file included from vendor/mlx/mlx/event.h:8:
+In file included from vendor/mlx/mlx/stream.h:8:
+vendor/mlx/mlx/device.h:28:42: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   28 |   bool operator==(const Device&) const = default;
+      |                                          ^
+In file included from src/maple/maple_expert_views.cpp:1:
+In file included from src/maple/maple_expert_views.h:7:
+In file included from vendor/mlx/mlx/mlx.h:5:
+In file included from vendor/mlx/mlx/array.h:13:
+In file included from vendor/mlx/mlx/event.h:8:
+vendor/mlx/mlx/stream.h:18:42: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   18 |   bool operator==(const Stream&) const = default;
+      |                                          ^
+In file included from src/maple/maple_expert_views.cpp:1:
+In file included from src/maple/maple_expert_views.h:7:
+In file included from vendor/mlx/mlx/mlx.h:15:
+In file included from vendor/mlx/mlx/fast.h:9:
+vendor/mlx/mlx/backend/common/metal_kernel.h:17:50: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   17 |   bool operator==(const CompileOptions&) const = default;
+      |                                                  ^
+7 warnings generated.

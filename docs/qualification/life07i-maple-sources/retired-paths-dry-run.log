@@ -1,0 +1,31 @@
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference maple-engine MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+mkdir -p build
+cp components/samosa-inference/build/samosa-maple build/samosa-maple
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference maple-pack MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+mkdir -p build
+cp components/samosa-inference/build/maple-pack build/maple-pack
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_maple_components MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+mkdir -p build
+cp components/samosa-inference/build/test_maple_components build/test-maple-components
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_maple_model MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+mkdir -p build
+cp components/samosa-inference/build/test_maple_model build/test-maple-model
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_maple_greedy_parity MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+mkdir -p build
+cp components/samosa-inference/build/test_maple_greedy_parity build/test-maple-greedy-parity
+MAX_FOOTPRINT_MB=${MAX_FOOTPRINT_MB:-1000} \
+	  MAX_SWAP_DELTA_MB=${MAX_SWAP_DELTA_MB:-64} \
+	  SAMOSA_MAPLE_EXPERT_BUDGET_MB=${SAMOSA_MAPLE_EXPERT_BUDGET_MB:-64} \
+	  METAL_PATH=build/mlx-build/mlx/backend/metal/kernels \
+	  sh tools/run_memory_guarded.sh build/test-maple-greedy-parity
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_maple_streamed_logits MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+mkdir -p build
+cp components/samosa-inference/build/test_maple_streamed_logits build/test-maple-streamed-logits
+MAX_FOOTPRINT_MB=${MAX_FOOTPRINT_MB:-1000} \
+	  MAX_SWAP_DELTA_MB=${MAX_SWAP_DELTA_MB:-64} \
+	  SAMOSA_MAPLE_EXPERT_BUDGET_MB=${SAMOSA_MAPLE_EXPERT_BUDGET_MB:-64} \
+	  METAL_PATH=build/mlx-build/mlx/backend/metal/kernels \
+	  sh tools/run_memory_guarded.sh build/test-maple-streamed-logits
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_attn_parity MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+mkdir -p build
+cp components/samosa-inference/build/test_attn_parity build/test_attn_parity

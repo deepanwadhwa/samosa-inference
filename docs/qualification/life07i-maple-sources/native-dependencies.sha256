@@ -1,0 +1,5 @@
+073d844588bce4e72bc4699ee4e2a5deb254e91ef0339a3795b5c92976605ab7  build/mlx-build/libmlx.a
+846add228d562bb224b11f18c4655b75a05f3336e543654ce49943577e26cd5a  build/mlx-build/mlx/backend/metal/kernels/mlx.metallib
+290b0d1556da8b8b82e326db8a475f56dd176e71e4153567b767fb8c9410f58f  build/mlx-build/jaccl/libjaccl.a
+2432cbf7f4258453538eca193cd937fc777462ae2ce8ee9f46e6ee460ef56bea  build/mlx-build/_deps/json-src/include/nlohmann/json.hpp
+66aff4cf6e7d7f11447f1a21f31d277663f5ea2242f93960fe2fa2e41737f007  /private/tmp/samosa-life07i-parent-maple

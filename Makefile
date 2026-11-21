@@ -931,6 +931,66 @@ sanitize-qwen-engine-serve: | build
 test: test-qwen-engine-core
 sanitize: sanitize-qwen-engine-core
 
+# Existing Maple model/server, packer and native tests. Reuse the declared
+# matching native MLX source/build pair above; do not rebuild/download MLX.
+MAPLE_STREAMING_SOURCES = engines/maple/maple_expert_views.cpp engines/maple/maple_expert_store.cpp
+MAPLE_MODEL_SOURCES = engines/maple/maple_model.cpp $(MAPLE_STREAMING_SOURCES)
+MAPLE_TOKENIZER_SOURCE = engines/maple/tokenizer.cpp
+MAPLE_HEADERS = $(wildcard engines/maple/*.h) engines/json.h engines/tok.h engines/tok_unicode.h engines/samosa_http.h engines/expert_cache.h
+MAPLE_CXXFLAGS = -std=c++17 -O2 -Wall -Wextra
+MAPLE_INCLUDE = $(VISUAL_MLX_INCLUDE) -Iengines/maple
+MAPLE_MODEL_TESTS = components model cache_boundary gate_a gate_c gate_c_debug gate_d gate_e expert_views
+MAPLE_TOKENIZER_TESTS = native greedy_parity streamed_logits raw_parity cache_diagnosis cache_regression tokenizer
+MAPLE_MODEL_TEST_BINS = $(addprefix build/test_maple_,$(MAPLE_MODEL_TESTS))
+MAPLE_TOKENIZER_TEST_BINS = $(addprefix build/test_maple_,$(MAPLE_TOKENIZER_TESTS))
+build/maple-expert-cache.o: engines/expert_cache.c engines/expert_cache.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Iengines -c $< -o $@
+.PHONY: maple-engine maple-pack maple-test-builds test-maple-portable test-maple-core test-maple-tensors sanitize-maple-core
+maple-engine: engines/maple/samosa_maple.cpp $(MAPLE_MODEL_SOURCES) $(MAPLE_TOKENIZER_SOURCE) $(MAPLE_HEADERS) build/maple-expert-cache.o visual-mlx-check | build
+	$(CXX) $(MAPLE_CXXFLAGS) $(MAPLE_INCLUDE) engines/maple/samosa_maple.cpp engines/maple/maple_model.cpp $(MAPLE_TOKENIZER_SOURCE) $(MAPLE_STREAMING_SOURCES) build/maple-expert-cache.o -o build/samosa-maple $(VISUAL_MLX_LIBS)
+maple-pack: tools/maple_pack.cpp engines/maple/maple_expert_store.cpp $(MAPLE_HEADERS) build/maple-expert-cache.o | build
+	$(CXX) $(MAPLE_CXXFLAGS) -Iengines tools/maple_pack.cpp engines/maple/maple_expert_store.cpp build/maple-expert-cache.o -o build/maple-pack
+build/test_maple_openai_messages: tests/test_maple_openai_messages.cpp engines/maple/openai_message_content.h engines/json.h | build
+	$(CXX) $(MAPLE_CXXFLAGS) -Iengines $< -o $@
+build/test_maple_expert_store: tests/test_maple_expert_store.cpp engines/maple/maple_expert_store.cpp $(MAPLE_HEADERS) build/maple-expert-cache.o | build
+	$(CXX) $(MAPLE_CXXFLAGS) -Iengines $< engines/maple/maple_expert_store.cpp build/maple-expert-cache.o -o $@
+$(MAPLE_MODEL_TEST_BINS): build/test_maple_%: tests/test_maple_%.cpp $(MAPLE_MODEL_SOURCES) $(MAPLE_HEADERS) build/maple-expert-cache.o | build visual-mlx-check
+	$(CXX) $(MAPLE_CXXFLAGS) $(MAPLE_INCLUDE) $< $(MAPLE_MODEL_SOURCES) build/maple-expert-cache.o -o $@ $(VISUAL_MLX_LIBS)
+$(MAPLE_TOKENIZER_TEST_BINS): build/test_maple_%: tests/test_maple_%.cpp $(MAPLE_MODEL_SOURCES) $(MAPLE_TOKENIZER_SOURCE) $(MAPLE_HEADERS) build/maple-expert-cache.o | build visual-mlx-check
+	$(CXX) $(MAPLE_CXXFLAGS) $(MAPLE_INCLUDE) $(if $(filter build/test_maple_raw_parity,$@),-I"$(MLX_BUILD_DIR)/_deps/json-src/include") $< engines/maple/maple_model.cpp $(MAPLE_TOKENIZER_SOURCE) $(MAPLE_STREAMING_SOURCES) build/maple-expert-cache.o -o $@ $(VISUAL_MLX_LIBS)
+build/maple-mlx-smoke: tests/maple_mlx_smoke.cpp | build visual-mlx-check
+	$(CXX) $(MAPLE_CXXFLAGS) $(VISUAL_MLX_INCLUDE) $< -o $@ $(VISUAL_MLX_LIBS)
+build/test_attn_parity: tests/test_attn_parity.cpp $(MAPLE_MODEL_SOURCES) $(MAPLE_HEADERS) build/maple-expert-cache.o | build visual-mlx-check
+	$(CXX) $(MAPLE_CXXFLAGS) $(MAPLE_INCLUDE) $< $(MAPLE_MODEL_SOURCES) build/maple-expert-cache.o -o $@ $(VISUAL_MLX_LIBS)
+# These two old scratch diagnostics also fail against the parent baseline's
+# private model API. Preserve their source and explicit reproduction targets;
+# they were never members of the parent's supported native test suite.
+MAPLE_LEGACY_DIAGNOSTICS = build/test_maple_gate_c_debug build/test_maple_raw_parity
+maple-test-builds: $(filter-out $(MAPLE_LEGACY_DIAGNOSTICS),$(MAPLE_MODEL_TEST_BINS) $(MAPLE_TOKENIZER_TEST_BINS)) build/test_maple_openai_messages build/test_maple_expert_store build/maple-mlx-smoke build/test_attn_parity
+test-maple-core: build/test_maple_openai_messages build/test_maple_expert_store build/test_maple_expert_views build/test_maple_cache_boundary build/maple-mlx-smoke
+	./build/test_maple_openai_messages
+	./build/test_maple_expert_store
+	METAL_PATH="$(MLX_BUILD_DIR)/mlx/backend/metal/kernels" ./build/test_maple_expert_views
+	METAL_PATH="$(MLX_BUILD_DIR)/mlx/backend/metal/kernels" ./build/test_maple_cache_boundary
+	METAL_PATH="$(MLX_BUILD_DIR)/mlx/backend/metal/kernels" ./build/maple-mlx-smoke
+test-maple-tensors: build/test_maple_components build/test_maple_model build/test_maple_native build/test_attn_parity
+	METAL_PATH="$(MLX_BUILD_DIR)/mlx/backend/metal/kernels" ./build/test_maple_components
+	METAL_PATH="$(MLX_BUILD_DIR)/mlx/backend/metal/kernels" ./build/test_maple_model
+	METAL_PATH="$(MLX_BUILD_DIR)/mlx/backend/metal/kernels" ./build/test_maple_native
+	METAL_PATH="$(MLX_BUILD_DIR)/mlx/backend/metal/kernels" ./build/test_attn_parity
+sanitize-maple-core: | build visual-mlx-check
+	$(CC) -std=c11 -O1 -g -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -c engines/expert_cache.c -o build/maple-expert-cache-sanitize.o
+	$(CXX) -std=c++17 -O1 -g -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_maple_openai_messages.cpp -o build/test_maple_openai_messages-sanitize
+	./build/test_maple_openai_messages-sanitize
+	$(CXX) -std=c++17 -O1 -g -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_maple_expert_store.cpp engines/maple/maple_expert_store.cpp build/maple-expert-cache-sanitize.o -o build/test_maple_expert_store-sanitize
+	./build/test_maple_expert_store-sanitize
+	$(CXX) -std=c++17 -O1 -g $(MAPLE_INCLUDE) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_maple_expert_views.cpp $(MAPLE_MODEL_SOURCES) build/maple-expert-cache-sanitize.o -o build/test_maple_expert_views-sanitize $(VISUAL_MLX_LIBS)
+	METAL_PATH="$(MLX_BUILD_DIR)/mlx/backend/metal/kernels" ./build/test_maple_expert_views-sanitize
+test-maple-portable: build/test_maple_openai_messages build/test_maple_expert_store
+	./build/test_maple_openai_messages
+	./build/test_maple_expert_store
+test: test-maple-portable
+
 # Extend the existing decision transport fixture for public ownership/control
 # gates. Tiny fake loader dependency and dummy model bytes, never actual-model
 # evidence. Real model pins remain a separate explicit qualification runner.

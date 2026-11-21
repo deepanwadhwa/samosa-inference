@@ -1,0 +1,416 @@
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference maple-engine MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+c++ -std=c++17 -O2 -Wall -Wextra -I"/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" -I"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -Iengines -Iengines/maple engines/maple/samosa_maple.cpp engines/maple/maple_model.cpp engines/maple/tokenizer.cpp engines/maple/maple_expert_views.cpp engines/maple/maple_expert_store.cpp build/maple-expert-cache.o -o build/samosa-maple -L"/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" -lmlx /Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/jaccl/libjaccl.a -framework Foundation -framework Metal -framework Accelerate -lc++
+In file included from engines/maple/samosa_maple.cpp:1:
+In file included from engines/maple/maple_model.h:3:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:10:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from engines/maple/samosa_maple.cpp:1:
+In file included from engines/maple/maple_model.h:3:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:12:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/dtype.h:9:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/complex.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/half_types.h:32:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+In file included from engines/maple/samosa_maple.cpp:1:
+In file included from engines/maple/maple_model.h:3:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:13:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/event.h:8:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/stream.h:8:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/device.h:28:42: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   28 |   bool operator==(const Device&) const = default;
+      |                                          ^
+In file included from engines/maple/samosa_maple.cpp:1:
+In file included from engines/maple/maple_model.h:3:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:13:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/event.h:8:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/stream.h:18:42: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   18 |   bool operator==(const Stream&) const = default;
+      |                                          ^
+In file included from engines/maple/samosa_maple.cpp:1:
+In file included from engines/maple/maple_model.h:3:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:15:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/fast.h:9:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/backend/common/metal_kernel.h:17:50: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   17 |   bool operator==(const CompileOptions&) const = default;
+      |                                                  ^
+In file included from engines/maple/samosa_maple.cpp:4:
+engines/maple/../samosa_http.h:348:40: warning: missing field 'ss_family' initializer [-Wmissing-field-initializers]
+  348 |         struct sockaddr_storage peer={0}; socklen_t peer_size=sizeof(peer);
+      |                                        ^
+engines/maple/../samosa_http.h:389:34: warning: missing field 'sin_family' initializer [-Wmissing-field-initializers]
+  389 |     struct sockaddr_in address={0}; address.sin_family=AF_INET;
+      |                                  ^
+engines/maple/../samosa_http.h:421:13: warning: unused function 'samosa_http_server_stop' [-Wunused-function]
+  421 | static void samosa_http_server_stop(SamosaHttpServer *server) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~
+10 warnings generated.
+In file included from engines/maple/maple_model.cpp:1:
+In file included from engines/maple/maple_model.h:3:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:10:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from engines/maple/maple_model.cpp:1:
+In file included from engines/maple/maple_model.h:3:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:12:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/dtype.h:9:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/complex.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/half_types.h:32:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+In file included from engines/maple/maple_model.cpp:1:
+In file included from engines/maple/maple_model.h:3:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:13:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/event.h:8:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/stream.h:8:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/device.h:28:42: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   28 |   bool operator==(const Device&) const = default;
+      |                                          ^
+In file included from engines/maple/maple_model.cpp:1:
+In file included from engines/maple/maple_model.h:3:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:13:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/event.h:8:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/stream.h:18:42: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   18 |   bool operator==(const Stream&) const = default;
+      |                                          ^
+In file included from engines/maple/maple_model.cpp:1:
+In file included from engines/maple/maple_model.h:3:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:15:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/fast.h:9:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/backend/common/metal_kernel.h:17:50: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   17 |   bool operator==(const CompileOptions&) const = default;
+      |                                                  ^
+7 warnings generated.
+In file included from engines/maple/maple_expert_views.cpp:1:
+In file included from engines/maple/maple_expert_views.h:7:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:10:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:36: warning: unused parameter 'ptr' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                    ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:39:48: warning: unused parameter 'size' [-Wunused-parameter]
+   39 |   virtual Buffer make_buffer(void* ptr, size_t size) {
+      |                                                ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/allocator.h:42:31: warning: unused parameter 'buffer' [-Wunused-parameter]
+   42 |   virtual void release(Buffer buffer) {}
+      |                               ^
+In file included from engines/maple/maple_expert_views.cpp:1:
+In file included from engines/maple/maple_expert_views.h:7:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:12:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/dtype.h:9:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/complex.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/half_types.h:32:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:29:3: warning: definition of implicit copy assignment operator for '_MLX_BFloat16' is deprecated because it has a user-declared copy constructor [-Wdeprecated-copy]
+   29 |   _MLX_BFloat16(_MLX_BFloat16 const&) = default;
+      |   ^
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/types/bf16.h:38:19: note: in implicit copy assignment operator for 'mlx::core::_MLX_BFloat16' first required here
+   38 |     return (*this = _MLX_BFloat16(x));
+      |                   ^
+In file included from engines/maple/maple_expert_views.cpp:1:
+In file included from engines/maple/maple_expert_views.h:7:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:13:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/event.h:8:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/stream.h:8:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/device.h:28:42: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   28 |   bool operator==(const Device&) const = default;
+      |                                          ^
+In file included from engines/maple/maple_expert_views.cpp:1:
+In file included from engines/maple/maple_expert_views.h:7:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:5:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/array.h:13:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/event.h:8:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/stream.h:18:42: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   18 |   bool operator==(const Stream&) const = default;
+      |                                          ^
+In file included from engines/maple/maple_expert_views.cpp:1:
+In file included from engines/maple/maple_expert_views.h:7:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/mlx.h:15:
+In file included from /Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/fast.h:9:
+/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx/mlx/backend/common/metal_kernel.h:17:50: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+   17 |   bool operator==(const CompileOptions&) const = default;
+      |                                                  ^
+7 warnings generated.
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[2](array.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[3](compile.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[4](device.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[5](dtype.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[6](dtype_utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[9](fast.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[10](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[11](ops.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[12](graph_utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[13](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[15](scheduler.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[16](stream.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[17](transforms.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[18](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[19](linalg.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[20](broadcasting.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[21](compiled.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[22](common.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[23](load.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[24](metal_kernel.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[25](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[26](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[27](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[28](device_info.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[29](arg_reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[30](binary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[31](conv.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[32](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[34](eig.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[35](eigh.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[36](encoder.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[37](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[38](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[39](matmul.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[40](cblas.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[41](masked_mm.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[42](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[43](quantized.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[44](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[45](scan.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[46](select.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[47](softmax.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[48](logsumexp.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[49](sort.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[50](threefry.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[51](indexing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[52](luf.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[53](qrf.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[54](svd.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[55](inverse.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[56](cholesky.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[57](unary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[58](eval.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[59](compiled_preamble.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[60](bnns.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[61](compiled.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[62](jit_compiler.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[71](load.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[72](safetensors.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[74](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[75](unary_ops.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[76](binary_ops.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[77](ternary_ops.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[78](reduce_utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[79](scatter.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[80](masked_scatter.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[81](gather.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[82](gather_front.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[83](gather_axis.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[84](scatter_axis.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[85](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[86](nojit_kernels.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[87](allocator.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[88](binary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[89](device_info.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[90](compiled.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[91](conv.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[92](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[93](custom_kernel.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[95](device.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[96](event.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[97](eval.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[98](fence.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[99](fft.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[100](hadamard.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[101](indexing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[102](logsumexp.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[103](matmul.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[104](scaled_dot_product_attention.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[105](metal.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[106](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[107](quantized.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[108](normalization.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[109](rope.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[110](scan.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[111](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[112](softmax.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[113](sort.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[114](reduce.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[115](ternary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[116](unary.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[117](resident.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[118](utils.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[119](no_cuda.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[120](copy.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[121](primitives.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[122](slicing.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+ld: warning: object file (/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/libmlx.a[123](version.cpp.o)) was built for newer 'macOS' version (26.5.1) than being linked (26.0)
+cp components/samosa-inference/build/samosa-maple build/samosa-maple
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference maple-pack MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+c++ -std=c++17 -O2 -Wall -Wextra -Iengines tools/maple_pack.cpp engines/maple/maple_expert_store.cpp build/maple-expert-cache.o -o build/maple-pack
+cp components/samosa-inference/build/maple-pack build/maple-pack
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_maple_openai_messages MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+make[1]: `build/test_maple_openai_messages' is up to date.
+cp components/samosa-inference/build/test_maple_openai_messages build/test-maple-openai-messages
+build/test-maple-openai-messages
+Maple OpenAI message parsing: PASS
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_maple_expert_store MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+make[1]: `build/test_maple_expert_store' is up to date.
+cp components/samosa-inference/build/test_maple_expert_store build/test-maple-expert-store
+build/test-maple-expert-store
+PASS: maple expert store indexes safetensor slices and reads exact slabs
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_maple_expert_views MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+cp components/samosa-inference/build/test_maple_expert_views build/test-maple-expert-views
+METAL_PATH="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/mlx/backend/metal/kernels" build/test-maple-expert-views
+PASS: Maple MLX views preserve lease lifetime and projection parity
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_maple_cache_boundary MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+cp components/samosa-inference/build/test_maple_cache_boundary build/test-maple-cache-boundary
+METAL_PATH="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/mlx/backend/metal/kernels" build/test-maple-cache-boundary
+=== 4. CACHE VALIDATION (Boundary Math) ===
+--- Global KVCache Test ---
+Prefill size: 10, Offset: 10
+Decode step 0, Cache Size: 11, Offset: 11
+Decode step 1, Cache Size: 12, Offset: 12
+Decode step 2, Cache Size: 13, Offset: 13
+Decode step 3, Cache Size: 14, Offset: 14
+Decode step 4, Cache Size: 15, Offset: 15
+--- RotatingKVCache Boundary Test ---
+Step 510 | Cache Size: 511 | First token val: 0 | Last token val: 510 | Offset: 511
+Step 511 | Cache Size: 512 | First token val: 0 | Last token val: 511 | Offset: 512
+Step 512 | Cache Size: 512 | First token val: 512 | Last token val: 511 | Offset: 513
+Step 513 | Cache Size: 512 | First token val: 512 | Last token val: 511 | Offset: 514
+Step 514 | Cache Size: 512 | First token val: 512 | Last token val: 511 | Offset: 515
+PASS: KV Cache semantics verified natively.
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_maple_native MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+cp components/samosa-inference/build/test_maple_native build/test-maple-native
+cd "components/samosa-inference" && METAL_PATH="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/mlx/backend/metal/kernels" "/Users/deepanwadhwa/Documents/samosa-chat/build/test-maple-native"
+Testing add_rms_norm...
+add_rms_norm OK!
+Testing qk_norm_rope...
+qk_norm_rope OK!
+Testing fused_router...
+fused_router OK!
+Testing swiglu...
+swiglu OK!
+Testing load_maple_model and tiny generation...
+[Mem] Before loading model: 57 MB
+Warning: lm_head is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.0.self_attn.qkv_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.0.self_attn.o_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.0.mlp.gate_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.0.mlp.up_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.0.mlp.down_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.1.self_attn.qkv_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.1.self_attn.o_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.1.mlp.switch_mlp.up_gate_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.1.mlp.switch_mlp.down_proj is NOT quantized! No .scales or .row_alpha found!
+[Mem] After loading model: 57 MB
+Encoded 5 tokens.
+Running prefill...
+[Mem] Peak during prefill: 94 MB
+Running decode...
+[Mem] Peak during decode: 95 MB
+All Maple tensor ops, model load, and tokenizer passed!
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_maple_components MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+cp components/samosa-inference/build/test_maple_components build/test-maple-components
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_maple_model MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+cp components/samosa-inference/build/test_maple_model build/test-maple-model
+Running Maple C++ Components Tests
+cd "components/samosa-inference" && METAL_PATH="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/mlx/backend/metal/kernels" "/Users/deepanwadhwa/Documents/samosa-chat/build/test-maple-components"
+Running Maple C++ Components Tests
+  - Shape: (2, 32, 128)
+  - Max Abs Error: 0
+  - Tolerance: rtol=0.001, atol=0.0001
+  - Status: PASS
+RMSNorm PASS
+  - Shape: (2, 32, 16, 128)
+  - Max Abs Error: 0
+  - Tolerance: rtol=0.001, atol=0.0001
+  - Status: PASS
+  - Shape: (2, 32, 4, 128)
+  - Max Abs Error: 0
+  - Tolerance: rtol=0.001, atol=0.0001
+  - Status: PASS
+RoPE PASS
+
+[Router Test]
+  - Reference Top-8 IDs (Row 0): 248 249 250 251 252 253 254 255 
+  - Native Top-8 IDs (Row 0): 0 4 8 12 16 20 24 28 
+  - Exact ID Match: FAIL
+  - Score range: 0
+Router Indices (sorted):
+  - Shape: (2, 32, 8)
+  - Scores are uniform (degenerate fixture) — index tie-breaking is arbitrary
+  - Status: PASS (uniform)
+Router Scores:
+  - Shape: (2, 32, 8)
+  - Max Abs Error: 0
+  - Tolerance: rtol=0.001, atol=0.0001
+  - Status: PASS
+  - Selected top-8 expert IDs (first token): 0 16 8 24 4 20 12 28 
+  - Max routing-weight error: 0
+Router PASS
+  - Shape: (2, 32, 128)
+  - Max Abs Error: 0
+  - Tolerance: rtol=0.01, atol=0.01
+  - Status: PASS
+SwiGLU PASS
+  - Shape: (1, 8, 128)
+  - Max Abs Error: 1.19209e-07
+  - Tolerance: rtol=0.01, atol=0.01
+  - Status: PASS
+Decoder Block PASS
+Running Maple C++ Model Tests
+cd "components/samosa-inference" && METAL_PATH="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build/mlx/backend/metal/kernels" "/Users/deepanwadhwa/Documents/samosa-chat/build/test-maple-model"
+Running Maple C++ Model Test
+Warning: model.layers.0.mlp.switch_mlp.up_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.0.mlp.switch_mlp.gate_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.0.mlp.switch_mlp.down_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.1.mlp.switch_mlp.up_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.1.mlp.switch_mlp.gate_proj is NOT quantized! No .scales or .row_alpha found!
+Warning: model.layers.1.mlp.switch_mlp.down_proj is NOT quantized! No .scales or .row_alpha found!
+[Prefill Test]
+  - Shape: (1, 8, 512)
+  - Max Abs Error: 1.63913e-06
+  - Tolerance: rtol=0.01, atol=0.01
+  - Status: PASS
+[Decode 1 Test]
+  - Shape: (1, 1, 512)
+  - Max Abs Error: 1.3113e-06
+  - Tolerance: rtol=0.01, atol=0.01
+  - Status: PASS
+[Decode 2 Test]
+  - Shape: (1, 1, 512)
+  - Max Abs Error: 1.01328e-06
+  - Tolerance: rtol=0.01, atol=0.01
+  - Status: PASS
+Model tests passed!
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/test_attn_parity MLX_DIR="/Users/deepanwadhwa/Documents/samosa-chat/vendor/mlx" MLX_BUILD_DIR="/Users/deepanwadhwa/Documents/samosa-chat/build/mlx-build" CXX="c++" CC="cc"
+cp components/samosa-inference/build/test_attn_parity build/test_attn_parity

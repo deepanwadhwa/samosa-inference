@@ -5,7 +5,22 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-Native Mac checkpoint, 2026-11-21: LIFE-07h moves the unchanged Qwen native
+Native Mac checkpoint, 2026-11-21: LIFE-07i moves the unchanged10-file Maple
+implementation, packer and20 original C++ tests/diagnostics here. Shared cache
+ownership is consolidated, including its last parent header copy. Original
+native flags/frameworks/outputs and assertions are preserved; frozen fixture
+inputs are included for standalone testing.18 supported C++ builds,9 native
+runs,3 sanitizer checks, fresh independent source/data builds, Gateway quarantine/
+runtime settings and package/install/upgrade pass.32 parent source/test/header
+copies (7115 lines) are retired. Two scratch compile failures reproduce in the
+parent baseline and remain preserved as legacy diagnostics; no algorithms were
+changed to revive them. No real Maple checkpoint/catalogue readiness is claimed.
+See qualification/life07i-maple-sources/README.md for commands, pins and scope.
+Next LIFE-07j moves original primary launch/group/reap/probe ownership, then
+guarded legacy Whisper and shared coordination. Area3/full goal remain open;
+no Python, new model or Docker work ran.
+
+Previous native Mac checkpoint, 2026-11-21: LIFE-07h moves the unchanged Qwen native
 model/cache/vision/kernels/support implementation and useful original tests here.
 Chat delegates CPU/OpenMP/runtime-schedule builds with original flags/outputs;
 Maple consumes the owner cache implementation. Source audit, original suites

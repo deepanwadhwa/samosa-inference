@@ -39,6 +39,41 @@ See [native source and actual-model evidence](../docs/qualification/life07h-qwen
 Backend process selection/launch lifecycle and Maple source consolidation are
 still separate unfinished ownership work.
 
+## Existing Maple engine
+
+`maple/` and `tools/maple_pack.cpp` are the original Chat native model,
+SSD expert store/views, tokenizer, HTTP implementation and packer, copied
+without implementation changes. They share the already extracted expert cache,
+tokenizer/HTTP/JSON headers. Chat delegates builds here; its duplicate source
+and cache header are retired. The original compiler options, framework links,
+binary names and streaming/full-resident guard behavior remain unchanged.
+
+```sh
+make maple-engine maple-pack maple-test-builds test-maple-core test-maple-tensors sanitize-maple-core \
+  MLX_DIR=/absolute/mlx-checkout MLX_BUILD_DIR=/absolute/mlx-build
+```
+
+Supply the same native MLX source/build pair used for the visual engines below.
+No MLX rebuild, Python or model download is required. Use its matching kernel
+library through METAL_PATH; native test targets set that path explicitly.
+The engine and packer remain `build/samosa-maple` and `build/maple-pack`.
+Portable message/store tests and the packer do not require MLX.
+
+All20 original C++ test/diagnostic sources are preserved, with only owner include
+paths changed. Eighteen compile; two old scratch diagnostics already reference
+obsolete private APIs in the parent and are retained as explicit legacy targets,
+outside maple-test-builds. Native tensor/model/attention/tiny-generation tests
+use the same frozen fixtures; the formerly local component fixtures are now
+versioned here so a separate source checkout does not need Python generation.
+Some diagnostic programs require a separately provided real model and only
+print observations; compilation does not qualify their accuracy assertions.
+
+Current evidence is native source/build and preserved behavior qualification,
+not renewed real-checkpoint/catalogue readiness. No real Maple checkpoint is
+installed on this Mac. Existing quarantine and full-resident safety checks
+remain in force; common primary-backend lifecycle ownership is still pending.
+See [source extraction evidence](../docs/qualification/life07i-maple-sources/README.md).
+
 ## T5 summary engine
 
 `t5_summary.cpp` is the existing Samosa Chat native encoder/decoder summarizer,
