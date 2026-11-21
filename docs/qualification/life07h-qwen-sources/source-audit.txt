@@ -1,0 +1,22 @@
+LIFE-07h source baseline Chat 4cb5c9c / Inference ecf729e
+
+601193765f9777ac461f8d8a3fa622a60ecaa34ffee93643d4e711ea969a93b9 313042 IDENTICAL src/qwen36b.c = components/samosa-inference/engines/qwen36b.c
+4ecfaf06e537da4af553d007f64eca54bd5100b43f42122706ac235d4d9f9bcb 37688 IDENTICAL src/expert_cache.c = components/samosa-inference/engines/expert_cache.c
+f78ed7f8e4d4102cb052a7d81fdc5ff779ce62899b34eb81b73dba803db06bac 9585 IDENTICAL src/expert_cache.h = components/samosa-inference/engines/expert_cache.h
+b157c25ec359f06cae1183ca7c3822718b72299d6a07886875ccc3530bd70e09 25318 IDENTICAL src/vision.c = components/samosa-inference/engines/vision.c
+59a233bdb02ec551e93cdd63aa2f53d760d75bc5a74ebc5fb6e69b78958620fc 3480 IDENTICAL src/vision.h = components/samosa-inference/engines/vision.h
+b8b6a223909de40cd5391e2abd6ce9a464d0d20a76ba6bc68025c718856171c5 20646 IDENTICAL src/kernels.h = components/samosa-inference/engines/kernels.h
+4b72b4753c9cc8172e48529e89a39be1f5459a10bb551b1b2276288ac8b76e0c 10260 IDENTICAL src/st.h = components/samosa-inference/engines/st.h
+c026f01fa8db0f87bdc4eaa5040c66e3b22691340c81b88d7791d42f8ab08929 2164 IDENTICAL src/compat.h = components/samosa-inference/engines/compat.h
+592b70d02e19d16390932568764ff7af5fafac5591046a14486c8b15846e882e 804 IDENTICAL src/repetition_guard.h = components/samosa-inference/engines/repetition_guard.h
+540b1d96f9257d4bfd82a72afcf72e0f77a218129c89f5e0e34fa879565baaa3 1551 IDENTICAL src/thinking_budget.h = components/samosa-inference/engines/thinking_budget.h
+3a3ebf414104a57fd14f37bf31890353593d060fae4db3c49c4f7d1116a2b134 21457 IDENTICAL src/samosa_http.h = components/samosa-inference/engines/samosa_http.h
+bac77cedf576fb582f6ce5e477ca8d8c097586aaf19d85d9a582ebc0b692d861 35373 ORIGINAL tests/test_expert_cache.c = components/samosa-inference/tests/test_expert_cache.c
+8135800716e0fa3b17fd454ce6c8137695b29200be30508585813655e3af1360 1096 ORIGINAL tests/test_repetition_guard.c = components/samosa-inference/tests/test_repetition_guard.c
+5071fe137722c3bdbdd591500b15d7e84ec69b0f28f738fc02bd38bac8b176f9 955 ORIGINAL tests/test_thinking_budget.c = components/samosa-inference/tests/test_thinking_budget.c
+8d94f6a4e6a5a842c560036ac380b272cde935e397df2af2c33403a0f0694eca 4441 ORIGINAL tests/test_groupwise_q4.c = components/samosa-inference/tests/test_groupwise_q4.c
+6c62f81920e66da210931c00ba46338360716dfdcb922dc9cca22f7bbc38b304 12373 ORIGINAL tests/test_samosa_serve.c = components/samosa-inference/tests/test_samosa_serve.c
+
+Serve test adaptation verified by exact whole-file comparison after ONLY the owner include and explicit caller App asset paths. All assertions unchanged. Original context_config/config.json is copied unchanged.
+0caf840b21e275e2d933a2d46ff7ada14b2004339cdbfbb7bf6549a65fa85b79 686 ORIGINAL tests/legacy/test_vision_logic.c; owner changes only include to vision.h
+CHAT_NOTICE matches complete Chat 4cb5c9c NOTICE. Remaining parent expert_cache.h/samosa_http.h match owner copies. Shared json.h retains only the already qualified named Unicode-buffer portability adaptation.

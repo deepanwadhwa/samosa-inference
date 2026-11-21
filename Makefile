@@ -872,6 +872,65 @@ test-vision-engine-components: tests/test_visionpsy_components.cpp engines/visio
 vision-engine-real-check: tests/test_visionpsy_real.cpp engines/visionpsy/visionpsy_model.cpp $(VISION_ENGINE_HEADERS) visual-mlx-check | build
 	$(CXX) $(VISUAL_CXXFLAGS) $(VISUAL_MLX_INCLUDE) tests/test_visionpsy_real.cpp engines/visionpsy/visionpsy_model.cpp -o build/test-visionpsy-real $(VISUAL_MLX_LIBS)
 
+# The existing Qwen native engine, cache and vision implementation. CPU builds
+# need only the system C toolchain; OpenMP preserves the existing host profile.
+QWEN_ENGINE_SOURCES = engines/qwen36b.c engines/expert_cache.c engines/vision.c
+QWEN_ENGINE_HEADERS = engines/expert_cache.h engines/vision.h engines/kernels.h engines/st.h engines/compat.h engines/repetition_guard.h engines/thinking_budget.h engines/samosa_http.h engines/json.h engines/tok.h engines/tok_unicode.h engines/stb_image.h
+ifeq ($(shell uname -s),Darwin)
+QWEN_OMP_PREFIX ?= $(shell [ -d /opt/homebrew/opt/libomp ] && echo /opt/homebrew/opt/libomp || echo /usr/local/opt/libomp)
+QWEN_OMP_CFLAGS ?= -Xclang -fopenmp -I$(QWEN_OMP_PREFIX)/include
+QWEN_OMP_LDFLAGS ?= -L$(QWEN_OMP_PREFIX)/lib -lomp
+else
+QWEN_OMP_CFLAGS ?= -fopenmp
+QWEN_OMP_LDFLAGS ?=
+endif
+.PHONY: qwen-engine qwen-omp qwen-omp-sched-runtime test-qwen-engine-core test-qwen-engine-serve sanitize-qwen-engine-core sanitize-qwen-engine-serve
+qwen-engine: $(QWEN_ENGINE_SOURCES) $(QWEN_ENGINE_HEADERS) | build
+	$(CC) -O3 -Wno-unused-function -pthread $(QWEN_ENGINE_SOURCES) -o build/qwen36b -lm
+qwen-omp: $(QWEN_ENGINE_SOURCES) $(QWEN_ENGINE_HEADERS) | build
+	$(CC) -O3 -Wno-unused-function -pthread $(QWEN_OMP_CFLAGS) $(QWEN_ENGINE_SOURCES) -o build/qwen36b -lm $(QWEN_OMP_LDFLAGS)
+qwen-omp-sched-runtime: $(QWEN_ENGINE_SOURCES) $(QWEN_ENGINE_HEADERS) | build
+	$(CC) -O3 -Wno-unused-function -pthread $(QWEN_OMP_CFLAGS) -DSAMOSA_SCHED_RUNTIME $(QWEN_ENGINE_SOURCES) -o build/qwen36b-sched-runtime -lm $(QWEN_OMP_LDFLAGS)
+build/test_expert_cache: tests/test_expert_cache.c engines/expert_cache.c engines/expert_cache.h | build
+	$(CC) -O1 -Iengines tests/test_expert_cache.c engines/expert_cache.c -o $@
+build/test_repetition_guard: tests/test_repetition_guard.c engines/repetition_guard.h | build
+	$(CC) -O1 -Iengines $< -o $@
+build/test_thinking_budget: tests/test_thinking_budget.c engines/thinking_budget.h | build
+	$(CC) -O1 -Iengines $< -o $@
+build/test_groupwise_q4: tests/test_groupwise_q4.c engines/kernels.h | build
+	$(CC) -O1 -Iengines $< -o $@ -lm
+build/test_qwen_vision: tests/legacy/test_vision_logic.c engines/vision.c engines/vision.h engines/stb_image.h | build
+	$(CC) -O1 -Iengines $< engines/vision.c -o $@ -lm
+build/test_samosa_serve: tests/test_samosa_serve.c tests/fixtures/context_config/config.json $(QWEN_ENGINE_SOURCES) $(QWEN_ENGINE_HEADERS) | build
+	$(CC) -O1 -pthread -Iengines $< engines/expert_cache.c engines/vision.c -o $@ -lm
+test-qwen-engine-core: build/test_expert_cache build/test_repetition_guard build/test_thinking_budget build/test_groupwise_q4 build/test_qwen_vision
+	./build/test_expert_cache
+	./build/test_repetition_guard
+	./build/test_thinking_budget
+	./build/test_groupwise_q4
+	./build/test_qwen_vision
+QWEN_TEST_ASSETS ?=
+test-qwen-engine-serve: build/test_samosa_serve
+	@test -f "$(QWEN_TEST_ASSETS)/app.html" -a -f "$(QWEN_TEST_ASSETS)/samosa-chat.png" || { echo "set QWEN_TEST_ASSETS to the caller's existing App assets directory" >&2; exit 2; }
+	QWEN_TEST_ASSETS="$(abspath $(QWEN_TEST_ASSETS))" ./build/test_samosa_serve
+sanitize-qwen-engine-core: | build
+	$(CC) -O1 -g -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_expert_cache.c engines/expert_cache.c -o build/test_expert_cache-sanitize
+	./build/test_expert_cache-sanitize
+	$(CC) -O1 -g -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_repetition_guard.c -o build/test_repetition_guard-sanitize
+	./build/test_repetition_guard-sanitize
+	$(CC) -O1 -g -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_thinking_budget.c -o build/test_thinking_budget-sanitize
+	./build/test_thinking_budget-sanitize
+	$(CC) -O1 -g -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_groupwise_q4.c -o build/test_groupwise_q4-sanitize -lm
+	./build/test_groupwise_q4-sanitize
+	$(CC) -O1 -g -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/legacy/test_vision_logic.c engines/vision.c -o build/test_qwen_vision-sanitize -lm
+	./build/test_qwen_vision-sanitize
+sanitize-qwen-engine-serve: | build
+	@test -f "$(QWEN_TEST_ASSETS)/app.html" -a -f "$(QWEN_TEST_ASSETS)/samosa-chat.png" || { echo "set QWEN_TEST_ASSETS to the caller's existing App assets directory" >&2; exit 2; }
+	$(CC) -O1 -g -pthread -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_samosa_serve.c engines/expert_cache.c engines/vision.c -o build/test_samosa_serve-sanitize -lm
+	QWEN_TEST_ASSETS="$(abspath $(QWEN_TEST_ASSETS))" ./build/test_samosa_serve-sanitize
+test: test-qwen-engine-core
+sanitize: sanitize-qwen-engine-core
+
 # Extend the existing decision transport fixture for public ownership/control
 # gates. Tiny fake loader dependency and dummy model bytes, never actual-model
 # evidence. Real model pins remain a separate explicit qualification runner.

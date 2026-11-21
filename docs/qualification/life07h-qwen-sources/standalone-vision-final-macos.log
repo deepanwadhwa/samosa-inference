@@ -1,0 +1,28 @@
+cc -O1 -Iengines tests/legacy/test_vision_logic.c engines/vision.c -o build/test_qwen_vision -lm
+./build/test_expert_cache
+expert cache tests: ok (16,807 exhaustive traces + 50,000 random transitions)
+./build/test_repetition_guard
+repetition guard tests: ok
+./build/test_thinking_budget
+thinking budget transition: ok
+./build/test_groupwise_q4
+groupwise q4 and mixed q8-down tests: ok
+./build/test_qwen_vision
+Loaded 1x1 image! grids: t=1 h=2 w=2
+Number of tokens: 1
+cc -O1 -g -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_expert_cache.c engines/expert_cache.c -o build/test_expert_cache-sanitize
+./build/test_expert_cache-sanitize
+expert cache tests: ok (16,807 exhaustive traces + 50,000 random transitions)
+cc -O1 -g -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_repetition_guard.c -o build/test_repetition_guard-sanitize
+./build/test_repetition_guard-sanitize
+repetition guard tests: ok
+cc -O1 -g -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_thinking_budget.c -o build/test_thinking_budget-sanitize
+./build/test_thinking_budget-sanitize
+thinking budget transition: ok
+cc -O1 -g -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_groupwise_q4.c -o build/test_groupwise_q4-sanitize -lm
+./build/test_groupwise_q4-sanitize
+groupwise q4 and mixed q8-down tests: ok
+cc -O1 -g -Iengines -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/legacy/test_vision_logic.c engines/vision.c -o build/test_qwen_vision-sanitize -lm
+./build/test_qwen_vision-sanitize
+Loaded 1x1 image! grids: t=1 h=2 w=2
+Number of tokens: 1

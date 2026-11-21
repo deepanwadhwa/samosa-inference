@@ -1,0 +1,19 @@
+./build/test_expert_cache
+expert cache tests: ok (16,807 exhaustive traces + 50,000 random transitions)
+./build/test_repetition_guard
+repetition guard tests: ok
+./build/test_thinking_budget
+thinking budget transition: ok
+./build/test_groupwise_q4
+groupwise q4 and mixed q8-down tests: ok
+./build/test_qwen_vision
+Loaded 1x1 image! grids: t=1 h=2 w=2
+Number of tokens: 1
+QWEN_TEST_ASSETS="/private/tmp/samosa-life07h-source.FQgfql/test-assets" ./build/test_samosa_serve
+[context] model_limit=262144 configured=131072 effective=131072 kv=3.91 MiB/1K tokens
+requested context 262145 exceeds this model's 262144-token limit
+[session] saved /tmp/samosa-compaction-session-Ffmk87/session.qws: 6 tokens, 0.0 MB
+[session] evicted hot conversation hot-fixture (unit test, 4 tokens)
+[context] model_limit=262144 configured=auto effective=24576 kv=3.91 MiB/1K tokens
+[context] model_limit=262144 configured=65536 effective=65536 kv=3.91 MiB/1K tokens
+samosa serve components: ok

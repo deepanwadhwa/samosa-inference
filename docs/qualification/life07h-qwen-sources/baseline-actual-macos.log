@@ -1,0 +1,15 @@
+[Memory Guard] Baseline swap: 541 MB
+[Memory Guard] Limits: 6144 MiB process-tree RSS, 0 MiB swap delta
+[decode] sampling profile=direct activations=int8-fast temp=0.7 top_k=20 top_p=0.8 presence=1.5 max_tokens=4 thinking_budget=0
+[weights] expert_quant=groupwise-q4 group=32 down_bits=4
+[ecache] budget=2.07 GB (default-16-slot) max_entries=656 layers=41 policy=LRU (expert max 3.16 MB, tutti gli expert 20.94 GB)
+[context] model_limit=262144 configured=512 effective=512 kv=39.06 MiB/1K tokens
+
+[stats] prompt=15 generated=4 stop=limit thinking=model-controlled prefill=3.439s (4.36 tok/s) decode=0.764s (3.92 tok/s) total=4.204s expert_hit=406/2896 (14.0%) expert_disk=1.650s expert_mm=0.820s peak_rss=3.60 GB
+[ecache] budget=2.07 GB payload=1.29 GB peak=1.29 GB entries=656 evictions=1834 bytes_read=4.90 GB bytes_avoided=0.80 GB failed_admissions=0 pressure_warn=0 pressure_critical=0
+[memory] freed_pool=1.9 MB allocator_relief=0.0 MB
+Hello! How can
+[Samosa reached the 4-token limit; this answer may be incomplete. Use --max-tokens to raise the ceiling.]
+[Memory Guard] Process exited with code 0
+[Memory Guard] Peak process-tree RSS: 3263 MB
+[Memory Guard] Final swap delta: 0 MB

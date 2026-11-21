@@ -1,0 +1,11 @@
+expert cache tests: ok (16,807 exhaustive traces + 50,000 random transitions)
+repetition guard tests: ok
+thinking budget transition: ok
+groupwise q4 and mixed q8-down tests: ok
+[context] model_limit=262144 configured=131072 effective=131072 kv=3.91 MiB/1K tokens
+requested context 262145 exceeds this model's 262144-token limit
+[session] saved /tmp/samosa-compaction-session-HMyJXG/session.qws: 6 tokens, 0.0 MB
+[session] evicted hot conversation hot-fixture (unit test, 4 tokens)
+[context] model_limit=262144 configured=auto effective=24576 kv=3.91 MiB/1K tokens
+[context] model_limit=262144 configured=65536 effective=65536 kv=3.91 MiB/1K tokens
+samosa serve components: ok

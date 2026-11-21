@@ -1,0 +1,3 @@
+baseline-actual-macos.log: original prompt/token budget, output, cache policy, context, exit and zero-swap checks PASS
+owner-actual-macos.log: original prompt/token budget, output, cache policy, context, exit and zero-swap checks PASS
+Short CLI compatibility check only; no general quality, throughput or full lifecycle qualification claimed.

@@ -1,0 +1,2 @@
+cc -O3 -Wno-unused-function -pthread -Xclang -fopenmp -I/opt/homebrew/opt/libomp/include \
+	  src/qwen36b.c src/expert_cache.c src/vision.c -o build/qwen36b -lm -L/opt/homebrew/opt/libomp/lib -lomp

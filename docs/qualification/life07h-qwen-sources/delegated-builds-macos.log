@@ -1,0 +1,31 @@
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference qwen-engine CC="cc"
+cc -O3 -Wno-unused-function -pthread engines/qwen36b.c engines/expert_cache.c engines/vision.c -o build/qwen36b -lm
+cp components/samosa-inference/build/qwen36b build/qwen36b
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference qwen-omp CC="cc" QWEN_OMP_CFLAGS="-Xclang -fopenmp -I/opt/homebrew/opt/libomp/include" QWEN_OMP_LDFLAGS="-L/opt/homebrew/opt/libomp/lib -lomp"
+cc -O3 -Wno-unused-function -pthread -Xclang -fopenmp -I/opt/homebrew/opt/libomp/include engines/qwen36b.c engines/expert_cache.c engines/vision.c -o build/qwen36b -lm -L/opt/homebrew/opt/libomp/lib -lomp
+cp components/samosa-inference/build/qwen36b build/qwen36b
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference qwen-omp-sched-runtime CC="cc" QWEN_OMP_CFLAGS="-Xclang -fopenmp -I/opt/homebrew/opt/libomp/include" QWEN_OMP_LDFLAGS="-L/opt/homebrew/opt/libomp/lib -lomp"
+cc -O3 -Wno-unused-function -pthread -Xclang -fopenmp -I/opt/homebrew/opt/libomp/include -DSAMOSA_SCHED_RUNTIME engines/qwen36b.c engines/expert_cache.c engines/vision.c -o build/qwen36b-sched-runtime -lm -L/opt/homebrew/opt/libomp/lib -lomp
+cp components/samosa-inference/build/qwen36b-sched-runtime build/qwen36b-sched-runtime
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference test-qwen-engine-core test-qwen-engine-serve QWEN_TEST_ASSETS="/Users/deepanwadhwa/Documents/samosa-chat/assets" CC="cc"
+cc -O1 -Iengines tests/test_expert_cache.c engines/expert_cache.c -o build/test_expert_cache
+cc -O1 -Iengines tests/test_repetition_guard.c -o build/test_repetition_guard
+cc -O1 -Iengines tests/test_thinking_budget.c -o build/test_thinking_budget
+cc -O1 -Iengines tests/test_groupwise_q4.c -o build/test_groupwise_q4 -lm
+./build/test_expert_cache
+expert cache tests: ok (16,807 exhaustive traces + 50,000 random transitions)
+./build/test_repetition_guard
+repetition guard tests: ok
+./build/test_thinking_budget
+thinking budget transition: ok
+./build/test_groupwise_q4
+groupwise q4 and mixed q8-down tests: ok
+cc -O1 -pthread -Iengines tests/test_samosa_serve.c engines/expert_cache.c engines/vision.c -o build/test_samosa_serve -lm
+QWEN_TEST_ASSETS="/Users/deepanwadhwa/Documents/samosa-chat/assets" ./build/test_samosa_serve
+[context] model_limit=262144 configured=131072 effective=131072 kv=3.91 MiB/1K tokens
+requested context 262145 exceeds this model's 262144-token limit
+[session] saved /tmp/samosa-compaction-session-2EGFI5/session.qws: 6 tokens, 0.0 MB
+[session] evicted hot conversation hot-fixture (unit test, 4 tokens)
+[context] model_limit=262144 configured=auto effective=24576 kv=3.91 MiB/1K tokens
+[context] model_limit=262144 configured=65536 effective=65536 kv=3.91 MiB/1K tokens
+samosa serve components: ok

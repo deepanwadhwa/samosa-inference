@@ -1,0 +1,22 @@
+--- tests/test_samosa_serve.c	2026-10-05 13:43:36
++++ components/samosa-inference/tests/test_samosa_serve.c	2026-11-21 10:57:19
+@@ -1,6 +1,6 @@
+ #define _GNU_SOURCE
+ #define main samosa_embedded_engine_main
+-#include "../src/qwen36b.c"
++#include "../engines/qwen36b.c"
+ #undef main
+ 
+ #include <assert.h>
+@@ -130,8 +130,9 @@
+     SamosaServeContext context={.model=&context_model,.started=now_s(),
+         .auto_compact=1,.compact_threshold_percent=80};
+     snprintf(context.chats_dir,sizeof(context.chats_dir),"%s",chats_dir);
+-    snprintf(context.app_html_path,sizeof(context.app_html_path),"assets/app.html");
+-    snprintf(context.app_logo_path,sizeof(context.app_logo_path),"assets/samosa-chat.png");
++    const char *assets=getenv("QWEN_TEST_ASSETS");if(!assets)assets="assets";
++    snprintf(context.app_html_path,sizeof(context.app_html_path),"%s/app.html",assets);
++    snprintf(context.app_logo_path,sizeof(context.app_logo_path),"%s/samosa-chat.png",assets);
+     atomic_init(&context.cancel,0);pthread_mutex_init(&context.stats_mu,NULL);
+     pthread_mutex_init(&context.interactive_mu,NULL);
+     serve_scheduler_init(&context.scheduler,2);

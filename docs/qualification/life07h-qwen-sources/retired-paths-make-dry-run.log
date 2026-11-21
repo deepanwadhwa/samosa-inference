@@ -1,0 +1,28 @@
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference qwen-engine CC="cc"
+cc -O3 -Wno-unused-function -pthread engines/qwen36b.c engines/expert_cache.c engines/vision.c -o build/qwen36b -lm
+mkdir -p build
+cp components/samosa-inference/build/qwen36b build/qwen36b
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference qwen-omp CC="cc" QWEN_OMP_CFLAGS="-Xclang -fopenmp -I/opt/homebrew/opt/libomp/include" QWEN_OMP_LDFLAGS="-L/opt/homebrew/opt/libomp/lib -lomp"
+cc -O3 -Wno-unused-function -pthread -Xclang -fopenmp -I/opt/homebrew/opt/libomp/include engines/qwen36b.c engines/expert_cache.c engines/vision.c -o build/qwen36b -lm -L/opt/homebrew/opt/libomp/lib -lomp
+mkdir -p build
+cp components/samosa-inference/build/qwen36b build/qwen36b
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference qwen-omp-sched-runtime CC="cc" QWEN_OMP_CFLAGS="-Xclang -fopenmp -I/opt/homebrew/opt/libomp/include" QWEN_OMP_LDFLAGS="-L/opt/homebrew/opt/libomp/lib -lomp"
+cc -O3 -Wno-unused-function -pthread -Xclang -fopenmp -I/opt/homebrew/opt/libomp/include -DSAMOSA_SCHED_RUNTIME engines/qwen36b.c engines/expert_cache.c engines/vision.c -o build/qwen36b-sched-runtime -lm -L/opt/homebrew/opt/libomp/lib -lomp
+mkdir -p build
+cp components/samosa-inference/build/qwen36b-sched-runtime build/qwen36b-sched-runtime
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference test-qwen-engine-core test-qwen-engine-serve QWEN_TEST_ASSETS="/Users/deepanwadhwa/Documents/samosa-chat/assets" CC="cc"
+./build/test_expert_cache
+./build/test_repetition_guard
+./build/test_thinking_budget
+./build/test_groupwise_q4
+./build/test_qwen_vision
+test -f "/Users/deepanwadhwa/Documents/samosa-chat/assets/app.html" -a -f "/Users/deepanwadhwa/Documents/samosa-chat/assets/samosa-chat.png" || { echo "set QWEN_TEST_ASSETS to the caller's existing App assets directory" >&2; exit 2; }
+QWEN_TEST_ASSETS="/Users/deepanwadhwa/Documents/samosa-chat/assets" ./build/test_samosa_serve
+mkdir -p build
+for name in test_expert_cache test_repetition_guard test_thinking_budget test_groupwise_q4 test_samosa_serve test_qwen_vision; do \
+	  cp "components/samosa-inference/build/$name" "build/$name" || exit 1; \
+	done
+echo "Building samosa-maple HTTP server..."
+mkdir -p build
+test -d build/mlx-build || { echo "Run 'make mlx' first to build the native MLX library" >&2; exit 2; }
+c++ -std=c++17 -O2 -Wall -Wextra -Ivendor/mlx -Ibuild/mlx-build -Isrc src/maple/samosa_maple.cpp src/maple/maple_model.cpp src/maple/tokenizer.cpp src/maple/maple_expert_views.cpp src/maple/maple_expert_store.cpp build/expert_cache.o -o build/samosa-maple -Lbuild/mlx-build -lmlx build/mlx-build/jaccl/libjaccl.a -framework Foundation -framework Metal -framework Accelerate -lc++

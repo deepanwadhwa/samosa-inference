@@ -1,5 +1,44 @@
 # Native package engines
 
+## Existing Qwen engine
+
+`qwen36b.c`, expert_cache, kernels, vision, shard readers and their support
+headers are the original Chat implementation, moved without algorithm changes.
+The original Apache license applies; `CHAT_NOTICE` preserves Chat's extraction
+baseline attribution notice. The shared JSON header retains the named Unicode
+buffer portability adaptation described below; tokenizer/image headers match
+Chat's originals. Chat delegates its standard CPU/OpenMP builds to this owner.
+
+```sh
+make qwen-engine
+make qwen-omp
+make test-qwen-engine-core sanitize-qwen-engine-core
+make test-qwen-engine-serve sanitize-qwen-engine-serve QWEN_TEST_ASSETS=/absolute/app-assets
+```
+
+The CPU target needs only the system C toolchain and emits `build/qwen36b` with
+the original O3/pthread/libm flags. OpenMP retains the original native flags and
+local libomp dependency (`QWEN_OMP_PREFIX`, or explicit `QWEN_OMP_CFLAGS` and
+`QWEN_OMP_LDFLAGS`). `qwen-omp-sched-runtime` retains the opt-in experimental
+schedule profile and separate output name; it is not the shipping binary.
+Run CPU/OpenMP targets sequentially because both retain the original output
+filename. None downloads models or uses Python. Linux qualification is deferred.
+
+The unchanged native core tests cover exhaustive/random cache traces,
+repetition/thinking budgets, quantized kernels and the original legacy image
+decoder smoke check. The existing serve test preserves configuration, session,
+scheduling, streaming, static-file and HTTP assertions. It changes only its
+owner include and explicit App asset paths; supply the caller's original
+app.html and samosa-chat.png as test data. The model-context fixture is local to
+this repository. Building/running Qwen itself requires no App source checkout;
+the optional legacy static-page serving inputs remain explicit runtime paths.
+
+The original CLI/HTTP options, model formats, expert cache policy and environment
+variables are retained, including SNAP/TOKENIZER and context/thread overrides.
+See [native source and actual-model evidence](../docs/qualification/life07h-qwen-sources/README.md).
+Backend process selection/launch lifecycle and Maple source consolidation are
+still separate unfinished ownership work.
+
 ## T5 summary engine
 
 `t5_summary.cpp` is the existing Samosa Chat native encoder/decoder summarizer,

@@ -5,7 +5,20 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-Native Mac checkpoint, 2026-11-21: LIFE-07g consolidates visual engine source/
+Native Mac checkpoint, 2026-11-21: LIFE-07h moves the unchanged Qwen native
+model/cache/vision/kernels/support implementation and useful original tests here.
+Chat delegates CPU/OpenMP/runtime-schedule builds with original flags/outputs;
+Maple consumes the owner cache implementation. Source audit, original suites
+normal/SAN, independent source builds, actual old/new Mac model CLI comparison,
+gateway runtime settings, package and clean-install/upgrade pass.16 parent
+source/test/fixture copies (10297 lines) are retired. Serve-test edits are only
+owner/include and explicit caller App test asset paths; assertions are preserved.
+See qualification/life07h-qwen-sources/README.md for exact commands and limits.
+Next LIFE-07i moves original Maple sources/builds/useful tests, then remaining
+primary launch/group/reap/probe ownership. Guarded Whisper and shared coordination
+follow the remaining-area3 audit. No Python/Docker ran; area3/full goal stay open.
+
+Previous native Mac checkpoint, 2026-11-21: LIFE-07g consolidates visual engine source/
 build ownership here. Chat delegates its Mac builds/tests with explicit existing
 MLX inputs. Original compiler/link/output/media behavior is retained; original
 VisionPsy tests and Molmo packer move unchanged. All13 engine files,4 tests and
