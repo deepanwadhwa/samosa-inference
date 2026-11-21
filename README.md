@@ -1,5 +1,12 @@
 # samosa-inference 0.1.0
 
+Current extraction constraints: reuse the working monolith implementations,
+qualify natively on this Mac first, and use no Python in runtime/tooling/tests/CI.
+See [the current extraction checkpoint](docs/EXTRACTION_STATUS.md). Some older
+aggregate test/qualification entry points below still contain Python drivers;
+their native/shell migration remains open. Use the current focused native gates
+until those drivers are replaced. Docker/Linux work is deferred.
+
 Independent-module completion is tracked in
 [the seven-area acceptance plan](docs/INFERENCE_MODULE_PLAN.md). Start extraction
 with [the existing implementation reuse audit](docs/REUSE_AUDIT.md).
@@ -302,3 +309,12 @@ Build the host library with `make specialist`; link
 line/framed protocol, readiness, reservation, cancellation and shutdown tests.
 The App delegates this build and links the public archive. It no longer compiles
 its own copy of the supervisor. Existing `samosa_mm_*` names and behavior remain.
+
+The original Chat Molmo2 analyze and VisionPsy inspect operations now also live
+in `src/specialist_protocol.c`, through public
+`include/samosa_inference/specialist_protocol.h`. Optional synchronous trace
+callbacks preserve host diagnostics without a `Gateway` dependency. Their
+original JSON fields, prompts, bounds and error semantics are retained.
+`make test-specialist-protocol sanitize-specialist-protocol` exercises exact
+wire requests and controlled worker responses using native C fixtures.
+See [the native Mac extraction evidence](docs/qualification/life07b-specialist-protocol/README.md).

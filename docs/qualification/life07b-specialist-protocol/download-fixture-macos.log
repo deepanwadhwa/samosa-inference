@@ -1,0 +1,4 @@
+cc -O2 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  tests/fake_model_download_server.c -o build/fake_model_download_server
+sh tests/test_fake_model_download_server.sh
+test_fake_model_download_server.sh: PASS (normal/ranged, ignore_range, truncate, corrupt, bad_content_range, redirect, oversize)

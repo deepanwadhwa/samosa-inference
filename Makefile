@@ -887,6 +887,18 @@ test: test-summary-process
 sanitize: sanitize-summary-process
 build/specialist-supervisor.o: src/specialist_supervisor.c src/controlled_pipe.h include/samosa_inference/specialist_supervisor.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
+build/specialist-protocol.o: src/specialist_protocol.c engines/json.h include/samosa_inference/specialist_protocol.h include/samosa_inference/specialist_supervisor.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
+.PHONY: test-specialist-protocol sanitize-specialist-protocol
+build/test-specialist-protocol: tests/test_specialist_protocol.c include/samosa_inference/specialist_protocol.h build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
+test-specialist-protocol: build/test-specialist-protocol
+	./build/test-specialist-protocol
+sanitize-specialist-protocol: tests/test_specialist_protocol.c src/specialist_protocol.c engines/json.h src/specialist_supervisor.c src/controlled_pipe.h include/samosa_inference/specialist_protocol.h include/samosa_inference/specialist_supervisor.h | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_protocol.c src/specialist_protocol.c src/specialist_supervisor.c -o build/test-specialist-protocol-sanitize
+	./build/test-specialist-protocol-sanitize
+test: test-specialist-protocol
+sanitize: sanitize-specialist-protocol
 build/summary-process.o: src/summary_process.c src/controlled_pipe.h src/json.h include/samosa_inference/summary_process.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
 build/llama-launch.o: src/llama_launch.c include/samosa_inference/llama_launch.h | build
@@ -901,7 +913,7 @@ sanitize-llama-launch: | build
 	./build/test-llama-launch-sanitize $(abspath build/test-llama-launch-sanitize)
 test: test-llama-launch
 sanitize: sanitize-llama-launch
-build/libsamosa-inference-specialist.a: build/specialist-supervisor.o build/summary-process.o build/llama-launch.o Makefile
+build/libsamosa-inference-specialist.a: build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o Makefile
 	$(AR) rcs $@ $(filter %.o,$^)
 build/fake-multimodal-helper: tests/fake_multimodal_helper.c | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread $< -o $@

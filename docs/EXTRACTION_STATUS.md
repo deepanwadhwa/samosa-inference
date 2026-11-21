@@ -5,15 +5,19 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-Native Mac checkpoint, 2026-11-20: LIFE-07a borrowed endpoints/retryable close now
-pass existing ownership/supervisor normal/SAN tests, summary regression, a fresh
-independent native source build, Chat summary/runtime settings/build and existing
-Molmo gateway assertions. Only missing fixture declarations were repaired; engine
-algorithms and protocols were preserved. Product fixture generation is now shell
-and the parent Makefile no longer probes Python on every native build.
-See `qualification/life07a-specialist-owned/README.md` for exact evidence.
-Next extract/reuse remaining visual request/response and resident host ownership,
-including existing verification/preparation and actual generation readiness.
+Native Mac checkpoint, 2026-11-20: LIFE-07b moves the original Molmo2 analyze and
+VisionPsy inspect request/response functions into `src/specialist_protocol.c` and
+its public header. Chat delegates through explicit trace callbacks. Original
+function bodies, framing, prompts, numeric limits, Unicode/error behavior and
+engine algorithms are preserved. Native public codec normal/SAN, fresh independent
+archive build/regressions, Chat summary/runtime/Molmo regression, shell manifest,
+clean/atomic/PATH installation and guarded native HTTP/runtime-only upgrade gates
+pass. Retired the parent Python packager/selection test in favor of shell.
+See `qualification/life07b-specialist-protocol/README.md` for exact evidence and
+the earlier `qualification/life07a-specialist-owned/README.md` for owned close.
+Next LIFE-07c reuses existing vision/temporal verification, image/frame preparation,
+guardian workspace/duplex ownership and real generation before public residency
+readiness. Do not rebuild the visual system or its model loops.
 Full visual lifecycle, area 3 and the wider split remain open. Older checkpoint
 next-actions below are historical where superseded by this entry.
 
@@ -44,6 +48,7 @@ wire the existing implementation and tests.
 | --- | --- | --- |
 | `src/samosa_multimodal.c` and its header | `src/specialist_supervisor.c`, `include/samosa_inference/specialist_supervisor.h` | App links the owner-built static library through its Makefile; old header is a public-interface adapter |
 | Original specialist helper and supervisor tests | `tests/fake_multimodal_helper.c`, `tests/test_multimodal_supervisor.c` | Existing App test target delegates to Inference; gateway tests retain their fixture interface |
+| Gateway `molmo2_session_analyze_request` and `visionpsy_session_inspect` | `src/specialist_protocol.c`, public `specialist_protocol.h`, existing owned engine JSON parser | Gateway keeps thin calls and explicit trace callbacks; native release assembly includes the owner object/header/parser |
 | `src/samosa_summarizer.cpp` and real-model protocol test | Existing `engines/t5_summary.cpp`, `tests/test_native_summarizer.c`, owner `t5-engine`/`test-t5-engine-real` targets | Chat delegates its existing build/test commands and copies the owner-built executable; release source staging consumes the owner copy |
 
 The implementation, header and tests match the original bytes except for the

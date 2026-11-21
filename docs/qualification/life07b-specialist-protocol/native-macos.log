@@ -1,0 +1,7 @@
+ar rcs build/libsamosa-inference-specialist.a build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_protocol.c build/libsamosa-inference-specialist.a -o build/test-specialist-protocol
+./build/test-specialist-protocol
+specialist protocol: PASS (25 native exchanges/refusals, exact inherited wire/defaults, Unicode, bounds, errors, traces)
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_protocol.c src/specialist_protocol.c src/specialist_supervisor.c -o build/test-specialist-protocol-sanitize
+./build/test-specialist-protocol-sanitize
+specialist protocol: PASS (25 native exchanges/refusals, exact inherited wire/defaults, Unicode, bounds, errors, traces)
