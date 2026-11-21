@@ -1,0 +1,7 @@
+ar rcs build/libsamosa-inference-specialist.a build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/whisper-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude tests/test_whisper_process_real.c build/libsamosa-inference-specialist.a -o build/test-whisper-process-real
+tests/test_whisper_process_real.c:15:71: error: call to undeclared function 'mkdtemp'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+   15 |     char temporary[]="/tmp/samosa-whisper-process-real-XXXXXX";assert(mkdtemp(temporary));
+      |                                                                       ^
+1 error generated.
+make: *** [build/test-whisper-process-real] Error 1

@@ -1,0 +1,9 @@
+41daf961da0906ff5d91beac326d40064f446c2947c052093de418592e919219  ../../src/samosa_gateway.c
+fdee5b1cbfdb000e05ed8055e412d006bd5abbae5cccbe16c5b99cce2b1fe9d5  ../../dist/install.sh
+e3587ae3df6bc8ceb329670655f99219d85f37a01bbb9abfc9e1fa5fdbaeeda6  ../../tools/package_hf.sh
+fa6090bdafdc2109818bebc328cf6ceb974ef4678a0321ae34366f3f1d77a634  ../../tests/test_package_pdfium.sh
+a5ccc842a421cb61491f604a24571af922139838ca7f5f06b342f3b1781331d2  ../../tests/test_voice_gateway.sh
+0dc2188d4dba8b66b1a7bd8abe6fc6d13f9d05da42963ec3412cd65b93b7aabb  ../../tests/voice_gateway_checks.mjs
+234d7b731a8485af8ddfc540e89f3f10e150e77169b7637fe47d0f1a6315d029  ../../tests/test_audio_attachments.sh
+aa416ee61b12d7370fe18b6b538e2745eb980a3f48d40f58ba5561de1e68d753  ../../tests/audio_attachment_checks.mjs
+b80485e669c0105eef86df55d8a87da575246a0c56f8da5c6a844218fb17d968  ../../tests/fixtures/audio/tone-440hz.mp3

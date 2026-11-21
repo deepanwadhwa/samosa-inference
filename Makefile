@@ -927,6 +927,22 @@ build/summary-process.o: src/summary_process.c src/controlled_pipe.h src/json.h 
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
 build/llama-launch.o: src/llama_launch.c include/samosa_inference/llama_launch.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
+build/whisper-process.o: src/whisper_process.c include/samosa_inference/whisper_process.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
+.PHONY: test-whisper-process sanitize-whisper-process
+build/test-whisper-process: tests/test_whisper_process.c include/samosa_inference/whisper_process.h build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
+test-whisper-process: build/test-whisper-process
+	$(abspath build/test-whisper-process) $(abspath build/test-whisper-process)
+sanitize-whisper-process: build/test-whisper-process | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_process.c src/whisper_process.c -o build/test-whisper-process-sanitize
+	$(abspath build/test-whisper-process-sanitize) $(abspath build/test-whisper-process)
+test: test-whisper-process
+sanitize: sanitize-whisper-process
+build/test-whisper-process-real: tests/test_whisper_process_real.c include/samosa_inference/whisper_process.h build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude $< build/libsamosa-inference-specialist.a -o $@
+build/test-whisper-process-real-sanitize: tests/test_whisper_process_real.c src/whisper_process.c include/samosa_inference/whisper_process.h | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_process_real.c src/whisper_process.c -o $@
 .PHONY: test-llama-launch sanitize-llama-launch
 build/test-llama-launch: tests/test_llama_launch.c src/llama_launch.c include/samosa_inference/llama_launch.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude tests/test_llama_launch.c src/llama_launch.c -o $@
@@ -937,7 +953,7 @@ sanitize-llama-launch: | build
 	./build/test-llama-launch-sanitize $(abspath build/test-llama-launch-sanitize)
 test: test-llama-launch
 sanitize: sanitize-llama-launch
-build/libsamosa-inference-specialist.a: build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o Makefile
+build/libsamosa-inference-specialist.a: build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/whisper-process.o Makefile
 	$(AR) rcs $@ $(filter %.o,$^)
 build/fake-multimodal-helper: tests/fake_multimodal_helper.c | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread $< -o $@

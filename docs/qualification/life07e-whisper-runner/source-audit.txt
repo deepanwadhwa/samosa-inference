@@ -1,0 +1,11 @@
+Source baseline: Chat f2414d7
+path_copy: original body preserved
+mkdirs: original body preserved
+read_file_bytes_limit: original body preserved
+read_file_limit: original body preserved
+utf8_scalar_count: original body preserved
+trim_ascii_ws: original body preserved
+Selected model/fingerprint: original body preserved
+Runner core: original argv/fork/wait/read/trim/validate/unlink preserved after explicit configuration/callback substitutions
+Host acquire/start/release callbacks: original busy gate, preserve-cancel, locked PID publication, pending cancellation, tracking and reset preserved
+All seven result values preserved

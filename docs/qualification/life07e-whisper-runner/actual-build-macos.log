@@ -1,0 +1,2 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude tests/test_whisper_process_real.c build/libsamosa-inference-specialist.a -o build/test-whisper-process-real
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_process_real.c src/whisper_process.c -o build/test-whisper-process-real-sanitize

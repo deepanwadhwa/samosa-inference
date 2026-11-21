@@ -5,7 +5,23 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-Native Mac checkpoint, 2026-11-21: LIFE-07d moves the original gateway visual
+Native Mac checkpoint, 2026-11-21: LIFE-07e extracts the original shared Whisper
+runner into whisper_process.c/public header and the existing owner archive.
+Gateway calls preserve selected model/fingerprint and explicit original busy/
+PID/cancel coordination. Original txt/SRT argv, long-window behavior, UTF-8/
+16-MiB output, return codes, wait/reap and result cleanup are preserved by source
+audit and native normal/SAN tests. Existing verified short-clip Whisper, fresh
+standalone owner, gateway voice/durable-audio, packaging/install and actual
+retained Mac model checks pass. Embedded Python in the two workflow drivers was
+ported to Node/shell with assertions retained. Actual SRT syntax/words are
+qualified, not timing accuracy. Exact evidence and limits:
+qualification/life07e-whisper-runner/README.md.
+Next LIFE-07f extracts existing Mac visual resource/thermal budget and bounded
+Molmo memory reclaim policy, then audits remaining area3 ownership. Shared
+admission and legacy/verified guardian consolidation remain open; this does not
+close area3, later areas, whole-project Python removal or the repository split.
+
+Previous native Mac checkpoint, 2026-11-21: LIFE-07d moves the original gateway visual
 launch profiles/close bodies into the existing specialist owner/public archive.
 Thin gateway calls preserve configured paths, availability, trace events and
 original limits. A reproduced inactive-session close bug now releases retained

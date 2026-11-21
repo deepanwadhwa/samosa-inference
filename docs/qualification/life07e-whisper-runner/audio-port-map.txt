@@ -1,0 +1,29 @@
+1: python3 -c "from pathlib import Path; p=Path('$TMP/ggml-base.en.bin'); p.write_bytes(b''); p.open('r+b').truncate(147964211)" -> checks model "$TMP/ggml-base.en.bin"
+2: python3 - "$TMP/podcast.wav" "$TMP/stereo.wav" "$TMP/long.wav" "$TMP/cancel.wav" "$TMP/compressed-source.wav" "$TMP/malformed.m4a" "$TMP/compressed-cancel-source.wav" "$TMP/video-audio.wav" "$TMP/exact-window.wav" "$TMP/ranking.wav" <<'PY' -> checks fixtures "$TMP"
+3: python3 - "$TMP/tone.mp3" <<'PY' -> cp "$ROOT/tests/fixtures/audio/tone-440hz.mp3" "$TMP/tone.mp3"
+4: python3 - "$TMP/m4a-probe.json" <<'PY' -> checks probe-aac "$TMP/m4a-probe.json"
+5: python3 - "$TMP/decoded-window.wav" <<'PY' -> checks decoded-window "$TMP/decoded-window.wav"
+6: python3 - "$TMP/mp3-probe.json" <<'PY' -> checks probe-mp3 "$TMP/mp3-probe.json"
+7: python3 - "$TMP/decoded-mp3.wav" <<'PY' -> checks decoded-mp3 "$TMP/decoded-mp3.wav"
+8: python3 - "$TMP/native-video-probe.json" <<'PY' -> checks probe-video "$TMP/native-video-probe.json"
+9: python3 - "$TMP/native-video-audio.wav" <<'PY' -> checks decoded-video "$TMP/native-video-audio.wav"
+10: python3 -c ' -> checks caps-audio
+11: python3 -c ' -> checks visual-only-id
+12: python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["source"]["duration_seconds"] == 180.0, d; print(d["id"])' -> checks duration-id 180
+13: python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' -> checks id
+14: python3 -c ' -> checks wav-upload
+15: python3 - "$EVIDENCE" "$AUDIO_ID" "$HOME_DIR/attachments" <<'PY' -> checks evidence "$EVIDENCE" "$AUDIO_ID" "$HOME_DIR/attachments"
+16: python3 - "$MANIFEST" "$AUDIO_ID" <<'PY' -> checks manifest "$MANIFEST" "$AUDIO_ID"
+17: python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["source"]["duration_seconds"] == 25.0, d; print(d["id"])' -> checks duration-id 25
+18: python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' -> checks id
+19: python3 -c ' -> checks m4a-upload
+20: python3 - "$M4A_EVIDENCE" "$M4A_ID" <<'PY' -> checks m4a-evidence "$M4A_EVIDENCE" "$M4A_ID"
+21: python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' -> checks id
+22: python3 -c ' -> checks mp3-upload
+23: python3 -c 'import json,sys; d=json.load(sys.stdin); assert 24.9 <= d["source"]["duration_seconds"] <= 25.1, d; print(d["id"])' -> checks duration-id 24.9 25.1
+24: python3 -c ' -> checks caps-video
+25: python3 -c ' -> checks video-audio-id
+26: python3 - "$VIDEO_MANIFEST" "$VIDEO_AUDIO_ID" <<'PY' -> checks video-manifest "$VIDEO_MANIFEST" "$VIDEO_AUDIO_ID"
+27: python3 -c ' -> checks duration-id 30
+28: python3 - "$EXACT_EVIDENCE" "$EXACT_ID" "$HOME_DIR/attachments" <<'PY' -> checks exact-evidence "$EXACT_EVIDENCE" "$EXACT_ID" "$HOME_DIR/attachments"
+29: python3 -c ' -> checks duration-id 271

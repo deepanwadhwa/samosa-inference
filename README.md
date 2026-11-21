@@ -240,6 +240,15 @@ normal and sanitizer gates; actual-model readiness and release gates remain open
 
 ## Extracted specialist supervisor
 
+The original shared microphone/long-audio native CLI runner is exported through
+`include/samosa_inference/whisper_process.h` in the owner archive. It preserves
+English/-nt, text/SRT,16-MiB UTF-8 output and the original result codes. Trusted
+engine/model/temporary paths and synchronous host coordination are explicit;
+it does not take the Gateway object or introduce a30-second clip limit.
+`make test-whisper-process sanitize-whisper-process` exercises it independently.
+See [extraction and Mac qualification](docs/qualification/life07e-whisper-runner/README.md)
+for behavior, actual-model evidence and remaining guardian/admission consolidation.
+
 The existing text/embedding managed CLI's trusted configuration, credential and
 engine ownership are reusable through `src/managed_host.h`:
 `managed_host_start` accepts a private host config path and caller cancellation

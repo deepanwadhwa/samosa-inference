@@ -1,0 +1,2 @@
+Original f2414d7 inline synthetic MP3: identical decoded bytes
+b80485e669c0105eef86df55d8a87da575246a0c56f8da5c6a844218fb17d968  tests/fixtures/audio/tone-440hz.mp3
