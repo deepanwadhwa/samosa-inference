@@ -30,7 +30,7 @@ const char *inference_registry_host_close(InferenceRegistryHost *h) {
     }
     for(size_t i=0;i<INFERENCE_PROVIDERS_MAX;i++)if(h->on_demand_whispers[i]){
         const char *error=whisper_host_stop(h->on_demand_whispers[i]);
-        if(error){if(h->on_demand_whispers[i]->attempted)return error;terminal=error;}
+        if(error){if(h->on_demand_whispers[i]->lifecycle.attempted)return error;terminal=error;}
     }
     for(size_t i=0;i<INFERENCE_PROVIDERS_MAX;i++)free(h->on_demand_whispers[i]);
     for(size_t i=0;i<INFERENCE_PROVIDERS_MAX;i++)free(h->resident_visuals[i]);
@@ -269,7 +269,7 @@ int inference_registry_host_dispatch(void *context,const char *input,size_t leng
     if(lifecycle){
         if(start&&!inference_platform_allowed(h->providers[index].platform))error="unsupported_provider_platform";
         else if(start){
-            if(whisper)error=whisper->attempted?whisper_host_status(whisper):whisper_host_start(whisper,&h->providers[index]);
+            if(whisper)error=whisper->lifecycle.attempted?whisper_host_status(whisper):whisper_host_start(whisper,&h->providers[index]);
             else if(visual)error=visual->attempted?visual_host_status(visual):visual_host_start(visual,&h->providers[index]);
             else if(decision)error=decision->attempted?decision_host_status(decision):decision_host_start(decision,&h->providers[index]);
             else if(speech)error=speech->attempted?speech_host_status(speech):speech_host_start(speech,&h->providers[index]);
@@ -281,7 +281,7 @@ int inference_registry_host_dispatch(void *context,const char *input,size_t leng
         else{
             const char *health=whisper?whisper_host_status(whisper):visual?visual_host_status(visual):decision?decision_host_status(decision):speech?speech_host_status(speech):summary?summary_host_status(summary):managed_status(m);
             fputs("{\"contract_version\":1,\"provider_id\":",out);json_quote(out,h->providers[index].provider_id,strlen(h->providers[index].provider_id));
-            fprintf(out,",\"ready\":%s,\"state\":\"%s\",\"health_error\":",health?"false":"true",!(whisper?whisper->attempted:visual?visual->attempted:decision?decision->attempted:speech?speech->attempted:summary?summary->attempted:m->attempted)?"stopped":health?"unavailable":"ready");
+            fprintf(out,",\"ready\":%s,\"state\":\"%s\",\"health_error\":",health?"false":"true",!(whisper?whisper->lifecycle.attempted:visual?visual->attempted:decision?decision->attempted:speech?speech->attempted:summary?summary->attempted:m->attempted)?"stopped":health?"unavailable":"ready");
             if(health)json_quote(out,health,strlen(health));else fputs("null",out);
             if(whisper)fputs(",\"execution_mode\":\"on_demand\",\"resident\":false",out);
             fputs("}\n",out);

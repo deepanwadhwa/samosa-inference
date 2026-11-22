@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
 #include "whisper.h"
+#include "whisper_audio.h"
 #include "artifact.h"
 #include "admission.h"
 #include "budget.h"
@@ -12,7 +13,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define WAV_MAX 960044u
+#define WAV_MAX WHISPER_WAV_MAX
 #define SRT_MAX 16384u
 static int fail(FILE *out,const char *error){fprintf(out,"{\"contract_version\":1,\"error\":{\"code\":\"%s\"}}\n",error);return 1;}
 static int fields(const Json *j,const char *allowed){
@@ -43,9 +44,7 @@ static unsigned char *decode(const char *text,size_t *length){
         out[used++]=(unsigned char)((a<<2)|(b>>4));if(!pad_c)out[used++]=(unsigned char)((b<<4)|(c>>2));if(!pad_d)out[used++]=(unsigned char)((c<<6)|d);}
     if(used>WAV_MAX){free(out);return NULL;}*length=used;return out;
 }
-static uint32_t u32(const unsigned char *p){return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
-static uint16_t u16(const unsigned char *p){return (uint16_t)((unsigned)p[0]|(unsigned)p[1]<<8);}
-int whisper_audio_valid(const unsigned char *p,size_t n){return n>=76&&n<=WAV_MAX&&!((n-44)%32)&&!memcmp(p,"RIFF",4)&&u32(p+4)==n-8&&!memcmp(p+8,"WAVEfmt ",8)&&u32(p+16)==16&&u16(p+20)==1&&u16(p+22)==1&&u32(p+24)==16000&&u32(p+28)==32000&&u16(p+32)==2&&u16(p+34)==16&&!memcmp(p+36,"data",4)&&u32(p+40)==n-44;}
+int whisper_audio_valid(const unsigned char *p,size_t n){return whisper_canonical_wav(p,n);}
 static const char *verified(const char *path,const char *digest,uint64_t ceiling,int executable,int *descriptor){
     *descriptor=-1;if(!path||path[0]!='/')return "invalid_configuration";
     int fd=open(path,O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK);if(fd<0)return "artifact_unavailable";struct stat s;

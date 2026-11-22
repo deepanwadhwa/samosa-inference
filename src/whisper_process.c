@@ -1,6 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
-#include <samosa_inference/whisper_process.h>
+#include "whisper_process_internal.h"
 #include "engine_process.h"
 #include "input_identity.h"
 #include "json.h"
@@ -122,13 +122,20 @@ static int inputs_unchanged(const SamosaWhisperProcessConfig *config,
            inference_same_input(&before->model, &now.model);
 }
 
-static int whisper_process_run(const SamosaWhisperProcessConfig *config,
+static int cancelled(const SamosaWhisperProcessControl *control, const WhisperProcessAdmission *admission) {
+    return (admission && admission->stop_requested && atomic_load(admission->stop_requested)) ||
+           (control && control->cancelled(control->context));
+}
+
+int whisper_process_run_admitted(const SamosaWhisperProcessConfig *config,
         const SamosaWhisperProcessIdentity *expected,
         const SamosaWhisperProcessControl *control, const char *wav_path,
-        int timestamped, int preserve_cancel, char **output, int own_input) {
+        int timestamped, int preserve_cancel, int own_input,
+        const WhisperProcessAdmission *admission, char **output) {
     if (!output) return SAMOSA_WHISPER_OUTPUT_INVALID;
     *output = NULL;
-    if (!config || !config->engine || !config->model || !wav_path ||
+    const unsigned char *probe = admission ? admission->probe_audio : NULL;
+    if (!config || !config->engine || !config->model || (!wav_path && !probe) ||
         (control && (!control->acquire || !control->started || !control->reaped ||
                      !control->release || !control->cancelled)))
         return SAMOSA_WHISPER_NOT_READY;
@@ -159,14 +166,28 @@ static int whisper_process_run(const SamosaWhisperProcessConfig *config,
     if (snprintf(out_path, sizeof(out_path), "%s.%s", out_base,
                  timestamped ? "srt" : "txt") >= (int)sizeof(out_path))
         goto done;
-    if ((control && control->cancelled(control->context))) {
+    if (cancelled(control,admission)) {
         result = SAMOSA_WHISPER_CANCELLED;
         goto done;
     }
 
     /* Explicit ownership handoff for host-prepared temporary audio. Durable or
      * borrowed audio uses the original entry point and is never renamed. */
-    if(own_input){struct stat audio;
+    if (probe) {
+        if (snprintf(owned_input,sizeof(owned_input),"%s/input.wav",workspace)>=(int)sizeof(owned_input))
+            goto done;
+        int audio=openat(directory,"input.wav",O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC,0600);
+        if (audio<0) goto done;
+        size_t written=0;
+        while (written<admission->probe_bytes) {
+            ssize_t count=write(audio,probe+written,admission->probe_bytes-written);
+            if (count<0 && errno==EINTR) continue;
+            if (count<=0) break;
+            written+=(size_t)count;
+        }
+        if (close(audio) || written!=admission->probe_bytes) goto done;
+        input=owned_input;
+    } else if(own_input){struct stat audio;
         if(lstat(wav_path,&audio)||!S_ISREG(audio.st_mode)||audio.st_uid!=geteuid()||
            audio.st_nlink!=1||
            snprintf(owned_input,sizeof(owned_input),"%s/input.wav",workspace)>=(int)sizeof(owned_input)||
@@ -190,18 +211,19 @@ static int whisper_process_run(const SamosaWhisperProcessConfig *config,
         result = SAMOSA_WHISPER_NOT_READY;
         goto done;
     }
-    const char *error=engine_process_start_command(self,command,workspace,directory,&process);
-    if(error){result=(control&&control->cancelled(control->context))?SAMOSA_WHISPER_CANCELLED:SAMOSA_WHISPER_PROCESS_FAILED;goto done;}
+    const char *error=engine_process_start_command(self,command,workspace,directory,
+        admission?admission->lease:-1,admission?admission->lifetime:0,&process);
+    if(error){result=cancelled(control,admission)?SAMOSA_WHISPER_CANCELLED:SAMOSA_WHISPER_PROCESS_FAILED;goto done;}
     pid=process.engine;
     if(control)control->started(control->context,pid);
     while(engine_process_running(&process)){
         /* The guardian holds the actual PID until acknowledgement. Finish a
          * cancelled TERM-resistant CLI without signalling any unrelated PID.
          * It then finishes the owned group and reserves identity/workspace. */
-        if(control&&control->cancelled(control->context))(void)kill(pid,SIGKILL);
+        if(cancelled(control,admission))(void)kill(pid,SIGKILL);
         struct timespec delay={0,10000000};while(nanosleep(&delay,&delay)&&errno==EINTR){}
     }
-    if(control&&control->cancelled(control->context)){result=SAMOSA_WHISPER_CANCELLED;goto done;}
+    if(cancelled(control,admission)){result=SAMOSA_WHISPER_CANCELLED;goto done;}
     if(strcmp(process.reason,"completed")){result=SAMOSA_WHISPER_PROCESS_FAILED;goto done;}
     *output = read_file_limit(out_path, 16 << 20);
     if (!*output) { result = SAMOSA_WHISPER_OUTPUT_INVALID; goto done; }
@@ -230,13 +252,17 @@ done:
     if(created)rmdir(created_path);
     if (result == SAMOSA_WHISPER_OK) {
         if (stopped) result = SAMOSA_WHISPER_PROCESS_FAILED;
-        else if (control && control->cancelled(control->context)) result = SAMOSA_WHISPER_CANCELLED;
+        else if (cancelled(control,admission)) result = SAMOSA_WHISPER_CANCELLED;
         else if (!inputs_unchanged(config, &observed)) result = SAMOSA_WHISPER_NOT_READY;
         if (result != SAMOSA_WHISPER_OK) {
             free(*output);
             *output = NULL;
         }
     }
+    if (admission && stopped && !strcmp(stopped,"engine_guardian_failed"))
+        result = SAMOSA_WHISPER_GUARDIAN_FAILED;
+    else if (admission && stopped && !strcmp(stopped,"lifetime_exceeded"))
+        result = SAMOSA_WHISPER_DEADLINE_EXCEEDED;
     if (control) control->release(control->context);
     return result;
 }
@@ -248,12 +274,12 @@ int samosa_whisper_process_dispatch(int argc,char **argv) {
 int samosa_whisper_process_run(const SamosaWhisperProcessConfig *config,
         const SamosaWhisperProcessControl *control,const char *wav_path,
         int timestamped,int preserve_cancel,char **output) {
-    return whisper_process_run(config,NULL,control,wav_path,timestamped,preserve_cancel,output,0);
+    return whisper_process_run_admitted(config,NULL,control,wav_path,timestamped,preserve_cancel,0,NULL,output);
 }
 int samosa_whisper_process_run_owned(const SamosaWhisperProcessConfig *config,
         const SamosaWhisperProcessControl *control,const char *wav_path,
         int timestamped,int preserve_cancel,char **output) {
-    return whisper_process_run(config,NULL,control,wav_path,timestamped,preserve_cancel,output,1);
+    return whisper_process_run_admitted(config,NULL,control,wav_path,timestamped,preserve_cancel,1,NULL,output);
 }
 int samosa_whisper_process_run_checked(const SamosaWhisperProcessConfig *config,
         const SamosaWhisperProcessIdentity *expected, const SamosaWhisperProcessControl *control,
@@ -262,5 +288,5 @@ int samosa_whisper_process_run_checked(const SamosaWhisperProcessConfig *config,
         if (output) *output = NULL;
         return SAMOSA_WHISPER_NOT_READY;
     }
-    return whisper_process_run(config,expected,control,wav_path,timestamped,preserve_cancel,output,own_input);
+    return whisper_process_run_admitted(config,expected,control,wav_path,timestamped,preserve_cancel,own_input,NULL,output);
 }

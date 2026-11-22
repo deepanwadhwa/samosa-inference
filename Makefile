@@ -34,8 +34,8 @@ sanitize-registry: | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_registry.c $(SOURCES) $(LIBS) -o build/test-registry-sanitize
 	./build/test-registry-sanitize
 REGISTRY_FLAGS = -Iinclude -DSAMOSA_WITH_DECISION $(NATIVE_FLAGS) -DSAMOSA_WITH_SPEECH -DSAMOSA_WITH_WHISPER -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -DSAMOSA_WITH_SUMMARY
-REGISTRY_SOURCES = src/whisper_host.c src/visual_host.c src/specialist_supervisor.c src/decision_host.c src/speech_host.c src/summary_host.c src/summary_process.c src/managed_host.c src/managed_provider.c src/activation.c src/managed_stream.c src/decision.c src/decision_assets.c src/speech.c src/audio_store.c src/speech_worker.c src/speech_session.c src/speech_runtime.c src/speech_package.c src/speech_package_loader.c src/library_runtime.c src/engine_runtime.c $(SOURCES) src/llama.c src/whisper.c src/vision.c src/visual_assets.c src/visual_bridge.c src/temporal.c src/temporal_input.c src/temporal_package.c src/summary.c src/summary_protocol.c src/artifact.c
-REGISTRY_HEADERS = src/whisper_host.h src/visual_host.h src/visual_assets.h include/samosa_inference/specialist_supervisor.h src/decision_host.h src/speech_host.h src/controlled_pipe.h src/speech_session.h src/summary_host.h include/samosa_inference/summary_process.h src/managed_host.h src/managed_provider.h src/activation.h src/input_identity.h src/managed_stream.h src/rgba_input.h src/decision.h src/decision_assets.h engines/decision/tokenizer/request.h engines/decision/tokenizer/tokenizer.h src/speech.h src/audio_store.h $(SPEECH_WORKER_HEADERS) $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/visual_assets.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
+REGISTRY_SOURCES = src/whisper_activation.c src/whisper_host.c src/visual_host.c src/specialist_supervisor.c src/decision_host.c src/speech_host.c src/summary_host.c src/summary_process.c src/managed_host.c src/managed_provider.c src/activation.c src/managed_stream.c src/decision.c src/decision_assets.c src/speech.c src/audio_store.c src/speech_worker.c src/speech_session.c src/speech_runtime.c src/speech_package.c src/speech_package_loader.c src/library_runtime.c src/engine_runtime.c $(SOURCES) src/llama.c src/whisper.c src/vision.c src/visual_assets.c src/visual_bridge.c src/temporal.c src/temporal_input.c src/temporal_package.c src/summary.c src/summary_protocol.c src/artifact.c
+REGISTRY_HEADERS = src/whisper_activation.h src/whisper_audio.h include/samosa_inference/whisper_process.h src/whisper_host.h src/visual_host.h src/visual_assets.h include/samosa_inference/specialist_supervisor.h src/decision_host.h src/speech_host.h src/controlled_pipe.h src/speech_session.h src/summary_host.h include/samosa_inference/summary_process.h src/managed_host.h src/managed_provider.h src/activation.h src/input_identity.h src/managed_stream.h src/rgba_input.h src/decision.h src/decision_assets.h engines/decision/tokenizer/request.h engines/decision/tokenizer/tokenizer.h src/speech.h src/audio_store.h $(SPEECH_WORKER_HEADERS) $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/visual_assets.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
 .PHONY: providers
 providers: build/samosa-inference-providers
 build/samosa-inference-providers: src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(REGISTRY_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
@@ -112,9 +112,9 @@ build/test-vision-real: tests/test_vision_real.c tests/vision_fixture.h tests/wh
 build/test-vision-real-sanitize: tests/test_vision_real.c tests/vision_fixture.h tests/whisper_fixture.h src/json.h src/sha256.h | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_vision_real.c -o $@
 WHISPER_SOURCES = src/whisper_main.c src/whisper.c src/artifact.c $(SOURCES)
-build/samosa-inference-whisper: $(WHISPER_SOURCES) $(HEADERS) src/whisper.h src/artifact.h | build
+build/samosa-inference-whisper: $(WHISPER_SOURCES) $(HEADERS) src/whisper.h src/whisper_audio.h src/artifact.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DSAMOSA_WITH_WHISPER $(WHISPER_SOURCES) $(LIBS) -o $@
-build/samosa-inference-whisper-sanitize: $(WHISPER_SOURCES) $(HEADERS) src/whisper.h src/artifact.h | build
+build/samosa-inference-whisper-sanitize: $(WHISPER_SOURCES) $(HEADERS) src/whisper.h src/whisper_audio.h src/artifact.h | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -DSAMOSA_WITH_WHISPER -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $(WHISPER_SOURCES) $(LIBS) -o $@
 build/test-whisper: tests/test_whisper.c tests/whisper_fixture.h src/json.h src/sha256.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DJSON_TOKENS_MAX=8192 -Isrc tests/test_whisper.c -o $@
@@ -1098,7 +1098,7 @@ sanitize-backend-process: build/test-backend-process-sanitize build/test-backend
 	$(abspath build/test-backend-process-sanitize) $(abspath build/test-backend-process)
 test: test-backend-process
 sanitize: sanitize-backend-process
-build/whisper-process.o: src/whisper_process.c src/input_identity.h src/engine_process.h src/json.h include/samosa_inference/whisper_process.h | build
+build/whisper-process.o: src/whisper_process.c src/input_identity.h src/whisper_process_internal.h src/engine_process.h src/json.h include/samosa_inference/whisper_process.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
 build/vision-budget.o: src/vision_budget.c include/samosa_inference/vision_budget.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
@@ -1124,7 +1124,7 @@ test: test-whisper-process
 sanitize: sanitize-whisper-process
 build/test-whisper-process-real: tests/test_whisper_process_real.c include/samosa_inference/whisper_process.h build/libsamosa-inference-specialist.a
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude $< build/libsamosa-inference-specialist.a -o $@
-build/test-whisper-process-real-sanitize: tests/test_whisper_process_real.c src/whisper_process.c src/engine_process.c src/input_identity.h src/engine_process.h src/json.h include/samosa_inference/whisper_process.h | build
+build/test-whisper-process-real-sanitize: tests/test_whisper_process_real.c src/whisper_process.c src/engine_process.c src/input_identity.h src/whisper_process_internal.h src/engine_process.h src/json.h include/samosa_inference/whisper_process.h | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_process_real.c src/whisper_process.c src/engine_process.c -o $@
 .PHONY: test-llama-launch sanitize-llama-launch
 build/test-llama-launch: tests/test_llama_launch.c src/llama_launch.c include/samosa_inference/llama_launch.h | build
@@ -1330,8 +1330,8 @@ sanitize-backend-lifecycle: build/test-backend-lifecycle-sanitize build/test-bac
 test-native: test-backend-lifecycle
 sanitize-native: sanitize-backend-lifecycle
 
-PRIMARY_HOST_SOURCES = src/primary_host.c src/activation.c src/artifact.c $(LIBRARY_RUNTIME_SOURCES)
-PRIMARY_HOST_HEADERS = include/samosa_inference/primary_host.h src/backend_process_internal.h src/activation.h src/input_identity.h src/artifact.h $(LIBRARY_RUNTIME_HEADERS)
+PRIMARY_HOST_SOURCES = src/whisper_activation.c src/whisper_lifecycle.c src/primary_host.c src/activation.c src/artifact.c $(LIBRARY_RUNTIME_SOURCES)
+PRIMARY_HOST_HEADERS = src/whisper_activation.h src/whisper_audio.h src/whisper_process_internal.h include/samosa_inference/whisper_lifecycle.h include/samosa_inference/whisper_process.h include/samosa_inference/primary_host.h src/backend_process_internal.h src/activation.h src/input_identity.h src/artifact.h $(LIBRARY_RUNTIME_HEADERS)
 .PHONY: primary-host test-primary-host sanitize-primary-host
 primary-host: build/libsamosa-inference-primary.a
 PRIMARY_HOST_OBJECTS = $(patsubst src/%.c,build/primary-%.o,$(PRIMARY_HOST_SOURCES))
@@ -1341,9 +1341,14 @@ build/libsamosa-inference-primary.a: $(PRIMARY_HOST_OBJECTS) $(SPECIALIST_OBJECT
 	$(AR) rcs $@ $(filter %.o,$^)
 build/test-primary-host: tests/test_primary_host.c tests/test_backend_process.c $(PRIMARY_HOST_HEADERS) build/libsamosa-inference-primary.a | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -Isrc $< build/libsamosa-inference-primary.a $(LIBS) -o $@
-build/test-primary-host-sanitize: tests/test_primary_host.c tests/test_backend_process.c $(PRIMARY_HOST_SOURCES) $(PRIMARY_HOST_HEADERS) src/backend_process.c src/backend_json.c src/llama_launch.c src/engine_process.c src/turn_control.c src/vision_budget.c src/specialist_supervisor.c src/specialist_protocol.c | build
+build/test-primary-host-sanitize: tests/test_primary_host.c tests/test_backend_process.c $(PRIMARY_HOST_SOURCES) $(PRIMARY_HOST_HEADERS) src/backend_process.c src/backend_json.c src/llama_launch.c src/engine_process.c src/whisper_process.c src/turn_control.c src/vision_budget.c src/specialist_supervisor.c src/specialist_protocol.c | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $(filter %.c,$(filter-out tests/test_backend_process.c,$^)) $(LIBS) -o $@
 test-primary-host: build/test-primary-host
 	$(abspath build/test-primary-host) $(abspath build/test-primary-host) $$(shasum -a 256 build/test-primary-host | cut -d ' ' -f 1)
 sanitize-primary-host: build/test-primary-host-sanitize build/test-primary-host
 	$(abspath build/test-primary-host-sanitize) $(abspath build/test-primary-host) $$(shasum -a 256 build/test-primary-host | cut -d ' ' -f 1)
+
+build/test-whisper-lifecycle-actual: tests/test_whisper_lifecycle.c tests/whisper_fixture.h $(PRIMARY_HOST_HEADERS) build/libsamosa-inference-primary.a | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -Isrc $< build/libsamosa-inference-primary.a $(LIBS) -o $@
+build/test-whisper-lifecycle-actual-sanitize: tests/test_whisper_lifecycle.c tests/whisper_fixture.h $(PRIMARY_HOST_HEADERS) src/whisper_activation.c src/whisper_lifecycle.c src/whisper_process.c src/engine_process.c src/activation.c src/artifact.c src/engine_runtime.c | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $(filter %.c,$^) $(LIBS) -o $@

@@ -30,6 +30,11 @@ static double monotonic(void) {
     struct timespec t;
     return clock_gettime(CLOCK_MONOTONIC,&t)?-1:(double)t.tv_sec+(double)t.tv_nsec/1e9;
 }
+static int valid_lifetime(double lifetime,int leased_command,int indefinite) {
+    if(leased_command)return lifetime>=0&&lifetime<=60;
+    if(indefinite)return lifetime==0;
+    return lifetime>0&&lifetime<=86400;
+}
 static int cloexec(int fd){return fcntl(fd,F_SETFD,FD_CLOEXEC)==0;}
 static int fifo_mode(int fd,int mode){
     struct stat s;int flags=fcntl(fd,F_GETFL);
@@ -81,7 +86,8 @@ static void server_term(pid_t child) {
 }
 int engine_guardian_dispatch(int argc,char **argv) {
     int specialist=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-specialist");
-    int command_profile=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-command");
+    int leased_command=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-command-leased");
+    int command_profile=leased_command||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-command"));
     int server=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-server");
     int workspace_duplex=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace-duplex");
     int uncapped=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace-uncapped");
@@ -91,13 +97,13 @@ int engine_guardian_dispatch(int argc,char **argv) {
     int protocol=sized||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-protocol"));
     int workspace=uncapped||specialist||command_profile||workspace_duplex||captured||protocol||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace"));
     int bound=(duplex&&!specialist)||(!command_profile&&!specialist&&workspace)||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-bound"));
-    int leased=specialist||server||bound||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-leased"));
+    int leased=leased_command||specialist||server||bound||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-leased"));
     if(argc<2 || (!leased&&!command_profile&&strcmp(argv[1],"--inference-owned-engine")))return -1;
     if(argc<(sized?7:(workspace||server)?6:5) || argc>(sized?38:(workspace||server)?37:36) || fcntl(3,F_GETFD)<0)return 2;
     /* Captured output is reserved for our existing bounded bridge. */
     if(captured&&(argc!=11||strcmp(argv[5],argv[0])||strcmp(argv[6],"--vision-engine-bounded-bridge")))return 2;
     char *end;errno=0;double lifetime=strtod(argv[2],&end);
-    if(errno||*end||end==argv[2]||((server||command_profile||specialist)?lifetime!=0:(!(lifetime>0)||lifetime>86400)))return 2;
+    if(errno||*end||end==argv[2]||!valid_lifetime(lifetime,leased_command,server||command_profile||specialist))return 2;
     errno=0;unsigned long limit=strtoul(argv[3],&end,10);
     if(errno||*end||end==argv[3]||!limit||limit>1048576)return 2;
     unsigned long result_limit=8196;
@@ -175,7 +181,7 @@ int engine_guardian_dispatch(int argc,char **argv) {
             (void)kill(-child,SIGKILL);}
         if(exited&&captured&&capture[0]<0)break;
         double now=monotonic();if(now<0){reason="clock_failed";break;}
-        if(!server&&!command_profile&&!specialist&&now>=deadline){reason="lifetime_exceeded";break;}
+        if(lifetime>0&&now>=deadline){reason="lifetime_exceeded";break;}
         struct pollfd fds[3]={{3,POLLIN|POLLHUP,0},{output[0],POLLIN|POLLHUP,0},{capture[0],POLLIN|POLLHUP,0}};
         int rc=poll(fds,captured?3:2,10);
         if(rc<0){if(errno==EINTR)continue;reason="poll_failed";break;}
@@ -240,7 +246,8 @@ static const char *start(const char *self,const char *argv_json,double lifetime,
     int captured=transport==1,duplex=transport==2||transport==5,command_profile=transport==4,specialist=transport==5;
     *p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};
     if(!self || self[0]!='/' || !argv_json || strlen(argv_json)>(command_profile?65536:16384) ||
-       ((server||command_profile||specialist)?lifetime!=0:(!(lifetime>0)||lifetime>86400))||!limit||limit>1048576)return "invalid_engine_configuration";
+       !valid_lifetime(lifetime,command_profile&&residency>=0,server||command_profile||specialist)||
+       !limit||limit>1048576)return "invalid_engine_configuration";
     Json j;if(!json_parse(&j,argv_json,strlen(argv_json))||j.tokens[0].type!=JT_ARRAY||
         j.tokens[0].count<1||j.tokens[0].count>32)return "invalid_engine_configuration";
     int sized=result_limit!=0;
@@ -248,7 +255,7 @@ static const char *start(const char *self,const char *argv_json,double lifetime,
     char *args[39]={0};int first=sized?6:(workspace||server)?5:4,count=first;char seconds[32],bytes[32],result_bytes[32];
     snprintf(result_bytes,sizeof(result_bytes),"%zu",result_limit);
     snprintf(seconds,sizeof(seconds),"%.6f",lifetime);snprintf(bytes,sizeof(bytes),"%zu",limit);
-    args[0]=(char*)self;args[1]=transport==6?"--inference-owned-engine-workspace-uncapped":specialist?"--inference-owned-engine-specialist":command_profile?"--inference-owned-engine-command":server?"--inference-owned-engine-server":duplex?(workspace?"--inference-owned-engine-workspace-duplex":"--inference-owned-engine-duplex"):captured?"--inference-owned-engine-workspace-captured":sized?"--inference-owned-engine-protocol-sized":input>=0?"--inference-owned-engine-protocol":workspace?"--inference-owned-engine-workspace":model>=0?"--inference-owned-engine-bound":residency>=0?"--inference-owned-engine-leased":"--inference-owned-engine";args[2]=seconds;args[3]=bytes;if(workspace)args[4]=(char*)workspace;if(server)args[4]=(char*)server->marker;if(sized)args[5]=result_bytes;
+    args[0]=(char*)self;args[1]=transport==6?"--inference-owned-engine-workspace-uncapped":specialist?"--inference-owned-engine-specialist":command_profile?(residency>=0?"--inference-owned-engine-command-leased":"--inference-owned-engine-command"):server?"--inference-owned-engine-server":duplex?(workspace?"--inference-owned-engine-workspace-duplex":"--inference-owned-engine-duplex"):captured?"--inference-owned-engine-workspace-captured":sized?"--inference-owned-engine-protocol-sized":input>=0?"--inference-owned-engine-protocol":workspace?"--inference-owned-engine-workspace":model>=0?"--inference-owned-engine-bound":residency>=0?"--inference-owned-engine-leased":"--inference-owned-engine";args[2]=seconds;args[3]=bytes;if(workspace)args[4]=(char*)workspace;if(server)args[4]=(char*)server->marker;if(sized)args[5]=result_bytes;
     const char *error=NULL;
     for(int t=1;t<j.tokens[0].next;t=j.tokens[t].next){args[count]=json_string(&j,t);
         if(!args[count]||strlen(args[count])>4096){error="invalid_engine_configuration";break;}count++;}
@@ -311,7 +318,11 @@ static const char *start(const char *self,const char *argv_json,double lifetime,
         double now=monotonic();
         if(now<0 || !line(p->response,reply,now+2))error="engine_exec_failed";
         else if(server||command_profile||specialist){char *end=NULL;long pid=!strncmp(reply,"started:",8)?strtol(reply+8,&end,10):0;
-            if(pid<=1||pid>INT32_MAX||!end||*end)error="engine_exec_failed";else p->engine=(pid_t)pid;
+            if(pid<=1||pid>INT32_MAX||!end||*end){
+                if(command_profile&&residency>=0&&!strcmp(reply,"exec_failed"))
+                    snprintf(p->reason,sizeof(p->reason),"engine_failed");
+                error="engine_exec_failed";
+            }else p->engine=(pid_t)pid;
         }else if(strcmp(reply,"started"))error="engine_exec_failed";
         if(error){const char *stopped=engine_process_stop(p);
             if(stopped && !strcmp(stopped,"engine_shutdown_pending"))error="engine_shutdown_pending";}
@@ -388,14 +399,15 @@ const char *engine_process_start_server(const char *self,const char *argv,int le
     if(!server||!server->marker||server->marker[0]!='/'||lease<0||server->configuration<0||server->output<0||server->error<0)return "invalid_engine_configuration";
     return start(self,argv,0,1,lease,-1,NULL,-1,-1,-1,0,3,server,p);
 }
-const char *engine_process_start_command(const char *self,const char *argv,const char *workspace,int directory,EngineProcess *p) {
+const char *engine_process_start_command(const char *self,const char *argv,const char *workspace,int directory,
+                                         int residency,double lifetime,EngineProcess *p) {
     if(!p)return "invalid_engine_configuration";
     *p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};
     struct stat retained,named;
     if(!workspace||workspace[0]!='/'||directory<0||fstat(directory,&retained)||lstat(workspace,&named)||
        !S_ISDIR(retained.st_mode)||retained.st_uid!=geteuid()||(retained.st_mode&077)||
        retained.st_dev!=named.st_dev||retained.st_ino!=named.st_ino)return "invalid_engine_configuration";
-    return start(self,argv,0,1,-1,-1,workspace,directory,-1,-1,0,4,NULL,p);
+    return start(self,argv,lifetime,1,residency,-1,workspace,directory,-1,-1,0,4,NULL,p);
 }
 const char *engine_process_start_specialist(const char *self,const char *argv,int input,int output,int error_fd,const char *workspace,int directory,EngineProcess *p) {
     if(!p)return "invalid_engine_configuration";
@@ -435,6 +447,10 @@ const char *engine_process_stop(EngineProcess *p) {
         struct timespec delay={0,10000000};nanosleep(&delay,NULL);
     }
     close(p->response);p->response=-1;p->guardian=-1;p->terminal=1;
-    if(reaped<0 || !observed)snprintf(p->reason,sizeof(p->reason),"engine_guardian_failed");
+    /* Command/primary/specialist terminal notices precede physical cleanup.
+     * A guardian killed while awaiting acknowledgement cannot prove cleanup. */
+    if(reaped<0 || !observed || !WIFEXITED(status) ||
+       ((!strcmp(p->reason,"completed") || !strcmp(p->reason,"stopped")) && WEXITSTATUS(status)))
+        snprintf(p->reason,sizeof(p->reason),"engine_guardian_failed");
     return terminal_error(p);
 }

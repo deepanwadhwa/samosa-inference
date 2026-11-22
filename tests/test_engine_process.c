@@ -49,6 +49,7 @@ static void backpressure(int fd){
 }
 static int fixture(const char *mode,const char *path){
     if(!strcmp(mode,"fail"))return 9;
+    if(!strcmp(mode,"complete"))return 0;
     if(!strncmp(mode,"duplex",6)){
         char model[3];if(pread(5,model,3,0)!=3||memcmp(model,"abc",3))return 4;
         int held=lease(path);if(held<0)return 4;
@@ -89,6 +90,43 @@ static int fixture(const char *mode,const char *path){
     if(!strcmp(mode,"flood")){char bytes[4096];memset(bytes,'x',sizeof(bytes));for(;;)if(write(STDOUT_FILENO,bytes,sizeof(bytes))<1)return 4;}
     if(!strcmp(mode,"closed-log")){close(STDOUT_FILENO);close(STDERR_FILENO);}
     for(;;)pause();
+}
+static void leased_command_tests(const char *self,const char *root) {
+    char workspace[512],residency_path[512],engine_path[512];
+    snprintf(workspace,sizeof(workspace),"%s/command-workspace",root);
+    snprintf(residency_path,sizeof(residency_path),"%s/command-residency",root);
+    snprintf(engine_path,sizeof(engine_path),"%s/command-engine",root);
+    CHECK(!mkdir(workspace,0700));
+    int directory=open(workspace,O_RDONLY|O_DIRECTORY|O_CLOEXEC);
+    int residency=lease(residency_path);
+    CHECK(directory>=0 && residency>=0);
+    EngineProcess p;
+    char *cmd=command(self,"sleep",engine_path);
+    CHECK(!engine_process_start_command(self,cmd,workspace,directory,residency,1,&p));
+    CHECK(!close(directory) && !close(residency));
+    observe(engine_path,0);
+    terminal(&p);
+    CHECK(!engine_process_running(&p) && !strcmp(p.reason,"lifetime_exceeded"));
+    CHECK(!released(residency_path) && !access(workspace,F_OK));
+    expect_stop(&p,"lifetime_exceeded");
+    CHECK(released(residency_path) && access(workspace,F_OK)<0 && errno==ENOENT);
+    free(cmd);
+    CHECK(!unlink(engine_path));
+
+    CHECK(!mkdir(workspace,0700));
+    directory=open(workspace,O_RDONLY|O_DIRECTORY|O_CLOEXEC);
+    residency=lease(residency_path);
+    CHECK(directory>=0 && residency>=0);
+    cmd=command(self,"complete",engine_path);
+    CHECK(!engine_process_start_command(self,cmd,workspace,directory,residency,0,&p));
+    terminal(&p);
+    CHECK(!engine_process_running(&p) && !strcmp(p.reason,"completed"));
+    CHECK(!kill(p.guardian,SIGKILL));
+    expect_stop(&p,"engine_guardian_failed");
+    CHECK(!released(residency_path));
+    CHECK(!close(directory) && !close(residency));
+    CHECK(!rmdir(workspace) && !unlink(residency_path));
+    free(cmd);
 }
 static void duplex_tests(const char *self,const char *root){
     char path[512],descendant[600],residency_path[512],model_path[512],ready[512],foreign[512];
@@ -284,7 +322,7 @@ int main(int argc,char **argv){
     CHECK(access(ack_workspace,F_OK)<0&&errno==ENOENT);
     close(ack_in);close(ack_out);close(ack_dir);close(ack_lease);
     CHECK(!unlink(residency_path));if(!access(path,F_OK))CHECK(!unlink(path));
-    duplex_tests(argv[0],root);CHECK(!rmdir(root));
+    duplex_tests(argv[0],root);leased_command_tests(argv[0],root);CHECK(!rmdir(root));
 
     printf("PASS engine process ownership: %u checks; bounded logs/lifetime, owned stop/group/parent-death, foreign survivor\n",checks);return 0;
 }

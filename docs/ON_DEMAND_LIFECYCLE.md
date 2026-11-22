@@ -38,11 +38,9 @@ rule: owned regular singly linked files, no group/other write; read access need
 not be private. Activation state/fences remain private. Existing resident modes
 retain their stricter input and live-process rules.
 
-This profile preserves the existing structured Whisper adapter's30-second
-canonical-WAV/timed-SRT contract. It does not replace, truncate or qualify the
-separate legacy long-window txt/SRT CLI. Its common-control integration, default
-primary/visual controls, generic guardian-death policy, pre-admission recovery
-and full area3 remain required. Global residency/fairness remains area4.
+The registry profile preserves the structured adapter's 30-second
+canonical-WAV/timed-SRT contract. The separate long-window owner below
+preserves the file-based CLI contract.
 
 Native qualification exposed an inherited structured-worker defect: the generic
 64MiB process-wide file cap killed the installed Metal Whisper engine with
@@ -51,3 +49,43 @@ into the same bound-workspace guardian without that global cap. Its original
 16KiB SRT validation/watch, audio bounds,60-second qualification deadline and
 262144-byte log limit remain. Other capped and explicitly sized guardian modes
 are unchanged; this does not constrain Apple's shared cache to transcript bytes.
+
+## Long-window owner
+
+LIFE-08c extracts the shared Whisper qualification into `whisper_activation.c`.
+Both adapters use its pinned engine, model and speech sample checks, expected
+phrase check, retained identity and Activation transaction. The file-based
+`samosa_whisper_lifecycle_*` controls use the original `whisper_process.c`
+runner for the short startup probe and for user work.
+
+The real probe has a 60-second process lifetime and a bounded canonical WAV.
+It runs in the existing private command workspace, with the guardian holding
+the lifecycle lease until reaping and cleanup finish. The regular file-based
+request keeps its original audio length, text and SRT options and 16 MiB
+output bound. Stop cancels and joins active work before releasing the lease.
+The owner reports unknown cleanup if the guardian dies after its terminal
+notice and before physical cleanup. A live host retains the fence in that
+case. Shared recovery of unknown orphan groups across host exits remains open.
+
+Native Base and Tiny English qualified from the existing 2.533-second
+`quick brown fox` WAV. For both models, text and SRT runs through the new
+owner kept the final phrase in a 33.482-second recording. The fixture also
+verifies stop during a run, restart, stale qualification input and unchanged last-good state after a
+successful CLI call returns the wrong expected phrase. The generic guardian
+fixture covers expiry at a shorter deadline, lease retention through the
+terminal notice and a guardian killed before the cleanup acknowledgement.
+
+Build `build/test-whisper-lifecycle-actual` and its `-sanitize` counterpart.
+Pass the absolute native CLI, catalog English model, short probe WAV and the
+33.482-second WAV paths in that order. Tiny English has 77,704,715 bytes and
+catalog SHA-256 `921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f`.
+Use the Base English and short probe hashes from
+the existing [short probe evidence](qualification/life07o-whisper-lifecycle/actual-inputs.sha256)
+and [long-window evidence](qualification/life07l-whisper-guardian/README.md#life-08a-actual-audio-beyond-one-30-second-window).
+
+The macOS installer compiles and archives these controls. Gateway's voice
+status, selection and transcription callers still use the existing checked
+runner. The next integration needs trusted pins for the locally built runtime
+and packaged probe, qualification on preparation and selection, and lifecycle
+routing for recordings and attachments. Base and Tiny English both need that
+assembled Mac qualification.

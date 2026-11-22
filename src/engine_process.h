@@ -54,7 +54,8 @@ const char *engine_process_start_server(const char *,const char *,int,const Engi
  * invented. stdout/stderr go to /dev/null; host validates its existing result
  * size/format while the guardian reserves PID/group/workspace until stop.
  * Caller must keep the record until stop finishes, including pending cleanup. */
-const char *engine_process_start_command(const char *,const char *,const char *,int,EngineProcess *);
+const char *engine_process_start_command(const char *,const char *,const char *,int,
+                                         int residency,double lifetime,EngineProcess *);
 /* Original default visual helpers: duplex kernel pipes, inherited stderr,
  * unlimited process lifetime; caller retains existing frame/request/grace bounds.
  * Guardian reserves actual PID/group until acknowledgement and closes its spare

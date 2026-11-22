@@ -68,7 +68,7 @@ static void crash_recovery(InferenceRegistryHost *h,const FixtureConfig *c,const
     char lease_path[1024];CHECK(snprintf(lease_path,sizeof(lease_path),"%s/provider.lock",c->state)<(int)sizeof(lease_path));
     int lease=open(lease_path,O_RDWR);CHECK(lease>=0);CHECK(flock(lease,LOCK_EX|LOCK_NB)<0&&(errno==EWOULDBLOCK||errno==EAGAIN));CHECK(!close(lease));
     CHECK(!inference_registry_host_load(registry_path,self,h));Task recovery={.host=h,.start=1,.rc=0};pthread_t thread;launch_work(&thread,&recovery);
-    struct timespec wait={0,150000000};nanosleep(&wait,NULL);CHECK(!kill(worker,0));char *same=read_fixture(marker,4096);char pid[64];snprintf(pid,sizeof(pid),"\"pid\":%ld",(long)worker);CHECK(strstr(same,pid));free(same);CHECK(!atomic_load(&h->on_demand_whispers[0]->qualified));
+    struct timespec wait={0,150000000};nanosleep(&wait,NULL);CHECK(!kill(worker,0));char *same=read_fixture(marker,4096);char pid[64];snprintf(pid,sizeof(pid),"\"pid\":%ld",(long)worker);CHECK(strstr(same,pid));free(same);CHECK(!atomic_load(&h->on_demand_whispers[0]->lifecycle.qualified));
     CHECK(!kill(guardian,SIGCONT));CHECK(!pthread_join(thread,NULL));CHECK(strstr(recovery.body,"\"ready\":true"));free(recovery.body);gone(worker);gone(guardian);absent(workspace);free(workspace);CHECK(!kill(peer,0));
     expect_life(h,"provider_stop",0,"\"state\":\"stopped\"");CHECK(!inference_registry_host_close(h));
     /* Killing a guardian is an unknown cleanup outcome. This host must keep
@@ -95,8 +95,8 @@ int main(int argc,char **argv){
     other=request(&h,"{\"contract_version\":1,\"op\":\"provider_start\",\"provider_id\":\"whisper-base-en-v1\",\"qualification_wav\":\"/public/path\"}",1);error_check(other,"unknown_field");free(other);
     expect_life(&h,"provider_lifecycle_status",0,"\"state\":\"stopped\"");
     int fd=open(audio_path,O_RDONLY);CHECK(fd>=0);unsigned char *wav=malloc(audio_size);CHECK(wav&&read(fd,wav,audio_size)==(ssize_t)audio_size&&!close(fd));char *encoded=encode(wav,audio_size);free(wav);char *input=transcribe(encoded,NULL,10000),*body=request(&h,input,1);error_check(body,"provider_unavailable");free(body);
-    expect_life(&h,"provider_start",0,"\"ready\":true");WhisperHost *host=h.on_demand_whispers[0];CHECK(host&&host->activation.on_demand&&host->activation.process.guardian<0&&host->activation.process.response<0);unsigned revision=host->activation.revision;
-    expect_life(&h,"provider_start",0,"\"resident\":false");CHECK(host->activation.revision==revision);body=request(&h,input,0);CHECK(strstr(body,expected_text)&&strstr(body,"speech_recognition_uncertain"));if(actual)printf("Actual common Whisper: %s",body);free(body);
+    expect_life(&h,"provider_start",0,"\"ready\":true");WhisperHost *host=h.on_demand_whispers[0];CHECK(host&&host->lifecycle.activation.on_demand&&host->lifecycle.activation.process.guardian<0&&host->lifecycle.activation.process.response<0);unsigned revision=host->lifecycle.activation.revision;
+    expect_life(&h,"provider_start",0,"\"resident\":false");CHECK(host->lifecycle.activation.revision==revision);body=request(&h,input,0);CHECK(strstr(body,expected_text)&&strstr(body,"speech_recognition_uncertain"));if(actual)printf("Actual common Whisper: %s",body);free(body);
     char *snapshot=saved(state);CHECK(strstr(snapshot,"\"execution_mode\":\"on_demand\"")&&strstr(snapshot,audio_sha)&&strstr(snapshot,"\"live_readiness\":\"unobserved\""));
     if(!actual){
         char *invalid=transcribe("!!!!",NULL,0);body=request(&h,invalid,1);error_check(body,"invalid_audio");free(body);free(invalid);expect_life(&h,"provider_lifecycle_status",0,"\"ready\":true");
