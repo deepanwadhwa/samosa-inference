@@ -1,0 +1,342 @@
+In file included from /private/tmp/samosa-life07o-activation-baseline.c:5:
+src/json.h:198:9: warning: Assigned value is uninitialized [core.uninitialized.Assign]
+  198 |         unsigned c=s[i];
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:155:8: note: Assuming 'c' is non-null
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |        ^~
+/private/tmp/samosa-life07o-activation-baseline.c:155:8: note: Left side of '||' is false
+/private/tmp/samosa-life07o-activation-baseline.c:155:12: note: Assuming field 'qualify' is non-null
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |            ^~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:155:8: note: Left side of '||' is false
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:155:25: note: Assuming field 'self' is non-null
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |                         ^~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:155:8: note: Left side of '||' is false
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:155:35: note: Assuming the condition is false
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |                                   ^~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:155:8: note: Left side of '||' is false
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:155:52: note: Assuming field 'engine' is non-null
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |                                                    ^~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:155:8: note: Left side of '||' is false
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:155:64: note: Assuming field 'model' is non-null
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |                                                                ^~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:155:8: note: Left side of '||' is false
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:155:75: note: Assuming field 'expected_revision' is < 2147483646
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |                                                                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:155:8: note: Left side of '||' is false
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:156:10: note: Assuming field 'advance_current' is equal to 0
+  156 |         (c->advance_current!=0&&c->advance_current!=1)||(c->model_argument&&(!c->launch||c->model_argument[0]!='/'))||(c->trusted_host_runtime&&(!c->launch||c->require_system_runtime||strcmp(c->engine,c->self)))||
+      |          ^~~~~~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:156:31: note: Left side of '&&' is false
+  156 |         (c->advance_current!=0&&c->advance_current!=1)||(c->model_argument&&(!c->launch||c->model_argument[0]!='/'))||(c->trusted_host_runtime&&(!c->launch||c->require_system_runtime||strcmp(c->engine,c->self)))||
+      |                               ^
+/private/tmp/samosa-life07o-activation-baseline.c:156:58: note: Assuming field 'model_argument' is null
+  156 |         (c->advance_current!=0&&c->advance_current!=1)||(c->model_argument&&(!c->launch||c->model_argument[0]!='/'))||(c->trusted_host_runtime&&(!c->launch||c->require_system_runtime||strcmp(c->engine,c->self)))||
+      |                                                          ^~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:156:75: note: Left side of '&&' is false
+  156 |         (c->advance_current!=0&&c->advance_current!=1)||(c->model_argument&&(!c->launch||c->model_argument[0]!='/'))||(c->trusted_host_runtime&&(!c->launch||c->require_system_runtime||strcmp(c->engine,c->self)))||
+      |                                                                           ^
+/private/tmp/samosa-life07o-activation-baseline.c:156:120: note: Assuming field 'trusted_host_runtime' is 0
+  156 |         (c->advance_current!=0&&c->advance_current!=1)||(c->model_argument&&(!c->launch||c->model_argument[0]!='/'))||(c->trusted_host_runtime&&(!c->launch||c->require_system_runtime||strcmp(c->engine,c->self)))||
+      |                                                                                                                        ^~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:156:143: note: Left side of '&&' is false
+  156 |         (c->advance_current!=0&&c->advance_current!=1)||(c->model_argument&&(!c->launch||c->model_argument[0]!='/'))||(c->trusted_host_runtime&&(!c->launch||c->require_system_runtime||strcmp(c->engine,c->self)))||
+      |                                                                                                                                               ^
+/private/tmp/samosa-life07o-activation-baseline.c:157:10: note: Assuming field 'verify_runtime' is null
+  157 |         (c->verify_runtime&&(!c->launch||c->require_system_runtime||c->trusted_host_runtime||!c->bundle_identity))||
+      |          ^~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:157:27: note: Left side of '&&' is false
+  157 |         (c->verify_runtime&&(!c->launch||c->require_system_runtime||c->trusted_host_runtime||!c->bundle_identity))||
+      |                           ^
+/private/tmp/samosa-life07o-activation-baseline.c:155:5: note: Taking false branch
+  155 |     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:160:41: note: Field 'root' is >= 0
+  160 |     a->root=root_open(c->state,1);if(a->root<0)return "unsafe_activation_state";
+      |                                         ^
+/private/tmp/samosa-life07o-activation-baseline.c:160:35: note: Taking false branch
+  160 |     a->root=root_open(c->state,1);if(a->root<0)return "unsafe_activation_state";
+      |                                   ^
+/private/tmp/samosa-life07o-activation-baseline.c:163:11: note: Field 'lease' is >= 0
+  163 |     if(a->lease<0||!private_file(a->lease,0))e="unsafe_activation_state";
+      |           ^
+/private/tmp/samosa-life07o-activation-baseline.c:163:8: note: Left side of '||' is false
+  163 |     if(a->lease<0||!private_file(a->lease,0))e="unsafe_activation_state";
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:163:5: note: Taking false branch
+  163 |     if(a->lease<0||!private_file(a->lease,0))e="unsafe_activation_state";
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:164:13: note: Assuming the condition is false
+  164 |     else if(flock(a->lease,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"activation_busy":"activation_state_unavailable";
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:164:10: note: Taking false branch
+  164 |     else if(flock(a->lease,LOCK_EX|LOCK_NB))e=errno==EWOULDBLOCK?"activation_busy":"activation_state_unavailable";
+      |          ^
+/private/tmp/samosa-life07o-activation-baseline.c:166:9: note: 'e' is null
+  166 |     if(!e)e=db_open(c->state,a->root,&db,&anchor);
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:166:5: note: Taking true branch
+  166 |     if(!e)e=db_open(c->state,a->root,&db,&anchor);
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:167:9: note: 'e' is null
+  167 |     if(!e)e=current(db,&revision,&saved);
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:167:5: note: Taking true branch
+  167 |     if(!e)e=current(db,&revision,&saved);
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:169:9: note: 'e' is null
+  169 |     if(!e&&revision>=2147483646)e="activation_revision_limit";
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:169:8: note: Left side of '&&' is true
+  169 |     if(!e&&revision>=2147483646)e="activation_revision_limit";
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:169:12: note: 'revision' is < 2147483646
+  169 |     if(!e&&revision>=2147483646)e="activation_revision_limit";
+      |            ^~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:169:5: note: Taking false branch
+  169 |     if(!e&&revision>=2147483646)e="activation_revision_limit";
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:170:9: note: 'e' is null
+  170 |     if(!e&&!c->advance_current&&revision!=c->expected_revision)e="activation_revision_conflict";
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:170:8: note: Left side of '&&' is true
+  170 |     if(!e&&!c->advance_current&&revision!=c->expected_revision)e="activation_revision_conflict";
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:170:16: note: Field 'advance_current' is 0
+  170 |     if(!e&&!c->advance_current&&revision!=c->expected_revision)e="activation_revision_conflict";
+      |                ^
+/private/tmp/samosa-life07o-activation-baseline.c:170:8: note: Left side of '&&' is true
+  170 |     if(!e&&!c->advance_current&&revision!=c->expected_revision)e="activation_revision_conflict";
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:170:33: note: Assuming 'revision' is equal to field 'expected_revision'
+  170 |     if(!e&&!c->advance_current&&revision!=c->expected_revision)e="activation_revision_conflict";
+      |                                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:170:5: note: Taking false branch
+  170 |     if(!e&&!c->advance_current&&revision!=c->expected_revision)e="activation_revision_conflict";
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:171:9: note: 'e' is null
+  171 |     if(!e)e=verified(c->engine,c->engine_sha,c->engine_size,c->byte_ceiling,&engine);
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:171:5: note: Taking true branch
+  171 |     if(!e)e=verified(c->engine,c->engine_sha,c->engine_size,c->byte_ceiling,&engine);
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:173:9: note: 'e' is null
+  173 |     if(!e&&(c->require_system_runtime||c->trusted_host_runtime||c->verify_runtime))e=engine_runtime_environment();
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:173:8: note: Left side of '&&' is true
+  173 |     if(!e&&(c->require_system_runtime||c->trusted_host_runtime||c->verify_runtime))e=engine_runtime_environment();
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:173:13: note: Assuming field 'require_system_runtime' is 0
+  173 |     if(!e&&(c->require_system_runtime||c->trusted_host_runtime||c->verify_runtime))e=engine_runtime_environment();
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:173:13: note: Left side of '||' is false
+/private/tmp/samosa-life07o-activation-baseline.c:173:43: note: Field 'trusted_host_runtime' is 0
+  173 |     if(!e&&(c->require_system_runtime||c->trusted_host_runtime||c->verify_runtime))e=engine_runtime_environment();
+      |                                           ^
+/private/tmp/samosa-life07o-activation-baseline.c:173:13: note: Left side of '||' is false
+  173 |     if(!e&&(c->require_system_runtime||c->trusted_host_runtime||c->verify_runtime))e=engine_runtime_environment();
+      |             ^
+/private/tmp/samosa-life07o-activation-baseline.c:173:68: note: Field 'verify_runtime' is null
+  173 |     if(!e&&(c->require_system_runtime||c->trusted_host_runtime||c->verify_runtime))e=engine_runtime_environment();
+      |                                                                    ^
+/private/tmp/samosa-life07o-activation-baseline.c:173:5: note: Taking false branch
+  173 |     if(!e&&(c->require_system_runtime||c->trusted_host_runtime||c->verify_runtime))e=engine_runtime_environment();
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:174:9: note: 'e' is null
+  174 |     if(!e&&c->require_system_runtime)e=engine_system_runtime(a->engine_fd);
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:174:8: note: Left side of '&&' is true
+  174 |     if(!e&&c->require_system_runtime)e=engine_system_runtime(a->engine_fd);
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:174:15: note: Field 'require_system_runtime' is 0
+  174 |     if(!e&&c->require_system_runtime)e=engine_system_runtime(a->engine_fd);
+      |               ^
+/private/tmp/samosa-life07o-activation-baseline.c:174:5: note: Taking false branch
+  174 |     if(!e&&c->require_system_runtime)e=engine_system_runtime(a->engine_fd);
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:175:9: note: 'e' is null
+  175 |     if(!e)e=verified(c->model,c->model_sha,c->model_size,c->byte_ceiling,&model);
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:175:5: note: Taking true branch
+  175 |     if(!e)e=verified(c->model,c->model_sha,c->model_size,c->byte_ceiling,&model);
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:177:9: note: 'e' is null
+  177 |     if(!e&&c->verify_runtime)e=c->verify_runtime(c->runtime_context,a->engine_fd,a->model_fd);
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:177:8: note: Left side of '&&' is true
+  177 |     if(!e&&c->verify_runtime)e=c->verify_runtime(c->runtime_context,a->engine_fd,a->model_fd);
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:177:15: note: Field 'verify_runtime' is null
+  177 |     if(!e&&c->verify_runtime)e=c->verify_runtime(c->runtime_context,a->engine_fd,a->model_fd);
+      |               ^
+/private/tmp/samosa-life07o-activation-baseline.c:177:5: note: Taking false branch
+  177 |     if(!e&&c->verify_runtime)e=c->verify_runtime(c->runtime_context,a->engine_fd,a->model_fd);
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:178:9: note: 'e' is null
+  178 |     if(!e && !(args=render(c)))e="invalid_activation_configuration";
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:178:8: note: Left side of '&&' is true
+  178 |     if(!e && !(args=render(c)))e="invalid_activation_configuration";
+      |        ^
+/private/tmp/samosa-life07o-activation-baseline.c:178:21: note: Calling 'render'
+  178 |     if(!e && !(args=render(c)))e="invalid_activation_configuration";
+      |                     ^~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:57:8: note: Assuming field 'argv_template' is non-null
+   57 |     if(!c->argv_template||strlen(c->argv_template)>16384)return NULL;
+      |        ^~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:57:8: note: Left side of '||' is false
+/private/tmp/samosa-life07o-activation-baseline.c:57:27: note: Assuming the condition is false
+   57 |     if(!c->argv_template||strlen(c->argv_template)>16384)return NULL;
+      |                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:57:5: note: Taking false branch
+   57 |     if(!c->argv_template||strlen(c->argv_template)>16384)return NULL;
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:58:15: note: Left side of '||' is false
+   58 |     Json j;if(!json_parse(&j,c->argv_template,strlen(c->argv_template))||j.tokens[0].type!=JT_ARRAY||
+      |               ^
+/private/tmp/samosa-life07o-activation-baseline.c:58:74: note: Assuming field 'type' is equal to JT_ARRAY
+   58 |     Json j;if(!json_parse(&j,c->argv_template,strlen(c->argv_template))||j.tokens[0].type!=JT_ARRAY||
+      |                                                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:58:15: note: Left side of '||' is false
+   58 |     Json j;if(!json_parse(&j,c->argv_template,strlen(c->argv_template))||j.tokens[0].type!=JT_ARRAY||
+      |               ^
+/private/tmp/samosa-life07o-activation-baseline.c:59:9: note: Assuming field 'count' is >= 2
+   59 |         j.tokens[0].count<2||j.tokens[0].count>32)return NULL;
+      |         ^~~~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:58:15: note: Left side of '||' is false
+   58 |     Json j;if(!json_parse(&j,c->argv_template,strlen(c->argv_template))||j.tokens[0].type!=JT_ARRAY||
+      |               ^
+/private/tmp/samosa-life07o-activation-baseline.c:59:30: note: Assuming field 'count' is <= 32
+   59 |         j.tokens[0].count<2||j.tokens[0].count>32)return NULL;
+      |                              ^~~~~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:58:12: note: Taking false branch
+   58 |     Json j;if(!json_parse(&j,c->argv_template,strlen(c->argv_template))||j.tokens[0].type!=JT_ARRAY||
+      |            ^
+/private/tmp/samosa-life07o-activation-baseline.c:60:64: note: Assuming 'f' is non-null
+   60 |     char *out=NULL;size_t n;FILE *f=open_memstream(&out,&n);if(!f)return NULL;
+      |                                                                ^~
+/private/tmp/samosa-life07o-activation-baseline.c:60:61: note: Taking false branch
+   60 |     char *out=NULL;size_t n;FILE *f=open_memstream(&out,&n);if(!f)return NULL;
+      |                                                             ^
+/private/tmp/samosa-life07o-activation-baseline.c:62:17: note: Assuming 't' is < field 'next'
+   62 |     for(int t=1;t<j.tokens[0].next;t=j.tokens[t].next){char *arg=json_string(&j,t);
+      |                 ^~~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:62:5: note: Loop condition is true.  Entering loop body
+   62 |     for(int t=1;t<j.tokens[0].next;t=j.tokens[t].next){char *arg=json_string(&j,t);
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:62:66: note: Calling 'json_string'
+   62 |     for(int t=1;t<j.tokens[0].next;t=j.tokens[t].next){char *arg=json_string(&j,t);
+      |                                                                  ^~~~~~~~~~~~~~~~~
+src/json.h:55:8: note: 't' is >= 0
+   55 |     if(t<0 || j->tokens[t].type!=JT_STRING) return NULL;
+      |        ^
+src/json.h:55:8: note: Left side of '||' is false
+src/json.h:55:15: note: Assuming field 'type' is equal to JT_STRING
+   55 |     if(t<0 || j->tokens[t].type!=JT_STRING) return NULL;
+      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/json.h:55:5: note: Taking false branch
+   55 |     if(t<0 || j->tokens[t].type!=JT_STRING) return NULL;
+      |     ^
+src/json.h:57:15: note: Storing uninitialized value
+   57 |     char *out=malloc(end-begin+1); if(!out) return NULL;
+      |               ^~~~~~~~~~~~~~~~~~~
+src/json.h:57:39: note: Assuming 'out' is non-null
+   57 |     char *out=malloc(end-begin+1); if(!out) return NULL;
+      |                                       ^~~~
+src/json.h:57:36: note: Taking false branch
+   57 |     char *out=malloc(end-begin+1); if(!out) return NULL;
+      |                                    ^
+src/json.h:58:24: note: Assuming 'i' is >= 'end'
+   58 |     for(size_t i=begin;i<end;) {
+      |                        ^~~~~
+src/json.h:58:5: note: Loop condition is false. Execution continues on line 74
+   58 |     for(size_t i=begin;i<end;) {
+      |     ^
+/private/tmp/samosa-life07o-activation-baseline.c:62:66: note: Returning from 'json_string'
+   62 |     for(int t=1;t<j.tokens[0].next;t=j.tokens[t].next){char *arg=json_string(&j,t);
+      |                                                                  ^~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:63:13: note: 'arg' is non-null
+   63 |         if(!arg||strlen(arg)>4096){free(arg);valid=0;break;}
+      |             ^~~
+/private/tmp/samosa-life07o-activation-baseline.c:63:12: note: Left side of '||' is false
+   63 |         if(!arg||strlen(arg)>4096){free(arg);valid=0;break;}
+      |            ^
+/private/tmp/samosa-life07o-activation-baseline.c:63:18: note: Assuming the condition is false
+   63 |         if(!arg||strlen(arg)>4096){free(arg);valid=0;break;}
+      |                  ^~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:63:9: note: Taking false branch
+   63 |         if(!arg||strlen(arg)>4096){free(arg);valid=0;break;}
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:65:12: note: Assuming the condition is false
+   65 |         if(!strcmp(arg,"@ENGINE@")){engines++;if(index)valid=0;value=c->engine;}
+      |            ^~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:65:9: note: Taking false branch
+   65 |         if(!strcmp(arg,"@ENGINE@")){engines++;if(index)valid=0;value=c->engine;}
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:66:17: note: Assuming the condition is false
+   66 |         else if(!strcmp(arg,"@MODEL@")){models++;value=c->model_argument?c->model_argument:"/dev/fd/5";}
+      |                 ^~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:66:14: note: Taking false branch
+   66 |         else if(!strcmp(arg,"@MODEL@")){models++;value=c->model_argument?c->model_argument:"/dev/fd/5";}
+      |              ^
+/private/tmp/samosa-life07o-activation-baseline.c:67:18: note: 'index' is 0
+   67 |         else if(!index)valid=0;
+      |                  ^~~~~
+/private/tmp/samosa-life07o-activation-baseline.c:67:14: note: Taking true branch
+   67 |         else if(!index)valid=0;
+      |              ^
+/private/tmp/samosa-life07o-activation-baseline.c:68:9: note: Taking false branch
+   68 |         if(index++)fputc(',',f);
+      |         ^
+/private/tmp/samosa-life07o-activation-baseline.c:69:9: note: Calling 'json_quote'
+   69 |         json_quote(f,value,strlen(value));free(arg);
+      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/json.h:197:20: note: Assuming 'i' is < 'n'
+  197 |     for(size_t i=0;i<n;i++) {
+      |                    ^~~
+src/json.h:197:5: note: Loop condition is true.  Entering loop body
+  197 |     for(size_t i=0;i<n;i++) {
+      |     ^
+src/json.h:199:12: note: Left side of '||' is false
+  199 |         if(c=='"'||c=='\\') { fputc('\\',out); fputc((int)c,out); }
+      |            ^
+src/json.h:199:9: note: Taking false branch
+  199 |         if(c=='"'||c=='\\') { fputc('\\',out); fputc((int)c,out); }
+      |         ^
+src/json.h:200:17: note: 'c' is < 32
+  200 |         else if(c<32) fprintf(out,"\\u%04x",c);
+      |                 ^
+src/json.h:200:14: note: Taking true branch
+  200 |         else if(c<32) fprintf(out,"\\u%04x",c);
+      |              ^
+src/json.h:197:24: note: The value 1 is assigned to 'i'
+  197 |     for(size_t i=0;i<n;i++) {
+      |                        ^~~
+src/json.h:197:20: note: Assuming 'i' is < 'n'
+  197 |     for(size_t i=0;i<n;i++) {
+      |                    ^~~
+src/json.h:197:5: note: Loop condition is true.  Entering loop body
+  197 |     for(size_t i=0;i<n;i++) {
+      |     ^
+src/json.h:198:9: note: Assigned value is uninitialized
+  198 |         unsigned c=s[i];
+      |         ^          ~~~~
+1 warning generated.

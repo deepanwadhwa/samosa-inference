@@ -1,0 +1,31 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Isrc -c src/engine_process.c -o build/engine-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_supervisor.c -o build/specialist-supervisor.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/backend_process.c -o build/backend-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/whisper_process.c -o build/whisper-process.o
+ar rcs build/libsamosa-inference-specialist.a build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/whisper-process.o build/vision-budget.o build/turn-control.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_backend_process.c build/libsamosa-inference-specialist.a -o build/test-backend-process
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process
+samosa-gateway: refusing to start qwen: private backend port 49950 is already occupied by an untracked process
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-Wkj3Jo/backend.pid
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-Wkj3Jo/backend.pid
+PASS primary backend owner: 676 checks; original launch/environment/health/marker/stop, literal paths, rollback inputs; guardian parent-death, actual PID reservation, lease exclusion, unlimited append logs, foreign process survives
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_backend_process.c src/backend_process.c src/llama_launch.c src/engine_process.c -o build/test-backend-process-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process
+samosa-gateway: refusing to start qwen: private backend port 50072 is already occupied by an untracked process
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-jdj514/backend.pid
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-jdj514/backend.pid
+PASS primary backend owner: 676 checks; original launch/environment/health/marker/stop, literal paths, rollback inputs; guardian parent-death, actual PID reservation, lease exclusion, unlimited append logs, foreign process survives
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_whisper_process.c build/libsamosa-inference-specialist.a -o build/test-whisper-process
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-whisper-process /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-whisper-process
+PASS extracted Whisper runner (522 checks): original txt/SRT/argv,271-second input, UTF-8/16-MiB bounds, busy/preserve-cancel, failure, exact-child cancellation/reap and complete result cleanup; guardian parent-death, descendant/foreign-process safety, held-PID/workspace cleanup, stalled guardian, relative/escaped paths and discarded verbose logs
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_process.c src/whisper_process.c src/engine_process.c -o build/test-whisper-process-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-whisper-process-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-whisper-process
+PASS extracted Whisper runner (522 checks): original txt/SRT/argv,271-second input, UTF-8/16-MiB bounds, busy/preserve-cancel, failure, exact-child cancellation/reap and complete result cleanup; guardian parent-death, descendant/foreign-process safety, held-PID/workspace cleanup, stalled guardian, relative/escaped paths and discarded verbose logs
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_launch.c build/libsamosa-inference-specialist.a -o build/test-specialist-launch
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-launch /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+PASS original Molmo2 launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_launch.c src/specialist_protocol.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-launch-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-launch-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+PASS original Molmo2 launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart

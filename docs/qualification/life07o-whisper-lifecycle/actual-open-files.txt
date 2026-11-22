@@ -1,0 +1,17 @@
+COMMAND   PID         USER   FD   TYPE             DEVICE  SIZE/OFF                NODE NAME
+engine  45476 deepanwadhwa  cwd    DIR               1,16       992            55383340 /Users/deepanwadhwa/Documents/samosa-chat
+engine  45476 deepanwadhwa  txt    REG               1,16   3220840            76752373 /private/tmp/samosa-whisper-lifecycle-uqXySs/engine
+engine  45476 deepanwadhwa  txt    REG               1,16     72984            75878317 /Library/Preferences/Logging/.plist-cache.eoiiXH3M
+engine  45476 deepanwadhwa  txt    REG               1,16       110 1152921500312103377 /System/Library/CoreServices/SystemVersion.bundle/English.lproj/SystemVersion.strings
+engine  45476 deepanwadhwa  txt    REG               1,16   2374000 1152921500312573277 /usr/lib/dyld
+engine  45476 deepanwadhwa  txt    REG               1,16  23073160 1152921500312129794 /System/Library/Extensions/AGXMetalG15G_C0.bundle/Contents/Resources/ds.g15g
+engine  45476 deepanwadhwa  txt    REG               1,16  25166896 1152921500312129789 /System/Library/Extensions/AGXMetalG15G_C0.bundle/Contents/MacOS/AGXMetalG15G_C0
+engine  45476 deepanwadhwa  txt    REG               1,16  35444880 1152921500312583778 /usr/share/icu/icudt78l.dat
+engine  45476 deepanwadhwa  txt    REG               1,16 223739904            52103303 /private/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/C/com.apple.metal/32024/libraries.data
+engine  45476 deepanwadhwa    0r   CHR                3,2       0t0                 336 /dev/null
+engine  45476 deepanwadhwa    1   PIPE 0x93083b847b68c855     16384                     ->0x52f2a049205a5876
+engine  45476 deepanwadhwa    2   PIPE 0x93083b847b68c855     16384                     ->0x52f2a049205a5876
+engine  45476 deepanwadhwa    3r   REG               1,16 147964211            76752374 /private/tmp/samosa-whisper-lifecycle-uqXySs/model
+engine  45476 deepanwadhwa    5r   REG               1,16 147964211            76752374 /private/tmp/samosa-whisper-lifecycle-uqXySs/model
+engine  45476 deepanwadhwa    6u   REG               1,16 223739904            52103303 /private/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/C/com.apple.metal/32024/libraries.data
+engine  45476 deepanwadhwa    7u   REG               1,16     41036            76752397 /private/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/C/com.apple.metal/32024/libraries.list

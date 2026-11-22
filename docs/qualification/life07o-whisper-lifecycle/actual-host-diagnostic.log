@@ -1,0 +1,9 @@
+[Memory Guard] Baseline swap: 533 MB
+[Memory Guard] Limits: 6144 MiB process-tree RSS, 0 MiB swap delta
+DIAG guardian=-1 error=provider_process_failed reason=engine_failed
+request returned1: {"contract_version":1,"error":{"code":"provider_process_failed"}}
+
+FAIL 31: result==rc
+[Memory Guard] Process exited with code 1
+[Memory Guard] Peak process-tree RSS: 33 MB
+[Memory Guard] Final swap delta: 0 MB

@@ -9,7 +9,12 @@
 #include <time.h>
 #include <unistd.h>
 #include <ftw.h>
+#ifdef SAMOSA_WHISPER_FIXTURE_ATOMIC
+#include <stdatomic.h>
+static atomic_uint checks;
+#else
 static unsigned checks;
+#endif
 #define CHECK(x) do{checks++;if(!(x)){fprintf(stderr,"FAIL %d: %s\n",__LINE__,#x);exit(1);}}while(0)
 typedef struct {const char *cli,*engine,*model,*state,*owner;char engine_sha[65],model_sha[65];} FixtureConfig;
 typedef struct {pid_t pid;int output;} Invocation;

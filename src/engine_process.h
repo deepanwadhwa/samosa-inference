@@ -28,6 +28,11 @@ const char *engine_process_start_bound_workspace_duplex(const char *,const char 
 /* Owned transcription workspace: guardian removes input.wav/result.srt after
  * reaping the engine, including when the requesting process dies. */
 const char *engine_process_start_bound_workspace(const char *,const char *,double,size_t,int,int,const char *,int,EngineProcess *);
+/* Trusted native file-output adapter: same bound model, lease, workspace,
+ * deadline, log and group ownership without a process-wide file-size cap.
+ * Caller validates/bounds its result independently; Metal cache writes are
+ * unrelated to result bytes. Existing capped/sized profiles are unchanged. */
+const char *engine_process_start_bound_workspace_uncapped(const char *,const char *,double,size_t,int,int,const char *,int,EngineProcess *);
 #define ENGINE_VISUAL_RESULT_MAX 32768u
 /* GPU output is copied by the guardian from a dedicated bounded pipe. Preserve OS-managed
  * Metal cache writes while retaining guardian lifetime/log/group ownership. */

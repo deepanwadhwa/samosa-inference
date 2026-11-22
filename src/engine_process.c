@@ -84,16 +84,17 @@ int engine_guardian_dispatch(int argc,char **argv) {
     int command_profile=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-command");
     int server=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-server");
     int workspace_duplex=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace-duplex");
+    int uncapped=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace-uncapped");
     int duplex=specialist||workspace_duplex||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-duplex"));
     int captured=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace-captured");
     int sized=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-protocol-sized");
     int protocol=sized||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-protocol"));
-    int workspace=specialist||command_profile||workspace_duplex||captured||protocol||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace"));
+    int workspace=uncapped||specialist||command_profile||workspace_duplex||captured||protocol||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace"));
     int bound=(duplex&&!specialist)||(!command_profile&&!specialist&&workspace)||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-bound"));
     int leased=specialist||server||bound||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-leased"));
     if(argc<2 || (!leased&&!command_profile&&strcmp(argv[1],"--inference-owned-engine")))return -1;
     if(argc<(sized?7:(workspace||server)?6:5) || argc>(sized?38:(workspace||server)?37:36) || fcntl(3,F_GETFD)<0)return 2;
-    /* Only our bounded bridge may opt out of the process-wide file cap. */
+    /* Captured output is reserved for our existing bounded bridge. */
     if(captured&&(argc!=11||strcmp(argv[5],argv[0])||strcmp(argv[6],"--vision-engine-bounded-bridge")))return 2;
     char *end;errno=0;double lifetime=strtod(argv[2],&end);
     if(errno||*end||end==argv[2]||((server||command_profile||specialist)?lifetime!=0:(!(lifetime>0)||lifetime>86400)))return 2;
@@ -120,7 +121,7 @@ int engine_guardian_dispatch(int argc,char **argv) {
      * owned workspace: a file cap would also constrain the Metal cache.
      * Sized protocols additionally get an exact kernel-enforced file cap.
      * Legacy workspace/summary limits remain unchanged. */
-    if(workspace&&!command_profile&&!captured&&!duplex){rlim_t cap=sized?(rlim_t)result_limit:67108864;
+    if(workspace&&!command_profile&&!captured&&!duplex&&!uncapped){rlim_t cap=sized?(rlim_t)result_limit:67108864;
         struct rlimit size={cap,cap};if(setrlimit(RLIMIT_FSIZE,&size))return 2;}
     if(sized||captured){struct rlimit core={0,0};if(setrlimit(RLIMIT_CORE,&core))return 2;}
     /* An orphaned stopped guardian group receives SIGHUP/SIGCONT when its
@@ -247,7 +248,7 @@ static const char *start(const char *self,const char *argv_json,double lifetime,
     char *args[39]={0};int first=sized?6:(workspace||server)?5:4,count=first;char seconds[32],bytes[32],result_bytes[32];
     snprintf(result_bytes,sizeof(result_bytes),"%zu",result_limit);
     snprintf(seconds,sizeof(seconds),"%.6f",lifetime);snprintf(bytes,sizeof(bytes),"%zu",limit);
-    args[0]=(char*)self;args[1]=specialist?"--inference-owned-engine-specialist":command_profile?"--inference-owned-engine-command":server?"--inference-owned-engine-server":duplex?(workspace?"--inference-owned-engine-workspace-duplex":"--inference-owned-engine-duplex"):captured?"--inference-owned-engine-workspace-captured":sized?"--inference-owned-engine-protocol-sized":input>=0?"--inference-owned-engine-protocol":workspace?"--inference-owned-engine-workspace":model>=0?"--inference-owned-engine-bound":residency>=0?"--inference-owned-engine-leased":"--inference-owned-engine";args[2]=seconds;args[3]=bytes;if(workspace)args[4]=(char*)workspace;if(server)args[4]=(char*)server->marker;if(sized)args[5]=result_bytes;
+    args[0]=(char*)self;args[1]=transport==6?"--inference-owned-engine-workspace-uncapped":specialist?"--inference-owned-engine-specialist":command_profile?"--inference-owned-engine-command":server?"--inference-owned-engine-server":duplex?(workspace?"--inference-owned-engine-workspace-duplex":"--inference-owned-engine-duplex"):captured?"--inference-owned-engine-workspace-captured":sized?"--inference-owned-engine-protocol-sized":input>=0?"--inference-owned-engine-protocol":workspace?"--inference-owned-engine-workspace":model>=0?"--inference-owned-engine-bound":residency>=0?"--inference-owned-engine-leased":"--inference-owned-engine";args[2]=seconds;args[3]=bytes;if(workspace)args[4]=(char*)workspace;if(server)args[4]=(char*)server->marker;if(sized)args[5]=result_bytes;
     const char *error=NULL;
     for(int t=1;t<j.tokens[0].next;t=j.tokens[t].next){args[count]=json_string(&j,t);
         if(!args[count]||strlen(args[count])>4096){error="invalid_engine_configuration";break;}count++;}
@@ -354,6 +355,10 @@ const char *engine_process_start_bound_workspace_duplex(const char *self,const c
 const char *engine_process_start_bound_workspace(const char *self,const char *argv,double lifetime,size_t limit,int residency,int model,const char *workspace,int directory,EngineProcess *p){
     if(!workspace||workspace[0]!='/'||directory<0||residency<0||model<0){*p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};return "invalid_engine_configuration";}
     return start(self,argv,lifetime,limit,residency,model,workspace,directory,-1,-1,0,0,NULL,p);
+}
+const char *engine_process_start_bound_workspace_uncapped(const char *self,const char *argv,double lifetime,size_t limit,int residency,int model,const char *workspace,int directory,EngineProcess *p){
+    if(!workspace||workspace[0]!='/'||directory<0||residency<0||model<0){*p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};return "invalid_engine_configuration";}
+    return start(self,argv,lifetime,limit,residency,model,workspace,directory,-1,-1,0,6,NULL,p);
 }
 const char *engine_process_start_bound_workspace_captured(const char *self,const char *argv,double lifetime,size_t limit,int residency,int model,const char *workspace,int directory,int result,EngineProcess *p){
     if(!workspace||workspace[0]!='/'||directory<0||residency<0||model<0){*p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};return "invalid_engine_configuration";}

@@ -43,12 +43,19 @@ static int unchanged(const Input *input,const char *path) {
         now.st_ctim.tv_sec==input->before.st_ctim.tv_sec&&now.st_ctim.tv_nsec==input->before.st_ctim.tv_nsec;
 #endif
 }
-static const char *verified(const char *path,const char *sha,uint64_t size,uint64_t ceiling,Input *input) {
+int activation_input_unchanged(int fd,const char *path,const struct stat *before) {
+    if(fd<0||!path||!before)return 0;
+    Input input={.fd=fd,.before=*before};return unchanged(&input,path);
+}
+static const char *verified(const char *path,const char *sha,uint64_t size,uint64_t ceiling,Input *input,int on_demand) {
     input->fd=-1;
     if(!path||path[0]!='/')return "invalid_activation_configuration";
     input->fd=open(path,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
     if(input->fd<0)return "activation_input_unavailable";
-    if(!private_file(input->fd,0))return "unsafe_activation_input";
+    struct stat policy;
+    if(on_demand){if(fstat(input->fd,&policy)||!S_ISREG(policy.st_mode)||policy.st_uid!=geteuid()||
+        (policy.st_mode&022)||policy.st_nlink!=1)return "unsafe_activation_input";}
+    else if(!private_file(input->fd,0))return "unsafe_activation_input";
     const char *e=artifact_verify(input->fd,size,ceiling,sha);
     if(!e&&(fstat(input->fd,&input->before)||!same_path(path,input->fd)))e="activation_input_changed";
     return e;
@@ -113,18 +120,25 @@ static const char *current(sqlite3 *db,unsigned *revision,char **config) {
     }else if(rc!=SQLITE_DONE)e="activation_state_unavailable";
     sqlite3_finalize(q);return e;
 }
+void activation_cleanup_failed(Activation *a) {
+    if(a&&a->on_demand)atomic_store(&a->cleanup_failed,1);
+}
 const char *activation_stop(Activation *a) {
+    if(atomic_load(&a->cleanup_failed))return "engine_guardian_failed";
     const char *e=engine_process_stop(&a->process);
     if(e&&!strcmp(e,"engine_shutdown_pending"))return e;
     if(a->engine_fd>=0){close(a->engine_fd);a->engine_fd=-1;}
     if(a->model_fd>=0){close(a->model_fd);a->model_fd=-1;}
     if(a->lease>=0){close(a->lease);a->lease=-1;}
-    if(a->root>=0){close(a->root);a->root=-1;}return e;
+    if(a->root>=0){close(a->root);a->root=-1;}a->on_demand=0;return e;
 }
 const char *activation_owned_status(const Activation *a,const char *state,const char *engine,const char *model,
                                     const struct stat *engine_before,const struct stat *model_before){
-    if(!a||a->process.response<0)return "provider_unavailable";
-    struct pollfd terminal={a->process.response,POLLIN|POLLHUP,0};if(poll(&terminal,1,0)!=0)return "owned_engine_exited";
+    if(!a)return "provider_unavailable";
+    if(atomic_load(&a->cleanup_failed))return "engine_guardian_failed";
+    if(!a->on_demand&&a->process.response<0)return "provider_unavailable";
+    struct pollfd terminal={a->process.response,POLLIN|POLLHUP,0};
+    if(!a->on_demand&&poll(&terminal,1,0)!=0)return "owned_engine_exited";
     struct stat root,named,lease,current;
     if(fstat(a->root,&root)||lstat(state,&named)||root.st_dev!=named.st_dev||root.st_ino!=named.st_ino||
        root.st_uid!=geteuid()||(root.st_mode&077)||fstat(a->lease,&lease)||
@@ -153,10 +167,11 @@ static int bundle_valid(const ActivationConfig *c) {
 const char *activation_start(const ActivationConfig *c,Activation *a) {
     *a=(Activation){.process={.guardian=-1,.control=-1,.response=-1},.root=-1,.lease=-1,.engine_fd=-1,.model_fd=-1};
     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
-        (c->advance_current!=0&&c->advance_current!=1)||(c->model_argument&&(!c->launch||c->model_argument[0]!='/'))||(c->trusted_host_runtime&&(!c->launch||c->require_system_runtime||strcmp(c->engine,c->self)))||
-        (c->verify_runtime&&(!c->launch||c->require_system_runtime||c->trusted_host_runtime||!c->bundle_identity))||
+        (c->advance_current!=0&&c->advance_current!=1)||(c->on_demand!=0&&c->on_demand!=1)||(c->on_demand&&c->launch)||(c->model_argument&&(!c->launch||c->model_argument[0]!='/'))||(c->trusted_host_runtime&&(!c->launch||c->require_system_runtime||strcmp(c->engine,c->self)))||
+        (c->verify_runtime&&((!c->launch&&!c->on_demand)||c->require_system_runtime||c->trusted_host_runtime||!c->bundle_identity))||
         !bundle_valid(c))
         return "invalid_activation_configuration";
+    a->on_demand=c->on_demand;
     a->root=root_open(c->state,1);if(a->root<0)return "unsafe_activation_state";
     a->lease=openat(a->root,"residency.lock",O_RDWR|O_CREAT|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC,0600);
     const char *e=NULL;
@@ -168,24 +183,26 @@ const char *activation_start(const ActivationConfig *c,Activation *a) {
     free(saved);
     if(!e&&revision>=2147483646)e="activation_revision_limit";
     if(!e&&!c->advance_current&&revision!=c->expected_revision)e="activation_revision_conflict";
-    if(!e)e=verified(c->engine,c->engine_sha,c->engine_size,c->byte_ceiling,&engine);
+    if(!e)e=verified(c->engine,c->engine_sha,c->engine_size,c->byte_ceiling,&engine,c->on_demand);
     a->engine_fd=engine.fd;
     if(!e&&(c->require_system_runtime||c->trusted_host_runtime||c->verify_runtime))e=engine_runtime_environment();
     if(!e&&c->require_system_runtime)e=engine_system_runtime(a->engine_fd);
-    if(!e)e=verified(c->model,c->model_sha,c->model_size,c->byte_ceiling,&model);
+    if(!e)e=verified(c->model,c->model_sha,c->model_size,c->byte_ceiling,&model,c->on_demand);
     a->model_fd=model.fd;
     if(!e&&c->verify_runtime)e=c->verify_runtime(c->runtime_context,a->engine_fd,a->model_fd);
     if(!e && !(args=render(c)))e="invalid_activation_configuration";
-    if(!e)e=c->launch?c->launch(c->launch_context,c->self,args,c->lifetime,c->log_limit,a->lease,a->model_fd,&a->process):
+    if(!e&&!c->on_demand)e=c->launch?c->launch(c->launch_context,c->self,args,c->lifetime,c->log_limit,a->lease,a->model_fd,&a->process):
         engine_process_start_bound(c->self,args,c->lifetime,c->log_limit,a->lease,a->model_fd,&a->process);
     if(!e)e=c->qualify(c->qualification);
     struct pollfd terminal={a->process.response,POLLIN|POLLHUP,0};
-    if(!e&&poll(&terminal,1,0)!=0)e="activation_engine_exited";
+    if(!e&&!c->on_demand&&poll(&terminal,1,0)!=0)e="activation_engine_exited";
+    if(!e&&c->on_demand&&(a->process.guardian>0||a->process.response>=0))e="invalid_on_demand_qualification";
     if(!e&&(!unchanged(&engine,c->engine)||!unchanged(&model,c->model)||!same_path(c->state,a->root)||!lease_same(a)))e="activation_input_changed";
     if(!e){size_t n;FILE *f=open_memstream(&config,&n);if(!f)e="activation_resource_limit";
         else{fputs("{\"engine_sha256\":",f);json_quote(f,c->engine_sha,64);fputs(",\"model_sha256\":",f);json_quote(f,c->model_sha,64);
             fprintf(f,",\"engine_size\":%llu,\"model_size\":%llu,\"model_path\":",(unsigned long long)c->engine_size,(unsigned long long)c->model_size);
             json_quote(f,c->model,strlen(c->model));
+            if(c->on_demand)fputs(",\"execution_mode\":\"on_demand\"",f);
             if(c->bundle_identity){fputs(",\"bundle_identity\":",f);json_quote(f,c->bundle_identity,64);fprintf(f,",\"bundle_config\":%s",c->bundle_config);}
             fprintf(f,",\"runtime_policy\":\"%s\",\"argv\":%s}",c->verify_runtime?"closed-native-bundle-v1":c->trusted_host_runtime?"pinned-host-adapter-v1":c->require_system_runtime?"system-runtime-v1":"unqualified",args);
             if(fclose(f)||n>16384)e="activation_resource_limit";}}
@@ -205,6 +222,7 @@ const char *activation_start(const ActivationConfig *c,Activation *a) {
             if(fsync(a->root))e="activation_commit_uncertain";}
     }
     free(args);free(config);if(db)sqlite3_close(db);if(anchor>=0)close(anchor);
+    if(e&&c->on_demand&&!strcmp(e,"engine_guardian_failed"))activation_cleanup_failed(a);
     if(e&&strcmp(e,"activation_commit_uncertain")){const char *cleanup=activation_stop(a);if(cleanup&&!strcmp(cleanup,"engine_shutdown_pending"))e=cleanup;}
     return e;
 }

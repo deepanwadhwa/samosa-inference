@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
 #define WAV_MAX 960044u
@@ -44,7 +45,7 @@ static unsigned char *decode(const char *text,size_t *length){
 }
 static uint32_t u32(const unsigned char *p){return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
 static uint16_t u16(const unsigned char *p){return (uint16_t)((unsigned)p[0]|(unsigned)p[1]<<8);}
-static int wav(const unsigned char *p,size_t n){return n>=76&&n<=WAV_MAX&&!((n-44)%32)&&!memcmp(p,"RIFF",4)&&u32(p+4)==n-8&&!memcmp(p+8,"WAVEfmt ",8)&&u32(p+16)==16&&u16(p+20)==1&&u16(p+22)==1&&u32(p+24)==16000&&u32(p+28)==32000&&u16(p+32)==2&&u16(p+34)==16&&!memcmp(p+36,"data",4)&&u32(p+40)==n-44;}
+int whisper_audio_valid(const unsigned char *p,size_t n){return n>=76&&n<=WAV_MAX&&!((n-44)%32)&&!memcmp(p,"RIFF",4)&&u32(p+4)==n-8&&!memcmp(p+8,"WAVEfmt ",8)&&u32(p+16)==16&&u16(p+20)==1&&u16(p+22)==1&&u32(p+24)==16000&&u32(p+28)==32000&&u16(p+32)==2&&u16(p+34)==16&&!memcmp(p+36,"data",4)&&u32(p+40)==n-44;}
 static const char *verified(const char *path,const char *digest,uint64_t ceiling,int executable,int *descriptor){
     *descriptor=-1;if(!path||path[0]!='/')return "invalid_configuration";
     int fd=open(path,O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK);if(fd<0)return "artifact_unavailable";struct stat s;
@@ -80,8 +81,9 @@ static char *segments(char *srt,size_t duration,char **transcript){
     fputc(']',out);if(fclose(out))valid=0;if(fclose(plain))valid=0;
     if(!valid||!count){free(body);free(text);return NULL;}*transcript=text;return body;
 }
-static const char *run(const InferenceConfig *cfg,const unsigned char *audio,size_t bytes,char **result,char **text){
+const char *whisper_run(const InferenceConfig *cfg,const unsigned char *audio,size_t bytes,char **result,char **text){
     int lease=-1,model=-1,executable=-1;const char *error=inference_interrupted(cfg);if(!error)error=inference_schedule(cfg,&lease);
+    if(!error&&cfg->owned_status)error=cfg->owned_status(cfg->owned_context);
     if(!error)error=verified(cfg->whisper->model,cfg->whisper->model_sha256,536870912u,0,&model);
     if(!error)error=inference_interrupted(cfg);
     if(!error)error=verified(cfg->whisper->executable,cfg->whisper->executable_sha256,67108864u,1,&executable);
@@ -94,9 +96,19 @@ static const char *run(const InferenceConfig *cfg,const unsigned char *audio,siz
     if(f){const char *args[]={cfg->whisper->executable,"-m","/dev/fd/5","-f",input,"-l","en","-osrt","-of",output};fputc('[',f);for(size_t i=0;i<sizeof(args)/sizeof(args[0]);i++){if(i)fputc(',',f);json_quote(f,args[i],strlen(args[i]));}fputc(']',f);if(fclose(f))error="resource_limit";}
     EngineProcess process={.guardian=-1,.control=-1,.response=-1};
     if(!error){double remaining=cfg->deadline_monotonic?cfg->deadline_monotonic-inference_now():60;
-        if(remaining<=0)error="deadline_exceeded";else error=engine_process_start_bound_workspace(cfg->whisper->self,argv,remaining,262144,lease,model,workspace,directory,&process);}
+        if(remaining<=0)error="deadline_exceeded";else error=(cfg->whisper->retain_cleanup?engine_process_start_bound_workspace_uncapped:engine_process_start_bound_workspace)(cfg->whisper->self,argv,remaining,262144,lease,model,workspace,directory,&process);}
     while(!error&&process.guardian>0){error=inference_interrupted(cfg);if(error)break;struct stat size;if(fstat(result_fd,&size)||size.st_size>SRT_MAX){error="invalid_provider_response";break;}struct pollfd watch={process.response,POLLIN|POLLHUP,0};int ready=poll(&watch,1,10);if(ready<0&&errno==EINTR)continue;if(ready<0){error="engine_io_failed";break;}if(ready>0){const char *terminal=engine_process_stop(&process);if(terminal)error=!strcmp(terminal,"lifetime_exceeded")?"deadline_exceeded":"provider_process_failed";if(!error&&strcmp(process.reason,"completed"))error="provider_process_failed";break;}}
-    if(process.guardian>0){const char *stopped=engine_process_stop(&process);if(stopped&&!strcmp(stopped,"engine_shutdown_pending"))error=stopped;}
+    if(process.guardian>0){
+        const char *stopped;
+        do{
+            stopped=engine_process_stop(&process);
+            if(stopped&&!strcmp(stopped,"engine_shutdown_pending")&&cfg->whisper->retain_cleanup){
+                struct timespec pause={0,20000000};nanosleep(&pause,NULL);
+            }else break;
+        }while(1);
+        if(stopped&&!strcmp(stopped,"engine_shutdown_pending"))error=stopped;
+    }
+    if(cfg->whisper->retain_cleanup&&!strcmp(process.reason,"engine_guardian_failed"))error="engine_guardian_failed";
     if(!error)error=inference_interrupted(cfg);
     if(!error){struct stat s;if(fstat(model,&s)||s.st_size<=0)error="artifact_changed";else error=artifact_verify(model,(uint64_t)s.st_size,536870912u,cfg->whisper->model_sha256);}
     if(!error)error=inference_interrupted(cfg);
@@ -114,8 +126,8 @@ int whisper_dispatch(const InferenceConfig *cfg,const Json *j,FILE *out){
     if(!fields(j,allowed))return fail(out,"unknown_field");
     char *provider=json_string(j,json_get(j,0,"provider_id")),*encoded=json_string(j,json_get(j,0,"audio_wav_base64"));
     const char *error=!provider||!encoded?"invalid_request":strcmp(provider,cfg->provider_id)?"provider_unavailable":NULL;
-    size_t bytes=0;unsigned char *audio=error?NULL:decode(encoded,&bytes);if(!error&&(!audio||!wav(audio,bytes)))error="invalid_audio";
-    char *items=NULL,*text=NULL;if(!error)error=run(cfg,audio,bytes,&items,&text);
+    size_t bytes=0;unsigned char *audio=error?NULL:decode(encoded,&bytes);if(!error&&(!audio||!whisper_audio_valid(audio,bytes)))error="invalid_audio";
+    char *items=NULL,*text=NULL;if(!error)error=cfg->whisper->run?cfg->whisper->run(cfg->whisper->context,cfg,audio,bytes,&items,&text):whisper_run(cfg,audio,bytes,&items,&text);
     char digest[65]={0};if(audio)hash_bytes(audio,bytes,digest);
     if(!error){fprintf(out,"{\"contract_version\":1,\"provider_id\":\"%s\",\"kind\":\"derived\",\"artifact_type\":\"transcript\",\"language\":\"en\",\"input_sha256\":\"%s\",\"duration_ms\":%zu,\"text\":",cfg->provider_id,digest,(bytes-44)/32);json_quote(out,text,strlen(text));fprintf(out,",\"segments\":%s,\"coverage\":{\"status\":\"partial\",\"reason\":\"speech_recognition_uncertain\"},\"provenance\":{\"engine\":\"whisper.cpp\",\"engine_sha256\":\"%s\",\"model_sha256\":\"%s\",\"coordinate_space\":\"input_audio_milliseconds\",\"timestamp_policy\":\"whisper_20ms_end_clipped_to_input\"}}\n",items,cfg->whisper->executable_sha256,cfg->whisper->model_sha256);}
     free(provider);free(encoded);free(audio);free(items);free(text);return error?fail(out,error):0;

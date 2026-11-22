@@ -1,0 +1,7 @@
+[Memory Guard] Baseline swap: 533 MB
+[Memory Guard] Limits: 6144 MiB process-tree RSS, 0 MiB swap delta
+Actual common Whisper: {"contract_version":1,"provider_id":"whisper-base-en-v1","kind":"derived","artifact_type":"transcript","language":"en","input_sha256":"524c7aa3d6fc457167ffc493fa34100847cb51249620f10c918f06d1def84b94","duration_ms":2533,"text":" The quick brown fox jumps over the lazy dog.","segments":[{"start_ms":0,"end_ms":2480,"text":" The quick brown fox jumps over the lazy dog."}],"coverage":{"status":"partial","reason":"speech_recognition_uncertain"},"provenance":{"engine":"whisper.cpp","engine_sha256":"b6aea409400da5f8c2d2dde7e4f31ff1f3ac98a65a4b8fe4ce0408bf3ae629b7","model_sha256":"a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002","coordinate_space":"input_audio_milliseconds","timestamp_policy":"whisper_20ms_end_clipped_to_input"}}
+PASS common on-demand Whisper lifecycle: 7023 checks; observed qualified idle assets, no resident engine, actual requests, last-good/restart and scoped cleanup; retained native engine/model
+[Memory Guard] Process exited with code 0
+[Memory Guard] Peak process-tree RSS: 399 MB
+[Memory Guard] Final swap delta: 0 MB

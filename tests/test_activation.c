@@ -26,6 +26,10 @@ static const char *refuse_runtime(void *unused,int engine,int model) {
     (void)unused;char bytes[3];struct stat st;CHECK(!fstat(engine,&st)&&st.st_size>0);
     CHECK(pread(model,bytes,3,0)==3&&!memcmp(bytes,"abc",3));return "runtime_refused";
 }
+static const char *idle_qualify(void *context){
+    Activation *a=context;char bytes[3];CHECK(a->on_demand&&a->process.guardian<0&&a->process.response<0);
+    CHECK(pread(a->model_fd,bytes,3,0)==3&&!memcmp(bytes,"abc",3));return NULL;
+}
 static const char *fail(void *p){(void)p;return "readiness_failed";}
 static const char *mutate(void *p){const char *e=qualify(p);if(e)return e;int fd=open(p,O_WRONLY);CHECK(fd>=0);CHECK(pwrite(fd,"x",1,0)==1);CHECK(!close(fd));return NULL;}
 static void fail_directory_sync(const char *phase,void *p){Activation *a=p;CHECK(!strcmp(phase,"committed"));CHECK(!close(a->root));a->root=-1;}
@@ -100,5 +104,26 @@ int main(int argc,char **argv){
     current=get(state);CHECK(strstr(current,"\"revision\":5"));free(current);
     c.advance_current=0;e=activation_start(&c,&a);CHECK(e&&!strcmp(e,"activation_revision_conflict"));CHECK(!held(model));
     c.advance_current=2;e=activation_start(&c,&a);CHECK(e&&!strcmp(e,"invalid_activation_configuration"));
+    /* Nonresident adapters qualify through their existing request executor.
+       The core owns metadata/fences, with no invented persistent process. */
+    c.advance_current=1;c.on_demand=2;e=activation_start(&c,&a);CHECK(e&&!strcmp(e,"invalid_activation_configuration"));
+    c.on_demand=1;c.launch=bound_launch;e=activation_start(&c,&a);CHECK(e&&!strcmp(e,"invalid_activation_configuration"));c.launch=NULL;
+    CHECK(!chmod(engine,0755)&&!chmod(model,0644));c.qualify=idle_qualify;c.qualification=&a;
+    CHECK(!activation_start(&c,&a)&&a.revision==6);CHECK(!held(model));
+    struct stat engine_before,model_before;CHECK(!fstat(a.engine_fd,&engine_before)&&!fstat(a.model_fd,&model_before));
+    CHECK(!activation_owned_status(&a,state,engine,model,&engine_before,&model_before));CHECK(activation_input_unchanged(a.model_fd,model,&model_before));
+    e=activation_start(&c,&b);CHECK(e&&!strcmp(e,"activation_busy"));
+    saved=get(state);CHECK(strstr(saved,"\"execution_mode\":\"on_demand\"")&&strstr(saved,"\"live_readiness\":\"unobserved\""));
+    CHECK(!chmod(model,0600));e=activation_owned_status(&a,state,engine,model,&engine_before,&model_before);CHECK(e&&!strcmp(e,"provider_artifact_changed"));
+    CHECK(!activation_stop(&a)&&!a.on_demand);e=activation_owned_status(&a,state,engine,model,&engine_before,&model_before);CHECK(e&&!strcmp(e,"provider_unavailable"));
+    c.on_demand=0;c.qualify=qualify;c.qualification=model;e=activation_start(&c,&a);CHECK(e&&!strcmp(e,"unsafe_activation_input"));
+    c.on_demand=1;c.qualify=fail;e=activation_start(&c,&a);CHECK(e&&!strcmp(e,"readiness_failed"));current=get(state);CHECK(!strcmp(saved,current));free(current);free(saved);
+    char linked[640];snprintf(linked,sizeof(linked),"%s/model-link",root);CHECK(!link(model,linked));e=activation_start(&c,&a);CHECK(e&&!strcmp(e,"unsafe_activation_input"));CHECK(!unlink(linked));
+    c.qualify=idle_qualify;c.qualification=&a;CHECK(!activation_start(&c,&a));
+    activation_cleanup_failed(&a);e=activation_stop(&a);CHECK(e&&!strcmp(e,"engine_guardian_failed")&&a.root>=0&&a.lease>=0);
+    e=activation_start(&c,&b);CHECK(e&&!strcmp(e,"activation_busy"));
+    /* Test-only release: this stub never launched any process. Production
+       has no public reset for an unconfirmed nonresident cleanup. */
+    atomic_store(&a.cleanup_failed,0);CHECK(!activation_stop(&a));
     printf("PASS activation: %u checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation\n",checks);return 0;
 }

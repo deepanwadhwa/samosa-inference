@@ -103,6 +103,13 @@ complements the existing controlled credential/redirect/quota/recovery gates.
 
 ## 3. Engine lifecycle and readiness — active
 
+LIFE-07o (2026-11-22) wraps the existing structured on-demand Whisper request
+with common controls and actual pinned-speech qualification. Native/independent
+normal/SAN and installed-engine runs pass; see
+[recorded scope and failures](qualification/life07o-whisper-lifecycle/README.md).
+This does not replace the long-window CLI or close default-path controls,
+identity/last-good, unknown-group recovery, pre-admission recovery or area3.
+
 LIFE-07n (2026-11-21) extracts the original shared turn gate, visual reclaim/
 pause/resume/retry into turn_control.c/public API. Native/standalone normal/SAN,
 original workflows, repaired Python-free budget scenarios and source packaging

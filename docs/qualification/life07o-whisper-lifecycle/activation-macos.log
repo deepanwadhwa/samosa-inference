@@ -1,0 +1,6 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_INFERENCE_TEST_FAULTS -Isrc tests/test_activation.c src/activation.c src/artifact.c src/engine_process.c src/engine_runtime.c -lsqlite3 -o build/test-activation
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-activation
+PASS activation: 152 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_INFERENCE_TEST_FAULTS -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc tests/test_activation.c src/activation.c src/artifact.c src/engine_process.c src/engine_runtime.c -lsqlite3 -o build/test-activation-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-activation-sanitize
+PASS activation: 160 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation

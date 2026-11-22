@@ -4,6 +4,7 @@
 #include "embedding.h"
 #include "summary.h"
 #include "whisper.h"
+#include "whisper_host.h"
 #include "vision.h"
 #include "temporal.h"
 #include "speech.h"
@@ -28,6 +29,7 @@ typedef struct {
     char keys[INFERENCE_PROVIDERS_MAX][130];
     ManagedHost *managed[INFERENCE_PROVIDERS_MAX];
     SummaryHost *resident_summaries[INFERENCE_PROVIDERS_MAX];
+    WhisperHost *on_demand_whispers[INFERENCE_PROVIDERS_MAX];
     SpeechHost *resident_speeches[INFERENCE_PROVIDERS_MAX];
     DecisionHost *resident_decisions[INFERENCE_PROVIDERS_MAX];
     VisualHost *resident_visuals[INFERENCE_PROVIDERS_MAX];

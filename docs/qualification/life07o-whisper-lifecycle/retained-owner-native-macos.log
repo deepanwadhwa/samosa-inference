@@ -1,0 +1,9 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -DSAMOSA_WITH_DECISION -DSAMOSA_WITH_LLAMA -DJSON_TOKENS_MAX=8192  -DSAMOSA_WITH_SPEECH -DSAMOSA_WITH_WHISPER -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -DSAMOSA_WITH_SUMMARY -Isrc tests/test_whisper_host.c src/registry_host.c src/whisper_host.c src/visual_host.c src/specialist_supervisor.c src/decision_host.c src/speech_host.c src/summary_host.c src/summary_process.c src/managed_host.c src/managed_provider.c src/activation.c src/managed_stream.c src/decision.c src/decision_assets.c src/speech.c src/audio_store.c src/speech_worker.c src/speech_session.c src/speech_runtime.c src/speech_package.c src/speech_package_loader.c src/library_runtime.c src/engine_runtime.c src/registry.c src/embedding.c src/inference.c src/sessions.c src/admission.c src/operations.c src/engine_process.c src/budget.c src/llama.c src/whisper.c src/vision.c src/visual_assets.c src/visual_bridge.c src/temporal.c src/temporal_input.c src/temporal_package.c src/summary.c src/summary_protocol.c src/artifact.c engines/decision/tokenizer/target/release/libsamosa_decision_tokenizer.a -framework Security -framework CoreFoundation -liconv -lresolv -lsqlite3 -lcurl  -pthread -o build/test-whisper-host
+src/whisper_host.c:70:24: error: no member named 'cleanup_failed' in 'WhisperHost'
+   70 |     if(atomic_load(&h->cleanup_failed))return "engine_guardian_failed";
+      |                     ~  ^
+src/whisper_host.c:104:69: error: no member named 'cleanup_failed' in 'WhisperHost'
+  104 |         if(!strcmp(error,"engine_guardian_failed"))atomic_store(&h->cleanup_failed,1);
+      |                                                                  ~  ^
+2 errors generated.
+make: *** [build/test-whisper-host] Error 1

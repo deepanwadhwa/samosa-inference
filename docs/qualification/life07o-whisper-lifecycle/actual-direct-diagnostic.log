@@ -1,0 +1,84 @@
+[Memory Guard] Baseline swap: 533 MB
+[Memory Guard] Limits: 6144 MiB process-tree RSS, 0 MiB swap delta
+whisper_init_from_file_with_params_no_state: loading model from '/private/tmp/samosa-whisper-lifecycle-3yKgZ1/model'
+whisper_init_with_params_no_state: use gpu    = 1
+whisper_init_with_params_no_state: flash attn = 1
+whisper_init_with_params_no_state: gpu_device = 0
+whisper_init_with_params_no_state: dtw        = 0
+ggml_metal_device_init: tensor API disabled for pre-M5 and pre-A19 devices
+ggml_metal_library_init: using embedded metal library
+ggml_metal_library_init: loaded in 12.485 sec
+ggml_metal_rsets_init: creating a residency set collection (keep_alive = 180 s)
+ggml_metal_device_init: GPU name:   MTL0 (Apple M3)
+ggml_metal_device_init: GPU family: MTLGPUFamilyApple9  (1009)
+ggml_metal_device_init: GPU family: MTLGPUFamilyCommon3 (3003)
+ggml_metal_device_init: GPU family: MTLGPUFamilyMetal4  (5002)
+ggml_metal_device_init: simdgroup reduction   = true
+ggml_metal_device_init: simdgroup matrix mul. = true
+ggml_metal_device_init: has unified memory    = true
+ggml_metal_device_init: has bfloat            = true
+ggml_metal_device_init: has tensor            = false
+ggml_metal_device_init: use residency sets    = true
+ggml_metal_device_init: use shared buffers    = true
+ggml_metal_device_init: recommendedMaxWorkingSetSize  = 12713.12 MB
+whisper_init_with_params_no_state: devices    = 3
+whisper_init_with_params_no_state: backends   = 3
+whisper_model_load: loading model
+whisper_model_load: n_vocab       = 51864
+whisper_model_load: n_audio_ctx   = 1500
+whisper_model_load: n_audio_state = 512
+whisper_model_load: n_audio_head  = 8
+whisper_model_load: n_audio_layer = 6
+whisper_model_load: n_text_ctx    = 448
+whisper_model_load: n_text_state  = 512
+whisper_model_load: n_text_head   = 8
+whisper_model_load: n_text_layer  = 6
+whisper_model_load: n_mels        = 80
+whisper_model_load: ftype         = 1
+whisper_model_load: qntvr         = 0
+whisper_model_load: type          = 2 (base)
+whisper_model_load: adding 1607 extra tokens
+whisper_model_load: n_langs       = 99
+whisper_model_load:         MTL0 total size =   147.37 MB
+whisper_model_load: model size    =  147.37 MB
+whisper_backend_init_gpu: device 0: MTL0 (type: 1)
+whisper_backend_init_gpu: found GPU device 0: MTL0 (type: 1, cnt: 0)
+whisper_backend_init_gpu: using MTL0 backend
+ggml_metal_init: allocating
+ggml_metal_init: found device: Apple M3
+ggml_metal_init: picking default device: Apple M3
+ggml_metal_init: use fusion         = true
+ggml_metal_init: use concurrency    = true
+ggml_metal_init: use graph optimize = true
+whisper_backend_init: using BLAS backend
+whisper_init_state: kv self size  =    6.29 MB
+whisper_init_state: kv cross size =   18.87 MB
+whisper_init_state: kv pad  size  =    3.15 MB
+whisper_init_state: compute buffer (conv)   =   17.24 MB
+whisper_init_state: compute buffer (encode) =   26.31 MB
+whisper_init_state: compute buffer (cross)  =   38.45 MB
+whisper_init_state: compute buffer (decode) =   97.29 MB
+read_audio_data: reading audio data from '/private/tmp/samosa-whisper-lifecycle-3yKgZ1/probe.wav' ...
+read_audio_data: trying to decode with miniaudio
+
+system_info: n_threads = 4 / 8 | WHISPER : COREML = 0 | OPENVINO = 0 | MTL : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | ACCELERATE = 1 | REPACK = 1 | 
+
+main: processing '/private/tmp/samosa-whisper-lifecycle-3yKgZ1/probe.wav' (40528 samples, 2.5 sec), 4 threads, 1 processors, 5 beams + best of 5, lang = en, task = transcribe, timestamps = 1 ...
+
+
+[00:00:00.000 --> 00:00:02.480]   The quick brown fox jumps over the lazy dog.
+output_srt: saving output to '/private/tmp/samosa-whisper-lifecycle-3yKgZ1/direct.srt'
+
+whisper_print_timings:     load time =    93.93 ms
+whisper_print_timings:     fallbacks =   0 p /   0 h
+whisper_print_timings:      mel time =     1.88 ms
+whisper_print_timings:   sample time =    17.24 ms /    58 runs (     0.30 ms per run)
+whisper_print_timings:   encode time =    71.54 ms /     1 runs (    71.54 ms per run)
+whisper_print_timings:   decode time =     5.03 ms /     1 runs (     5.03 ms per run)
+whisper_print_timings:   batchd time =    33.92 ms /    53 runs (     0.64 ms per run)
+whisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)
+whisper_print_timings:    total time =   242.69 ms
+ggml_metal_free: deallocating
+[Memory Guard] Process exited with code 0
+[Memory Guard] Peak process-tree RSS: 40 MB
+[Memory Guard] Final swap delta: 0 MB

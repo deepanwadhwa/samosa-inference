@@ -5,7 +5,25 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-LIFE-07n checkpoint, 2026-11-21: the original shared text/visual generation gate,
+LIFE-07o checkpoint, 2026-11-22: the existing structured on-demand Whisper
+adapter now supports common start/status/stop through Activation and its original
+guarded request implementation. Actual pinned speech qualifies before last-good;
+idle status records qualified unchanged inputs and no resident engine. Managed
+requests retain ownership through suspended-guardian cleanup, and an unknown
+cleanup result retains the live host's fence. A native SIGXFSZ defect was traced
+to Apple's Metal cache exceeding the inherited global file cap; an explicit
+native file-output guardian opt-in preserves request/result/log/deadline checks.
+Final native and independent-source normal/SAN lifecycle 469/469, Activation
+158/168, original guardian 525/525 and Whisper 508/511 pass. Installed native
+Whisper qualifies/transcribes/requalifies in normal/SAN with zero swap growth.
+See [evidence and exclusions](qualification/life07o-whisper-lifecycle/README.md).
+This short structured-WAV profile does not replace the unchanged legacy long-window
+CLI or close its common controls. Default primary/visual controls, full identity/
+readiness/last-good, unknown-group and pre-admission recovery remain open, along
+with area3, areas4–7, Python removal, Agent/App, assembly and legacy retirement.
+Sources stays closed; Inkling remains deferred until the whole refactor finishes.
+
+Historical LIFE-07n checkpoint, 2026-11-21: the original shared text/visual generation gate,
 visual selection/reclaim/pause/resume/60-second wait and lower-side/owned-page
 retry now belong to Inference turn_control.c/public API. Gateway retains trusted
 host/selection/evidence adapters. A reproduced direct-visual close reset race is

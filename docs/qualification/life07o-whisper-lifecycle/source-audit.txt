@@ -1,0 +1,3 @@
+PASS original Whisper input/normalization/CLI/SRT/limits/cancellation/replay implementation reused unchanged except explicit owner routing/check and managed pending-cleanup retention
+PASS resident Activation/state transactions unchanged after removing explicit on-demand policy/status/cleanup additions; old registry behavior byte-identical outside the optional Whisper lifecycle
+PASS all original activation/Whisper fixture assertions retained; default long-window CLI, model engines and other modality owners unchanged; guardian differs only by explicit native file-output cap opt-in

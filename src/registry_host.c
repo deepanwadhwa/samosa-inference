@@ -28,6 +28,11 @@ const char *inference_registry_host_close(InferenceRegistryHost *h) {
         const char *error=visual_host_close(h->resident_visuals[i]);
         if(error){if(h->resident_visuals[i]->attempted)return error;terminal=error;}
     }
+    for(size_t i=0;i<INFERENCE_PROVIDERS_MAX;i++)if(h->on_demand_whispers[i]){
+        const char *error=whisper_host_stop(h->on_demand_whispers[i]);
+        if(error){if(h->on_demand_whispers[i]->attempted)return error;terminal=error;}
+    }
+    for(size_t i=0;i<INFERENCE_PROVIDERS_MAX;i++)free(h->on_demand_whispers[i]);
     for(size_t i=0;i<INFERENCE_PROVIDERS_MAX;i++)free(h->resident_visuals[i]);
     for(size_t i=0;i<INFERENCE_PROVIDERS_MAX;i++)free(h->resident_decisions[i]);
     for(size_t i=0;i<INFERENCE_PROVIDERS_MAX;i++)free(h->resident_speeches[i]);
@@ -88,10 +93,11 @@ static const char *provider(InferenceRegistryHost *h,const Json *j,int object,si
     if(!fake&&!text&&!embedding&&!summary&&!whisper&&!vision&&!temporal&&!speech&&!decision)return "unsupported_provider_kind";
     int managed=json_get(j,object,"managed_config_file")>=0;
     int resident=json_get(j,object,"lifecycle")>=0;
-    if(resident&&!summary&&!speech&&!decision&&!vision&&!temporal)return "invalid_resident_provider_kind";
+    if(resident&&!summary&&!speech&&!decision&&!vision&&!temporal&&!whisper)return "invalid_resident_provider_kind";
     if(managed&&!text&&!embedding)return "invalid_managed_provider_kind";
     char allowed[512];snprintf(allowed,sizeof(allowed),"%s%s",common,
         managed?"managed_config_file|":decision?(resident?"assets|engine_sha256|runtime_sha256|model_sha256|tokenizer_sha256|lifecycle|engine_size|model_size|":"assets|engine_sha256|runtime_sha256|model_sha256|tokenizer_sha256|"):speech?(resident?"package|manifest_sha256|lifecycle|worker_sha256|worker_size|manifest_size|":"package|manifest_sha256|"):text?"endpoint|model_alias|api_key_file|":embedding?"endpoint|model_alias|api_key_file|embedding_config_file|":
+        whisper?(resident?"engine|model|engine_sha256|model_sha256|lifecycle|engine_size|model_size|qualification_wav|qualification_sha256|qualification_size|qualification_text|":"engine|model|engine_sha256|model_sha256|"):
         vision?(resident?"engine|model|engine_sha256|model_sha256|config_sha256|tokenizer_sha256|weights_sha256|lifecycle|engine_size|config_size|":"engine|model|engine_sha256|model_sha256|config_sha256|tokenizer_sha256|weights_sha256|"):
         temporal?(resident?"engine|model|engine_sha256|model_sha256|manifest_sha256|lifecycle|engine_size|manifest_size|":"engine|model|engine_sha256|model_sha256|manifest_sha256|"):
         fake?"":resident?"engine|model|engine_sha256|model_sha256|lifecycle|engine_size|model_size|":"engine|model|engine_sha256|model_sha256|");
@@ -161,7 +167,21 @@ static const char *provider(InferenceRegistryHost *h,const Json *j,int object,si
                 const char *error=summary_host_init(host,c,engine_size,model_size);if(error)return error;
             }
         }
-        if(whisper){h->transcriptions[i]=(WhisperConfig){self,engine,model,engine_sha,model_sha};c->whisper=&h->transcriptions[i];}
+        if(whisper){
+            h->transcriptions[i]=(WhisperConfig){.self=self,.executable=engine,.model=model,.executable_sha256=engine_sha,.model_sha256=model_sha};c->whisper=&h->transcriptions[i];
+            if(resident){
+                const char *profile=string(h,j,object,"lifecycle"),*audio=string(h,j,object,"qualification_wav"),
+                    *audio_sha=string(h,j,object,"qualification_sha256"),*expected=string(h,j,object,"qualification_text");
+                size_t engine_size=0,model_size=0,audio_size=0;
+                if(!profile||strcmp(profile,"on-demand-whisper-v1")||!absolute(audio)||!digest(audio_sha)||!expected||!*expected||strlen(expected)>128||
+                   json_get(j,object,"engine_size")<0||json_get(j,object,"model_size")<0||json_get(j,object,"qualification_size")<0||
+                   !number(j,object,"engine_size",0,64,67108864,&engine_size)||!number(j,object,"model_size",0,1,536870912,&model_size)||
+                   !number(j,object,"qualification_size",0,76,960044,&audio_size))return "invalid_whisper_host_configuration";
+                WhisperHost *host=calloc(1,sizeof(*host));if(!host)return "resource_limit";h->on_demand_whispers[i]=host;
+                h->transcriptions[i].run=whisper_host_run;h->transcriptions[i].context=host;h->transcriptions[i].retain_cleanup=1;c->owned_status=whisper_host_status;c->owned_context=host;
+                const char *error=whisper_host_init(host,c,engine_size,model_size,audio,audio_sha,audio_size,expected);if(error)return error;
+            }
+        }
         if(vision){h->images[i]=(VisionConfig){.self=self,.executable=engine,.model=model,.executable_sha256=engine_sha,.model_sha256=model_sha,
             .config_sha256=string(h,j,object,"config_sha256"),.tokenizer_sha256=string(h,j,object,"tokenizer_sha256"),.weights_sha256=string(h,j,object,"weights_sha256")};
             if(!digest(h->images[i].config_sha256)||!digest(h->images[i].tokenizer_sha256)||!digest(h->images[i].weights_sha256))return "invalid_registry_configuration";
@@ -223,7 +243,7 @@ int inference_registry_host_dispatch(void *context,const char *input,size_t leng
         if(rc||!bytes||body[bytes-1]!='}'){fwrite(body,1,bytes,out);fputc('\n',out);free(body);return rc?rc:1;}
         fwrite(body,1,bytes-1,out);free(body);
         fputs(",\"managed_lifecycle\":{\"operations\":[\"provider_start\",\"provider_lifecycle_status\",\"provider_stop\"],\"provider_ids\":[",out);
-        int comma=0;for(size_t i=0;i<h->registry.count;i++)if(h->managed[i]||h->resident_summaries[i]||h->resident_speeches[i]||h->resident_decisions[i]||h->resident_visuals[i]){
+        int comma=0;for(size_t i=0;i<h->registry.count;i++)if(h->managed[i]||h->resident_summaries[i]||h->resident_speeches[i]||h->resident_decisions[i]||h->resident_visuals[i]||h->on_demand_whispers[i]){
             if(comma++)fputc(',',out);
             json_quote(out,h->providers[i].provider_id,strlen(h->providers[i].provider_id));
         }
@@ -237,7 +257,7 @@ int inference_registry_host_dispatch(void *context,const char *input,size_t leng
     if(lifecycle){size_t version;
         if(!json_uint(&j,json_get(&j,0,"contract_version"),&version)||version!=1)return lifecycle_error(out,"unsupported_contract");
         if(j.tokens[0].count!=3||!fields(&j,0,"|contract_version|op|provider_id|"))return lifecycle_error(out,"unknown_field");
-        if(!h->managed[index]&&!h->resident_summaries[index]&&!h->resident_speeches[index]&&!h->resident_decisions[index]&&!h->resident_visuals[index])return lifecycle_error(out,"provider_lifecycle_unmanaged");
+        if(!h->managed[index]&&!h->resident_summaries[index]&&!h->resident_speeches[index]&&!h->resident_decisions[index]&&!h->resident_visuals[index]&&!h->on_demand_whispers[index])return lifecycle_error(out,"provider_lifecycle_unmanaged");
     }
     pthread_mutex_lock(&h->gate);
     if(h->users[index]<0||(lifecycle&&h->users[index])){
@@ -245,23 +265,25 @@ int inference_registry_host_dispatch(void *context,const char *input,size_t leng
     }
     h->users[index]=lifecycle?-1:h->users[index]+1;
     pthread_mutex_unlock(&h->gate);
-    int rc=0;const char *error=NULL;ManagedHost *m=h->managed[index];SummaryHost *summary=h->resident_summaries[index];SpeechHost *speech=h->resident_speeches[index];DecisionHost *decision=h->resident_decisions[index];VisualHost *visual=h->resident_visuals[index];
+    int rc=0;const char *error=NULL;ManagedHost *m=h->managed[index];SummaryHost *summary=h->resident_summaries[index];SpeechHost *speech=h->resident_speeches[index];DecisionHost *decision=h->resident_decisions[index];VisualHost *visual=h->resident_visuals[index];WhisperHost *whisper=h->on_demand_whispers[index];
     if(lifecycle){
         if(start&&!inference_platform_allowed(h->providers[index].platform))error="unsupported_provider_platform";
         else if(start){
-            if(visual)error=visual->attempted?visual_host_status(visual):visual_host_start(visual,&h->providers[index]);
+            if(whisper)error=whisper->attempted?whisper_host_status(whisper):whisper_host_start(whisper,&h->providers[index]);
+            else if(visual)error=visual->attempted?visual_host_status(visual):visual_host_start(visual,&h->providers[index]);
             else if(decision)error=decision->attempted?decision_host_status(decision):decision_host_start(decision,&h->providers[index]);
             else if(speech)error=speech->attempted?speech_host_status(speech):speech_host_start(speech,&h->providers[index]);
             else if(summary)error=summary->attempted?summary_host_status(summary):summary_host_start(summary,&h->providers[index]);
             else if(m->attempted)error=managed_status(m);
             else error=managed_host_activate(h->self,1,h->cancelled,h->cancellation,m);
-        }else if(stop)error=visual?visual_host_stop(visual):decision?decision_host_stop(decision):speech?speech_host_stop(speech):summary?summary_host_stop(summary):managed_host_deactivate(m);
+        }else if(stop)error=whisper?whisper_host_stop(whisper):visual?visual_host_stop(visual):decision?decision_host_stop(decision):speech?speech_host_stop(speech):summary?summary_host_stop(summary):managed_host_deactivate(m);
         if(error)rc=lifecycle_error(out,error);
         else{
-            const char *health=visual?visual_host_status(visual):decision?decision_host_status(decision):speech?speech_host_status(speech):summary?summary_host_status(summary):managed_status(m);
+            const char *health=whisper?whisper_host_status(whisper):visual?visual_host_status(visual):decision?decision_host_status(decision):speech?speech_host_status(speech):summary?summary_host_status(summary):managed_status(m);
             fputs("{\"contract_version\":1,\"provider_id\":",out);json_quote(out,h->providers[index].provider_id,strlen(h->providers[index].provider_id));
-            fprintf(out,",\"ready\":%s,\"state\":\"%s\",\"health_error\":",health?"false":"true",!(visual?visual->attempted:decision?decision->attempted:speech?speech->attempted:summary?summary->attempted:m->attempted)?"stopped":health?"unavailable":"ready");
+            fprintf(out,",\"ready\":%s,\"state\":\"%s\",\"health_error\":",health?"false":"true",!(whisper?whisper->attempted:visual?visual->attempted:decision?decision->attempted:speech?speech->attempted:summary?summary->attempted:m->attempted)?"stopped":health?"unavailable":"ready");
             if(health)json_quote(out,health,strlen(health));else fputs("null",out);
+            if(whisper)fputs(",\"execution_mode\":\"on_demand\",\"resident\":false",out);
             fputs("}\n",out);
         }
     }else rc=inference_registry_dispatch(&h->registry,input,length,out);

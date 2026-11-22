@@ -1,0 +1,12 @@
+[Memory Guard] Baseline swap: 533 MB
+[Memory Guard] Limits: 6144 MiB process-tree RSS, 0 MiB swap delta
+start=ok guardian=44329
+stop=ok reason=completed
+result=79 bytes nlink=0
+1
+00:00:00,000 --> 00:00:02,480
+ The quick brown fox jumps over the lazy dog.
+
+[Memory Guard] Process exited with code 0
+[Memory Guard] Peak process-tree RSS: 0 MB
+[Memory Guard] Final swap delta: 0 MB
