@@ -4,6 +4,7 @@
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef struct {
     pthread_mutex_t mutex;
@@ -202,32 +203,37 @@ int samosa_visual_turn_inspect(const SamosaVisualTurnControl *control, SamosaVis
                                       out_prompt_tokens, out_gen_tokens,
                                       out_code, code_cap);
     int side = turn->budget.max_side_len;
-    if (control->inspect(control->context, &turn->session, runtime_image, prompt, side,
-                                  max_tokens, out_obs, out_cap,
-                                  out_prompt_tokens, out_gen_tokens,
-                                  out_code, code_cap)) return 1;
+    for (int attempt = 0; ; ++attempt) {
+        if (out_obs && out_cap) out_obs[0] = 0;
+        if (out_prompt_tokens) *out_prompt_tokens = 0;
+        if (out_gen_tokens) *out_gen_tokens = 0;
+        if (control->inspect(control->context, &turn->session, runtime_image, prompt, side,
+                             max_tokens, out_obs, out_cap, out_prompt_tokens, out_gen_tokens,
+                             out_code, code_cap)) {
+            if (!out_obs || !out_cap || out_obs[strspn(out_obs, " \t\r\n")]) return 1;
+            path_copy(out_code, code_cap, "vision_empty_observation");
+        }
+        if (attempt) return 0;
 
-    /* A failed request may have left the helper or its MLX command stream in
-       an unusable state. Recreate it once at the next safe tile budget. This
-       is a resource retry, not a fixed product page/image limit. */
-    int lower = vision_lower_side(side);
-    /* Release the turn-wide generation gate along with the failed helper
-       session. Otherwise the bounded retry below cannot reacquire the
-       specialist lease and is rejected as "busy" by vision_turn_start(). */
-    if(prepared_owned&&!samosa_mm_session_return_temporary_image(&turn->session,image_path)){
-        samosa_visual_turn_release(control,turn);path_copy(out_code,code_cap,"vision_temp_image_return_failed");return 0;
+        /* Recreate a failed helper once at the next safe tile budget. Close
+           its session and release exclusion before reacquiring the lease. */
+        side = vision_lower_side(side);
+        if (prepared_owned && !samosa_mm_session_return_temporary_image(&turn->session,image_path)) {
+            samosa_visual_turn_release(control,turn);
+            path_copy(out_code,code_cap,"vision_temp_image_return_failed");
+            return 0;
+        }
+        samosa_visual_turn_release(control, turn);
+        if (!side) return 0;
+        turn->budget.max_side_len = side;
+        if (!samosa_visual_turn_start(control, turn, out_code, code_cap)) return 0;
+        if (prepared_owned) {
+            if (!samosa_mm_session_take_temporary_image(&turn->session,image_path,owned_image,sizeof(owned_image))) {
+                path_copy(out_code,code_cap,"vision_temp_image_handoff_failed");
+                return 0;
+            }
+            runtime_image = owned_image;
+        }
     }
-    samosa_visual_turn_release(control, turn);
-    if (!lower) return 0;
-    turn->budget.max_side_len = lower;
-    if (!samosa_visual_turn_start(control, turn, out_code, code_cap)) return 0;
-    if(prepared_owned){
-        if(!samosa_mm_session_take_temporary_image(&turn->session,image_path,owned_image,sizeof(owned_image))){path_copy(out_code,code_cap,"vision_temp_image_handoff_failed");return 0;}
-        runtime_image=owned_image;
-    }
-    return control->inspect(control->context, &turn->session, runtime_image, prompt, lower,
-                                     max_tokens, out_obs, out_cap,
-                                     out_prompt_tokens, out_gen_tokens,
-                                     out_code, code_cap);
 }
 

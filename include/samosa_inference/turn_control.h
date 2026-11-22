@@ -62,7 +62,8 @@ typedef struct {
 int samosa_visual_turn_start(const SamosaVisualTurnControl *, SamosaVisualTurn *, char *, size_t);
 void samosa_visual_turn_release(const SamosaVisualTurnControl *, SamosaVisualTurn *);
 /* Only caller-prepared temporary pages set prepared_owned. Durable inputs are
- * borrowed. Retains original one-step lower-side retry and ownership give-back. */
+ * borrowed. VisionPsy treats a missing or blank requested observation as a
+ * failed attempt and uses the original one-step lower-side retry and give-back. */
 int samosa_visual_turn_inspect(const SamosaVisualTurnControl *, SamosaVisualTurn *,
     const char *, int, const char *, int, char *, size_t, int *, int *, char *, size_t);
 #ifdef __cplusplus

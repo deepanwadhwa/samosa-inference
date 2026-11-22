@@ -133,3 +133,22 @@ separate area4 global residency/reservations/fairness requirements. Other
 Inference areas, project-wide Python removal, independent Agent/App, pinned
 assembly and qualified monolith retirement remain. Sources stays closed absent
 a demonstrated defect. Inkling-2-Mini stays after the complete refactor.
+
+## LIFE-08a VisionPsy empty observation recovery
+
+The real native fallback worker returned `status=ok`, zero generated tokens
+and an empty observation for the bundled app logo. Gateway forwarded that
+result as visual evidence. The turn owner now requires actual text when the
+caller supplies an observation buffer. A blank or omitted observation uses the
+existing one-step lower-side retry and keeps its ownership give-back. The raw
+VisionPsy wire parser retains its original behavior for protocol clients.
+
+The original turn and raw protocol suites pass in normal and sanitizer builds
+from both the module and a source-only copy. A fixture exercises recovery from
+a blank result, and missing then whitespace results that exhaust the retry.
+On arm64 macOS 26.5.1 the public logo request got a real lower-side observation,
+reaped both VisionPsy workers and reused the same resident Maple worker for the
+answer. The guarded run peaked at 1,826 MB RSS with zero swap growth.
+The existing real normal and sanitizer drivers also passed the heading,
+single/joint image, native video and worker cleanup cases. Their respective
+RSS peaks were 3,376 MB and 3,407 MB, with zero swap growth.

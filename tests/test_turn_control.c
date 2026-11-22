@@ -20,7 +20,7 @@ typedef struct {
     const char *engine,*model;
     int vision,molmo,running,stop,starts,closes,primary_stops,primary_starts,probes,sleeps,ready_after;
     int start_failure,primary_failure,inspect_failures,inspects,sides[4],sample_count,wait_count,detail,real,framed;
-    int stop_after_sleep;
+    int stop_after_sleep,empty_replies;
     long long total,now;
     double required;
     SamosaVisionResourceBudget budget,waited;
@@ -61,6 +61,7 @@ static int inspect(void *c,SamosaMmSession *s,const char *image,const char *prom
     if(f->real){CHECK(access(image,F_OK)==0);if(!f->first_owned[0])snprintf(f->first_owned,sizeof(f->first_owned),"%s",image);else CHECK(strcmp(image,f->first_owned)&&access(f->first_owned,F_OK)<0);}
     if(f->inspect_failures){f->inspect_failures--;snprintf(error,ec,"fixture_pressure");return 0;}
     if(f->real)return samosa_mm_visionpsy_inspect(s,NULL,image,prompt,side,tokens,out,capacity,pt,gt,error,ec);
+    if(f->empty_replies){if(--f->empty_replies==0)snprintf(out,capacity," \t\n");return 1;}
     snprintf(out,capacity,"page observed");*pt=5;*gt=2;return 1;
 }
 static int analyze(void *c,SamosaMmSession *s,const char *image,const char *prompt,int tokens,char *out,size_t capacity,int *pt,int *gt,char *error,size_t ec) {
@@ -126,6 +127,16 @@ static void retry_cases(void) {
     for(int i=0;i<4;i++)for(int failures=1;failures<3;failures++){
         Fixture f;init(&f);f.molmo=0;f.inspect_failures=failures;SamosaVisualTurnControl c=control(&f);SamosaVisualTurn t={.budget=f.budget};t.budget.max_side_len=sides[i];
         char error[96],result[128];int pt=0,gt=0;int ok=samosa_visual_turn_inspect(&c,&t,"durable-image",0,"read page",192,result,sizeof(result),&pt,&gt,error,sizeof(error));CHECK(ok==(lower[i]&&failures==1));CHECK(f.inspects==(lower[i]?2:1)&&f.sides[0]==sides[i]);if(lower[i])CHECK(f.sides[1]==lower[i]&&f.starts==2);samosa_visual_turn_release(&c,&t);released(&f,&t);samosa_turn_gate_destroy(&f.gate);
+    }
+    for(int empty=1;empty<=2;empty++){
+        Fixture f;init(&f);f.molmo=0;f.empty_replies=empty;
+        SamosaVisualTurnControl c=control(&f);SamosaVisualTurn t={.budget=f.budget};
+        char error[96]={0},result[128]="previous observation";int pt=0,gt=0;
+        int ok=samosa_visual_turn_inspect(&c,&t,"durable-image",0,"read page",192,result,sizeof(result),&pt,&gt,error,sizeof(error));
+        CHECK(ok==(empty==1));CHECK(f.inspects==2&&f.starts==2&&f.sides[0]==2048&&f.sides[1]==1536);
+        if(ok)CHECK(!strcmp(result,"page observed")&&gt==2);
+        else CHECK(!strcmp(error,"vision_empty_observation")&&gt==0);
+        samosa_visual_turn_release(&c,&t);released(&f,&t);samosa_turn_gate_destroy(&f.gate);
     }
 }
 typedef struct {SamosaTurnGate *gate;atomic_int *text,*visual;int specialist;} Thread;

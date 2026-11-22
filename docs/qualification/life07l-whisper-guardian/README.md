@@ -122,3 +122,20 @@ fairness is separate area4 work. Later Inference areas, project-wide Python
 removal, independent Agent/App, pinned assembly and qualified legacy retirement
 remain. Sources stays closed absent a demonstrated defect. Inkling-2-Mini stays
 after the full refactor. Do not mark area3 or the broad goal complete for this slice.
+
+## LIFE-08a actual audio beyond one 30-second window
+
+The existing real runner passed with a 33.482-second mono PCM16 recording
+assembled from two synthetic speech clips and one second of silence. The
+distinct final phrase starts at 31.090 seconds. Plain text contains it, and
+the original Whisper SRT output includes it in the segment starting at
+30 seconds. Both normal and ASan/UBSan drivers exercised the same retained
+Base English native CLI and model. Both removed their result workspace.
+The actual runs peaked at 356 MB and 375 MB process-tree RSS with zero swap
+growth. The normal and sanitizer synthetic process fixtures also each passed
+their existing 522 assertions, including a 271-second input.
+
+The actual input SHA-256 is
+`010926ca7582e7345a90ed3f24864b2d4e3b70b26cdd2fa15b707b79ca15089f`.
+The original public lifecycle work must preserve the long-window txt/SRT path
+and its timing semantics while adding observed readiness and identity.
