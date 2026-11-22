@@ -69,3 +69,14 @@ reaped the worker and PID marker. The process tree peaked at 5,721 MB RSS
 with zero swap growth and ran at a 1,024-token context with two llama threads.
 The result covers the manually pinned, static-system Ornith profile. Release
 provisioning and actual Bonsai, Maple and projector tests remain open.
+
+## LIFE-07y Bonsai text and vision through the Inference primary owner
+
+The same LIFE-07v static engine ran real catalog Bonsai with both the pinned
+3,803,452,480-byte GGUF and 629,246,880-byte projector on arm64 macOS 26.5.1.
+Gateway reported native image support, served a text request, accepted the
+existing app logo through its attachment route and returned an image answer.
+The native server log recorded image processing. The worker and its PID marker
+were reaped after the test. The bounded 2,048-token, two-thread run peaked at
+5,021 MB RSS with zero swap growth. The test uses explicit pins. Default
+release provisioning and wider visual coverage remain open.

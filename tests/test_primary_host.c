@@ -39,10 +39,13 @@ static int serve(int argc,char **argv) {
                 ssize_t n=recv(fd,payload+read_bytes,size-read_bytes,0);
                 CHECK(n>0);read_bytes+=(size_t)n;
             }
-            CHECK(strstr(payload,"\"max_tokens\":4")&&strstr(payload,"Say hello."));
+            int maple=!strcmp(argv[1],"--model-dir");
+            CHECK(strstr(payload,maple?"\"max_tokens\":64,":"\"max_tokens\":4,")&&strstr(payload,"Say hello."));
             body="{\"choices\":[{\"message\":{\"content\":\"Hello!\"}}],\"usage\":{\"completion_tokens\":4}}";
-            if(!strcmp(argv[1],"--model-dir"))
+            if(maple){
+                CHECK(strstr(payload,"\"chat_template_kwargs\":{\"enable_thinking\":false}"));
                 body="{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"Hello!\"},\"finish_reason\":\"length\"}]}";
+            }
             if(!strcmp(argv[1],"-m")){
                 CHECK(strstr(payload,"\"chat_template_kwargs\":{\"enable_thinking\":false}"));
                 int gateway=getenv("SAMOSA_PRIMARY_GATEWAY_FIXTURE")!=NULL;

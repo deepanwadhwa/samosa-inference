@@ -119,3 +119,22 @@ as a current area3 or release pass.
 Full area3, all later Inference areas, project-wide Python removal (including
 old Maple drivers/generators), Agent/App, pinned assembly and qualified monolith
 retirement remain open. Inkling-2-Mini remains a post-refactor catalogue follow-up.
+
+## LIFE-07y real catalog model through the Inference primary owner
+
+The pinned 11-file Maple catalog snapshot was acquired and verified in an
+isolated directory on arm64 macOS 26.5.1. The existing `make samosa-maple`
+target rebuilt the extracted engine. Its executable SHA-256 was
+`25bf447c34d05d6e21c12a5aa8f616e53173e0774f6eca96f565cf0ec003edcc`, paired with
+`mlx.metallib` SHA-256 `846add228d562bb224b11f18c4655b75a05f3336e543654ce49943577e26cd5a`.
+The retained MLX archive produced the existing deployment-target linker
+warnings. The native run qualifies this Mac.
+
+The original HTTP server returned empty visible content after four tokens,
+including when `chat_template_kwargs.enable_thinking` was false. The existing
+HTTP path produced final text within 64 tokens. The primary owner now uses
+that bound and template control for Maple and still requires visible content
+before marking readiness. The normal and sanitizer suites pass all 174
+assertions in the module and in a source-only copy. The real pinned model
+qualified, answered through the public Gateway and reaped its worker and PID
+marker. Peak process-tree RSS was 756 MB with zero swap growth.

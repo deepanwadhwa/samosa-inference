@@ -21,7 +21,7 @@
 #include <sys/proc_info.h>
 #endif
 
-enum { MAX_INPUTS = 16, MAX_LIBRARIES = 8, PROBE_TOKENS = 4 };
+enum { MAX_INPUTS = 16, MAX_LIBRARIES = 8, PROBE_TOKENS = 4, MAPLE_PROBE_TOKENS = 64 };
 typedef struct {
     int fd;
     struct stat identity;
@@ -350,22 +350,24 @@ static const char *qualify_worker(SamosaPrimaryHost *host, SamosaTurnGate *gate,
         .mutex=c->owner.mutex, .upstream_fd=c->upstream_fd, .probe=live_probe,
         .context=host, .require_complete=1, .cancelled=probe_cancelled
     };
-    /* The original small stateless Qwen qualification request. The selected
-     * llama alias is explicit for the existing file-model launch profiles. */
+    /* Maple can emit a thinking prefix even with the template control off.
+     * Give its existing HTTP path a bounded window to produce visible text. */
+    int maple = !strcmp(c->launch.backend,"maple");
+    int probe_tokens = maple ? MAPLE_PROBE_TOKENS : PROBE_TOKENS;
     char *payload = NULL;
     size_t bytes;
     FILE *out = open_memstream(&payload, &bytes);
     if (!out) return "resource_limit";
     fputc('{', out);
+    if (maple || !host->model_path)
+        fputs("\"chat_template_kwargs\":{\"enable_thinking\":false},\"temperature\":0,", out);
     if (!host->model_path) {
-        /* llama-server uses the same template control as Gateway's bounded
-         * synthesis. Without it Ornith can spend all four tokens reasoning. */
-        fputs("\"chat_template_kwargs\":{\"enable_thinking\":false},\"temperature\":0,\"model\":", out);
+        fputs("\"model\":", out);
         json_quote(out, c->launch.llama.alias, strlen(c->launch.llama.alias));
         fputc(',', out);
     }
     fprintf(out, "\"messages\":[{\"role\":\"user\",\"content\":\"Say hello.\"}],"
-                 "\"max_tokens\":%d,\"thinking\":false,\"stream\":false}", PROBE_TOKENS);
+                 "\"max_tokens\":%d,\"thinking\":false,\"stream\":false}", probe_tokens);
     if (fclose(out)) { free(payload); return "resource_limit"; }
     char *reply = samosa_backend_json(&request, payload);
     free(payload);
