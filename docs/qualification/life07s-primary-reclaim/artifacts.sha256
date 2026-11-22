@@ -1,0 +1,3 @@
+1cc62278b2e027296b554de88cd5bfe4ae9fa6d3e4a85b7f88ff3e1603b34310  build/libsamosa-inference-primary.a
+ca9c1913903e7afd0db56bf8e9e1f7373a8ea5c5fc2cfaca6b59930a109d4923  build/test-primary-host
+f8b483b8776589aa81df3443bb139fa0b8c575cae4bf584ecfda22f988e16163  build/test-primary-host-sanitize

@@ -42,7 +42,7 @@ typedef struct {
     double (*molmo_required_gb)(void *);
     long long (*total_memory_bytes)(void *);
     int (*primary_running)(void *);
-    void (*primary_stop)(void *);
+    int (*primary_stop)(void *); /* Success means the worker has been reaped. */
     int (*primary_start)(void *);
     int (*primary_probe)(void *);
     int (*stopping)(void *);

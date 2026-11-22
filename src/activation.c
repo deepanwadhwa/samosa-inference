@@ -143,6 +143,11 @@ const char *activation_owned_status(const Activation *a,const char *state,const 
     if(!a->on_demand&&a->process.response<0)return "provider_unavailable";
     struct pollfd terminal={a->process.response,POLLIN|POLLHUP,0};
     if(!a->on_demand&&poll(&terminal,1,0)!=0)return "owned_engine_exited";
+    return activation_retained_status(a,state,engine,model,engine_before,model_before);
+}
+const char *activation_retained_status(const Activation *a,const char *state,const char *engine,const char *model,
+                                      const struct stat *engine_before,const struct stat *model_before){
+    if(atomic_load(&a->cleanup_failed))return "engine_guardian_failed";
     struct stat root,named,lease,current;
     if(fstat(a->root,&root)||lstat(state,&named)||root.st_dev!=named.st_dev||root.st_ino!=named.st_ino||
        root.st_uid!=geteuid()||(root.st_mode&077)||fstat(a->lease,&lease)||

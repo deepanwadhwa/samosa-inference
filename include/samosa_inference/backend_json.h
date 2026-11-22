@@ -29,6 +29,9 @@ typedef struct {
     /* Qualification requires a complete successful HTTP response. Ordinary
      * callers keep the original partial-response behavior. */
     int require_complete;
+    /* Qualification can be cancelled before the socket is published. The
+     * callback runs under mutex and must only observe the cancellation flag. */
+    int (*cancelled)(void *);
 } SamosaBackendJson;
 /* Returns the existing raw HTTP body or NULL. Caller frees a non-NULL result.
  * Original result ceiling permits a final read chunk beyond body+header limit;

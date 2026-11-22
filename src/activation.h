@@ -58,6 +58,8 @@ void activation_cleanup_failed(Activation *);
 const char *activation_owned_status(const Activation *,const char *,const char *,const char *,const struct stat *,const struct stat *);
 /* Shared retained-input identity check for adapter-owned qualification data. */
 int activation_input_unchanged(int,const char *,const struct stat *);
+const char *activation_retained_status(const Activation *,const char *,const char *,const char *,
+    const struct stat *,const struct stat *);
 /* Reads only committed last-good configuration; it never claims a live engine. */
 const char *activation_get(const char *state,FILE *);
 #endif

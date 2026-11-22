@@ -1,0 +1,28 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -Isrc -c src/primary_host.c -o build/primary-primary_host.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/backend_json.c -o build/backend-json.o
+ar rcs build/libsamosa-inference-primary.a build/primary-primary_host.o build/primary-activation.o build/primary-artifact.o build/primary-library_runtime.o build/primary-engine_runtime.o build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/backend-json.o build/whisper-process.o build/vision-budget.o build/turn-control.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -Isrc tests/test_primary_host.c build/libsamosa-inference-primary.a -lsqlite3 -o build/test-primary-host
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-primary-host /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-primary-host $(shasum -a 256 build/test-primary-host | cut -d ' ' -f 1)
+PASS primary host fixture: 174 assertions, actual generation response required before readiness
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_primary_host.c src/primary_host.c src/activation.c src/artifact.c src/library_runtime.c src/engine_runtime.c src/backend_process.c src/backend_json.c src/llama_launch.c src/engine_process.c src/turn_control.c src/vision_budget.c src/specialist_supervisor.c src/specialist_protocol.c -lsqlite3 -o build/test-primary-host-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-primary-host-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-primary-host $(shasum -a 256 build/test-primary-host | cut -d ' ' -f 1)
+PASS primary host fixture: 174 assertions, actual generation response required before readiness
+ar rcs build/libsamosa-inference-specialist.a build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/backend-json.o build/whisper-process.o build/vision-budget.o build/turn-control.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_turn_control.c build/libsamosa-inference-specialist.a -o build/test-turn-control
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-turn-control /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS extracted turn coordination: 11204 checks; shared exclusion/counts, original availability/reclaim/resume deadlines, retry/give-back and native guardian pages; no new scheduler
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_turn_control.c src/turn_control.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o build/test-turn-control-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-turn-control-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS extracted turn coordination: 8538 checks; shared exclusion/counts, original availability/reclaim/resume deadlines, retry/give-back and native guardian pages; no new scheduler
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_backend_json.c build/libsamosa-inference-specialist.a -o build/test-backend-json
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-json
+PASS extracted backend JSON: 195 checks; original wire/trace/status/header/partial/deadline/size/cancellation behavior and scope cleanup
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_backend_json.c src/backend_json.c src/turn_control.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c src/vision_budget.c -o build/test-backend-json-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-json-sanitize
+PASS extracted backend JSON: 195 checks; original wire/trace/status/header/partial/deadline/size/cancellation behavior and scope cleanup
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_INFERENCE_TEST_FAULTS -Isrc tests/test_activation.c src/activation.c src/artifact.c src/engine_process.c src/engine_runtime.c -lsqlite3 -o build/test-activation
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-activation
+PASS activation: 158 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -DSAMOSA_INFERENCE_TEST_FAULTS -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc tests/test_activation.c src/activation.c src/artifact.c src/engine_process.c src/engine_runtime.c -lsqlite3 -o build/test-activation-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-activation-sanitize
+PASS activation: 168 checks; verified inputs, exclusive residency, strict and host-current revision/failure/mutation

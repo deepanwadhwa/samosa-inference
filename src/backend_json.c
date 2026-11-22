@@ -146,7 +146,15 @@ char *samosa_backend_json(const SamosaBackendJson *request, const char *payload)
        fail closed after a bounded wait instead of holding a web request until
        a broken local backend eventually notices a dead socket. */
     backend_receive_timeout(fd, timeout_seconds);
-    pthread_mutex_lock(request->mutex); *request->upstream_fd = fd; pthread_mutex_unlock(request->mutex);
+    pthread_mutex_lock(request->mutex);
+    int cancelled = request->cancelled && request->cancelled(request->context);
+    if (!cancelled) *request->upstream_fd = fd;
+    pthread_mutex_unlock(request->mutex);
+    if (cancelled) {
+        samosa_turn_primary_end(request->gate);
+        close(fd);
+        return NULL;
+    }
     char header[512];
     int n = snprintf(header, sizeof(header),
         "POST /v1/chat/completions HTTP/1.1\r\nHost: 127.0.0.1:%d\r\n"

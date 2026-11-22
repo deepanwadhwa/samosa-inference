@@ -5,6 +5,16 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
+LIFE-07s, 2026-11-22. Gateway startup, selection, rollback and visual reclaim
+use the Inference primary owner for pinned deployments. Native Qwen passes
+Gateway startup and the separate visual reservation reclaim test on this Mac.
+Resume rechecks retained identity and qualifies the fresh worker at the same
+revision. Visual startup refuses pending primary cleanup. Ordinary installs
+still need pins from trusted installation metadata before default cutover.
+Actual Maple and llama, end-to-end actual visual reclaim, long-window Whisper
+and recovery remain open.
+[Native evidence and deployment contract](qualification/life07s-primary-reclaim/README.md).
+
 LIFE-07r, 2026-11-22. The Inference primary C adapter now uses the original
 backend owner, JSON transport, loader inspector and Activation transaction to
 qualify a pinned engine and model before reporting readiness. The retained

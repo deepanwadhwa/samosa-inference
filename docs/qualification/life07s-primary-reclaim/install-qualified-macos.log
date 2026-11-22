@@ -1,0 +1,271 @@
++++ dirname tests/test_runtime_only_release.sh
+++ CDPATH=
+++ cd -- tests/..
+++ pwd
++ ROOT=/Users/deepanwadhwa/Documents/samosa-chat
++ TMP=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181
++ trap 'rm -rf "$TMP"; [ -z "${SERVER_PID:-}" ] || kill "$SERVER_PID" 2>/dev/null || true' EXIT HUP INT TERM
++ REMOTE=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote
++ HOME_DIR=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home
++ mkdir -p /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home
++ MODEL_ARTIFACT_NAMES='experts.bin resident.safetensors manifest.json config.json generation_config.json tokenizer_qwen36.json'
++ make -C /Users/deepanwadhwa/Documents/samosa-chat fake_model_download_server
++ SAMOSA_PACKAGE_TEST=1
++ sh /Users/deepanwadhwa/Documents/samosa-chat/tools/package_hf.sh --out /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote --runtime-only --repo-id test/samosa --maple-runtime /Users/deepanwadhwa/Documents/samosa-chat/tests/fixtures/maple-runtime/samosa-maple --maple-metallib /Users/deepanwadhwa/Documents/samosa-chat/tests/fixtures/maple-runtime/mlx.metallib --visionpsy-runtime /Users/deepanwadhwa/Documents/samosa-chat/tests/fixtures/maple-runtime/samosa-maple --molmo2-runtime /Users/deepanwadhwa/Documents/samosa-chat/tests/fixtures/maple-runtime/samosa-maple --molmo2-pack /Users/deepanwadhwa/Documents/samosa-chat/tests/fixtures/maple-runtime/samosa-maple --audio-decode-runtime /Users/deepanwadhwa/Documents/samosa-chat/tests/fixtures/maple-runtime/samosa-maple --summarizer-model /Users/deepanwadhwa/Documents/samosa-chat/tests/fixtures/native-summarizer/model.gguf --ocr-runtime-dir /Users/deepanwadhwa/Documents/samosa-chat/tests/fixtures/native-ocr --summarizer-runtime-dir /Users/deepanwadhwa/Documents/samosa-chat/tests/fixtures/native-summarizer
++ grep -q engine/samosa_gateway.c /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q engine/samosa_evidence.c /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q engine/samosa_evidence.h /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q engine/samosa_audio_decode.mm /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q engine/samosa_docx.c /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q engine/miniz/miniz_zip.c /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q engine/chutni/src/mcp.c /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q engine/samosa_ocr.c /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q engine/samosa_voice_runtime.sh /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q engine/samosa_kokoro_runtime.sh /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
+++ printf '\t'
++ TAB='	'
++ grep -q '	voice/browser/tts/moss/browser_onnx_runtime.js$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q '	voice/browser/tts/kitten/kitten-tts.browser.js$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q '	voice/browser/tts/kitten/worker.js$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ for adapter_file in engine/samosa_moss_tts_runtime.sh engine/samosa_moss_tts_runner.sh engine/samosa_moss_tts_runner.py engine/samosa_kitten_tts_runtime.sh engine/samosa_kitten_tts_runner.sh engine/samosa_kitten_tts_runner.py
++ grep -q engine/samosa_moss_tts_runtime.sh /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ for adapter_file in engine/samosa_moss_tts_runtime.sh engine/samosa_moss_tts_runner.sh engine/samosa_moss_tts_runner.py engine/samosa_kitten_tts_runtime.sh engine/samosa_kitten_tts_runner.sh engine/samosa_kitten_tts_runner.py
++ grep -q engine/samosa_moss_tts_runner.sh /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ for adapter_file in engine/samosa_moss_tts_runtime.sh engine/samosa_moss_tts_runner.sh engine/samosa_moss_tts_runner.py engine/samosa_kitten_tts_runtime.sh engine/samosa_kitten_tts_runner.sh engine/samosa_kitten_tts_runner.py
++ grep -q engine/samosa_moss_tts_runner.py /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ for adapter_file in engine/samosa_moss_tts_runtime.sh engine/samosa_moss_tts_runner.sh engine/samosa_moss_tts_runner.py engine/samosa_kitten_tts_runtime.sh engine/samosa_kitten_tts_runner.sh engine/samosa_kitten_tts_runner.py
++ grep -q engine/samosa_kitten_tts_runtime.sh /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ for adapter_file in engine/samosa_moss_tts_runtime.sh engine/samosa_moss_tts_runner.sh engine/samosa_moss_tts_runner.py engine/samosa_kitten_tts_runtime.sh engine/samosa_kitten_tts_runner.sh engine/samosa_kitten_tts_runner.py
++ grep -q engine/samosa_kitten_tts_runner.sh /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ for adapter_file in engine/samosa_moss_tts_runtime.sh engine/samosa_moss_tts_runner.sh engine/samosa_moss_tts_runner.py engine/samosa_kitten_tts_runtime.sh engine/samosa_kitten_tts_runner.sh engine/samosa_kitten_tts_runner.py
++ grep -q engine/samosa_kitten_tts_runner.py /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
+++ uname -s
+++ uname -m
++ '[' Darwin:arm64 = Darwin:arm64 ']'
++ grep -q 'runtime/macos-arm64/samosa-maple$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q 'runtime/macos-arm64/mlx.metallib$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q 'runtime/macos-arm64/samosa-visionpsy$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q 'runtime/macos-arm64/samosa-molmo2$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q 'runtime/macos-arm64/molmo2-pack$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q 'runtime/macos-arm64/samosa-audio-decode$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q 'runtime/common/molmo2-processor.json$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q 'runtime/macos-arm64/samosa-summarizer$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ grep -q 'runtime/common/samosa-text-summarization-Q8_0.gguf$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q '	experts.bin$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q '	resident.safetensors$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q '	manifest.json$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q '	config.json$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q '	generation_config.json$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q '	tokenizer_qwen36.json$' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ LEGACY_MODEL_DIR=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model
++ mkdir -p /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model
++ printf 'legacy-experts-content\n'
+++ uname -s
++ '[' Darwin = Darwin ']'
+++ get_inode /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
+++ stat -f %i /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
++ LEGACY_INODE_BEFORE=76797575
+++ get_mtime /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
+++ stat -f %m /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
++ LEGACY_MTIME_BEFORE=1795363403
+++ sha256_file /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
+++ command -v shasum
+++ shasum -a 256 /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
+++ awk '{print $1}'
++ LEGACY_SHA_BEFORE=49eadac5b4fc332bd790be360a7ab772a26179b997cc47f96e7c0c77dbec881e
++ SERVER_PORT=22181
++ SERVER_PID=
++ serve_remote
++ SERVER_LOG=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ :
++ SERVER_PID=13298
++ i=0
++ '[' 0 -lt 100 ']'
++ curl -fsS --max-time 1 http://127.0.0.1:22181/release-manifest.tsv
++ SAMOSA_FAKE_DOWNLOAD_ROOT=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote
++ /Users/deepanwadhwa/Documents/samosa-chat/build/fake_model_download_server --port 22181
++ sleep 0.05
++ i=1
++ '[' 1 -lt 100 ']'
++ curl -fsS --max-time 1 http://127.0.0.1:22181/release-manifest.tsv
++ sleep 0.05
++ i=2
++ '[' 2 -lt 100 ']'
++ curl -fsS --max-time 1 http://127.0.0.1:22181/release-manifest.tsv
++ sleep 0.05
++ i=3
++ '[' 3 -lt 100 ']'
++ curl -fsS --max-time 1 http://127.0.0.1:22181/release-manifest.tsv
++ return 0
++ SAMOSA_IGNORE_RAM_CHECK=1
++ SAMOSA_SKIP_PATH_SETUP=1
++ SAMOSA_MIN_FREE_AFTER_GB=0
++ SAMOSA_BASE_URL=http://127.0.0.1:22181
++ SAMOSA_HOME=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home
++ sh /Users/deepanwadhwa/Documents/samosa-chat/dist/install.sh
++ '[' -x /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-gateway ']'
++ '[' -x /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-fs ']'
++ '[' -x /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/chutni-mcp ']'
++ '[' -x /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-extract ']'
++ printf 'portable document probe\n'
++ /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-extract --json /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/document-probe.txt
++ grep -q 'portable document probe'
++ /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-extract --version
++ grep -q no-pdfium
++ '[' '!' -e /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/.smoke-home ']'
++ CHUTNI_PROBE=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/chutni-version-probe
++ mkdir -p /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/chutni-version-probe/d /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/chutni-version-probe/home
++ printf 'version probe\n'
++ HOME=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/chutni-version-probe/home
++ CHUTNI_HOME=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/chutni-version-probe/home/chutni
++ /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/chutni-mcp --call chutni_folder_activate '{"path":"/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/chutni-version-probe/d","confirmed":true,"register":true,"label":"probe","app_name":"Samosa","app_version":"runtime-only-test"}'
+++ tr -d ' \n'
++ EXPECTED_CHUTNI_VERSION=0.3.0
+++ sqlite3 'file:/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/chutni-version-probe/d.chutni/catalog.sqlite?immutable=1' 'SELECT DISTINCT version FROM producers WHERE name='\''chutni-reference-scanner'\'';'
++ RECORDED_CHUTNI_VERSION=0.3.0
++ '[' 0.3.0 = 0.3.0 ']'
++ '[' -x /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/qwen36b ']'
++ '[' -f /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/app.html ']'
++ '[' -f /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/voice/browser/tts/moss/browser_onnx_runtime.js ']'
++ '[' -f /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/voice/browser/tts/kitten/kitten-tts.browser.js ']'
++ '[' -f /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/voice/browser/tts/kitten/worker.js ']'
++ '[' '!' -e /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/model ']'
++ '[' -x /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-voice-runtime ']'
++ '[' -x /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-kokoro-runtime ']'
++ '[' '!' -e /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-pocket-tts-runtime ']'
++ for adapter_path in '"$HOME_DIR/current/bin/samosa-moss-tts-runtime"' '"$HOME_DIR/current/bin/samosa-moss-tts-runner"' '"$HOME_DIR/current/bin/samosa-moss-tts-runner.py"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runtime"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runner"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runner.py"'
++ '[' '!' -e /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-moss-tts-runtime ']'
++ for adapter_path in '"$HOME_DIR/current/bin/samosa-moss-tts-runtime"' '"$HOME_DIR/current/bin/samosa-moss-tts-runner"' '"$HOME_DIR/current/bin/samosa-moss-tts-runner.py"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runtime"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runner"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runner.py"'
++ '[' '!' -e /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-moss-tts-runner ']'
++ for adapter_path in '"$HOME_DIR/current/bin/samosa-moss-tts-runtime"' '"$HOME_DIR/current/bin/samosa-moss-tts-runner"' '"$HOME_DIR/current/bin/samosa-moss-tts-runner.py"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runtime"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runner"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runner.py"'
++ '[' '!' -e /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-moss-tts-runner.py ']'
++ for adapter_path in '"$HOME_DIR/current/bin/samosa-moss-tts-runtime"' '"$HOME_DIR/current/bin/samosa-moss-tts-runner"' '"$HOME_DIR/current/bin/samosa-moss-tts-runner.py"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runtime"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runner"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runner.py"'
++ '[' '!' -e /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-kitten-tts-runtime ']'
++ for adapter_path in '"$HOME_DIR/current/bin/samosa-moss-tts-runtime"' '"$HOME_DIR/current/bin/samosa-moss-tts-runner"' '"$HOME_DIR/current/bin/samosa-moss-tts-runner.py"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runtime"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runner"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runner.py"'
++ '[' '!' -e /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-kitten-tts-runner ']'
++ for adapter_path in '"$HOME_DIR/current/bin/samosa-moss-tts-runtime"' '"$HOME_DIR/current/bin/samosa-moss-tts-runner"' '"$HOME_DIR/current/bin/samosa-moss-tts-runner.py"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runtime"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runner"' '"$HOME_DIR/current/bin/samosa-kitten-tts-runner.py"'
++ '[' '!' -e /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-kitten-tts-runner.py ']'
+++ uname -s
+++ uname -m
++ '[' Darwin:arm64 = Darwin:arm64 ']'
++ '[' -x /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-maple ']'
++ '[' -f /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/mlx.metallib ']'
++ '[' -x /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-visionpsy ']'
++ '[' -x /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-molmo2 ']'
++ '[' -x /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/molmo2-pack ']'
++ '[' -x /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/bin/samosa-audio-decode ']'
++ '[' -f /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/share/molmo2/processor.json ']'
++ assert_no_model_requests
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q experts.bin /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q resident.safetensors /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q manifest.json /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q config.json /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q generation_config.json /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q tokenizer_qwen36.json /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ return 0
++ stop_remote
++ '[' -z 13298 ']'
++ kill 13298
++ '[' -z 13298 ']'
++ wait 13298
++ SERVER_PID=
++ '[' -f /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin ']'
+++ get_inode /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
+++ stat -f %i /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
++ '[' 76797575 = 76797575 ']'
+++ get_mtime /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
+++ stat -f %m /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
++ '[' 1795363403 = 1795363403 ']'
++ SAMOSA_HOME=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home
++ /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/bin/samosa doctor
++ grep -q 'none installed yet' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/doctor.log
++ SAMOSA_HOME=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home
++ /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/bin/samosa doctor
++ UPGRADE_REL=engine/samosa_http.h
++ UPGRADE_FILE=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/engine/samosa_http.h
++ printf '\n// t1.0 runtime-only upgrade test marker\n'
+++ sha256_file /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/engine/samosa_http.h
+++ command -v shasum
+++ shasum -a 256 /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/engine/samosa_http.h
+++ awk '{print $1}'
++ UPGRADE_SHA=a73bb9b41a1aa488e94e703080a0e8b9359099f02e1a722bccd69fec2157e8d8
+++ wc -c
+++ tr -d ' '
++ UPGRADE_BYTES=21499
++ awk -F '\t' -v 'OFS=\t' -v path=engine/samosa_http.h -v sha=a73bb9b41a1aa488e94e703080a0e8b9359099f02e1a722bccd69fec2157e8d8 -v bytes=21499 '
+  $3 == path { $1 = sha; $2 = bytes; found = 1 }
+  { print }
+  END { if (!found) exit 2 }
+' /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ mv /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/release-manifest.next.tsv /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote/release-manifest.tsv
++ SERVER_PID=
++ serve_remote
++ SERVER_LOG=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ :
++ SERVER_PID=17102
++ i=0
++ '[' 0 -lt 100 ']'
++ curl -fsS --max-time 1 http://127.0.0.1:22181/release-manifest.tsv
++ SAMOSA_FAKE_DOWNLOAD_ROOT=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/remote
++ /Users/deepanwadhwa/Documents/samosa-chat/build/fake_model_download_server --port 22181
++ return 0
++ SAMOSA_IGNORE_RAM_CHECK=1
++ SAMOSA_SKIP_PATH_SETUP=1
++ SAMOSA_MIN_FREE_AFTER_GB=0
++ SAMOSA_BASE_URL=http://127.0.0.1:22181
++ SAMOSA_HOME=/var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home
++ sh /Users/deepanwadhwa/Documents/samosa-chat/dist/install.sh
++ assert_no_model_requests
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q experts.bin /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q resident.safetensors /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q manifest.json /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q config.json /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q generation_config.json /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ for name in '$MODEL_ARTIFACT_NAMES'
++ grep -q tokenizer_qwen36.json /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/http-server.log
++ return 0
++ stop_remote
++ '[' -z 17102 ']'
++ kill 17102
++ '[' -z 17102 ']'
++ wait 17102
++ SERVER_PID=
+++ find /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/releases -mindepth 1 -maxdepth 1 -type d '!' -name '.*.partial'
+++ wc -l
+++ tr -d ' '
++ '[' 2 = 2 ']'
++ '[' '!' -e /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/current/.smoke-home ']'
++ '[' -f /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin ']'
+++ get_inode /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
+++ stat -f %i /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
++ '[' 76797575 = 76797575 ']'
+++ get_mtime /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
+++ stat -f %m /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
++ '[' 1795363403 = 1795363403 ']'
+++ sha256_file /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
+++ command -v shasum
+++ shasum -a 256 /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181/home/model/experts.bin
+++ awk '{print $1}'
++ LEGACY_SHA_AFTER=49eadac5b4fc332bd790be360a7ab772a26179b997cc47f96e7c0c77dbec881e
++ '[' 49eadac5b4fc332bd790be360a7ab772a26179b997cc47f96e7c0c77dbec881e = 49eadac5b4fc332bd790be360a7ab772a26179b997cc47f96e7c0c77dbec881e ']'
++ echo 'runtime-only release: PASS'
+runtime-only release: PASS
++ rm -rf /var/folders/d6/7z7gzbj16l59s8tn7h4mg8lm0000gn/T//samosa-runtime-only-test.11181
++ '[' -z '' ']'

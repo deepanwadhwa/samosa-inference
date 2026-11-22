@@ -33,7 +33,8 @@ static int available(void *c,int p) { Fixture *f=c;return p==2?f->molmo:f->visio
 static double required(void *c) {return ((Fixture *)c)->required;}
 static long long total(void *c) {return ((Fixture *)c)->total;}
 static int running(void *c) {return ((Fixture *)c)->running;}
-static void primary_stop(void *c) {Fixture *f=c;CHECK(!samosa_turn_primary_begin(gate(f)));f->primary_stops++;f->running=0;event(f,'p');}
+static int primary_stop(void *c) {Fixture *f=c;CHECK(!samosa_turn_primary_begin(gate(f)));f->primary_stops++;f->running=0;event(f,'p');return 1;}
+static int pending_primary_stop(void *c) {Fixture *f=c;f->primary_stops++;return 0;}
 static int primary_start(void *c) {Fixture *f=c;CHECK(!samosa_turn_primary_begin(gate(f)));f->primary_starts++;event(f,'r');return !f->primary_failure;}
 static int probe(void *c) {Fixture *f=c;CHECK(!samosa_turn_primary_begin(gate(f)));f->probes++;return f->ready_after>=0&&f->probes>f->ready_after;}
 static int stopping(void *c) {return ((Fixture *)c)->stop;}
@@ -115,6 +116,10 @@ static void reclaim_cases(void) {
         released(&f,&t);samosa_turn_gate_destroy(&f.gate);
     }
     Fixture f;init(&f);f.total=16LL*1024*1024*1024;f.running=1;SamosaVisualTurnControl c=control(&f);SamosaVisualTurn t={.budget=f.budget};char e[96];CHECK(samosa_visual_turn_start(&c,&t,e,sizeof(e)));f.stop=1;samosa_visual_turn_release(&c,&t);CHECK(!f.primary_starts&&t.backend_paused);released(&f,&t);samosa_turn_gate_destroy(&f.gate);
+    init(&f);f.total=16LL*1024*1024*1024;f.running=1;c=control(&f);c.primary_stop=pending_primary_stop;t=(SamosaVisualTurn){.budget=f.budget};
+    CHECK(!samosa_visual_turn_start(&c,&t,e,sizeof(e))&&!strcmp(e,"primary_cleanup_pending"));
+    CHECK(f.primary_stops==1&&!f.starts&&!f.primary_starts&&!f.wait_count);
+    released(&f,&t);samosa_turn_gate_destroy(&f.gate);
 }
 static void retry_cases(void) {
     int sides[]={2048,1536,1024,512};int lower[]={1536,1024,512,0};

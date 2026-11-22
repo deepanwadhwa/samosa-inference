@@ -1,0 +1,2 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_turn_control_real.c build/libsamosa-inference-specialist.a -o build/test-turn-control-real
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_turn_control_real.c src/turn_control.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o build/test-turn-control-real-sanitize

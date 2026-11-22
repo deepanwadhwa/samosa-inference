@@ -43,7 +43,12 @@ static int serve(int argc,char **argv) {
             body="{\"choices\":[{\"message\":{\"content\":\"Hello!\"}}],\"usage\":{\"completion_tokens\":4}}";
             if(!strcmp(argv[1],"--model-dir"))
                 body="{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"Hello!\"},\"finish_reason\":\"length\"}]}";
-            if(!strcmp(argv[1],"-m"))CHECK(strstr(payload,"\"model\":\"fixture-gguf\""));
+            if(!strcmp(argv[1],"-m")){
+                int gateway=getenv("SAMOSA_PRIMARY_GATEWAY_FIXTURE")!=NULL;
+                if(gateway && strstr(payload,"\"model\":\"ornith-1.0-9b\""))
+                    body="{\"choices\":[{\"message\":{\"content\":\"\"}}],\"usage\":{\"completion_tokens\":0}}";
+                else CHECK(strstr(payload,gateway?"\"model\":\"bonsai-27b-1bit\"":"\"model\":\"fixture-gguf\""));
+            }
             if(mode&&!strcmp(mode,"empty"))body="{\"choices\":[{\"message\":{\"content\":\"\"}}],\"usage\":{\"completion_tokens\":4}}";
             if(mode&&!strcmp(mode,"zero"))body="{\"choices\":[{\"message\":{\"content\":\"Hello!\"}}],\"usage\":{\"completion_tokens\":0}}";
             if(mode&&!strcmp(mode,"http"))http=503;
@@ -68,6 +73,59 @@ static char *saved(const char *state) {
 static void check_error(const char *error,const char *expected) {
     if(!error||strcmp(error,expected))fprintf(stderr,"expected %s, got %s\n",expected,error?error:"ok");
     CHECK(error&&!strcmp(error,expected));
+}
+
+typedef struct { SamosaPrimaryHost *host; int paused, resumed, mutate; const char *asset; } Reclaim;
+static int visual_available(void *context,int provider) { (void)context;return provider==2; }
+static double required(void *context) { (void)context;return 1; }
+static long long memory(void *context) { (void)context;return 16LL<<30; }
+static int primary_running(void *context) { (void)context;return 1; }
+static int primary_pause(void *context) {
+    Reclaim *r=context;
+    CHECK(!samosa_primary_pause(r->host,NULL));
+    pid_t pid=1;unsigned revision=1;
+    check_error(samosa_primary_status(r->host,&pid,&revision),"provider_unavailable");
+    CHECK(!pid&&!revision);
+    r->paused=1;return 1;
+}
+static int primary_resume(void *context) {
+    Reclaim *r=context;CHECK(r->paused);
+    const char *error=samosa_primary_resume(r->host);
+    if(r->mutate){check_error(error,"provider_artifact_changed");return 0;}
+    if(error)fprintf(stderr,"resume: %s\n",error);
+    CHECK(!error);r->resumed=1;return 1;
+}
+static int primary_probe(void *context) {
+    Reclaim *r=context;pid_t pid;unsigned revision;
+    return !samosa_primary_status(r->host,&pid,&revision);
+}
+static int stopping(void *context) { (void)context;return 0; }
+static long long now_ms(void *context) { (void)context;return (long long)(now()*1000); }
+static void sleep_ms(void *context,long ms) { (void)context;pause_ms(ms); }
+static SamosaVisionResourceBudget budget(void *context,int detail) {
+    (void)context;(void)detail;return (SamosaVisionResourceBudget){.admitted=1,.available_gb=4};
+}
+static SamosaVisionResourceBudget wait_memory(void *context,int detail,double gb,SamosaVisionResourceBudget prior) {
+    (void)detail;(void)gb;CHECK(((Reclaim *)context)->paused);return prior;
+}
+static int visual_start(void *context,int provider,SamosaMmSession *session) {
+    Reclaim *r=context;CHECK(provider==2&&r->paused);session->active=1;return 1;
+}
+static void visual_stop(void *context,SamosaMmSession *session) {
+    Reclaim *r=context;session->active=0;
+    if(r->mutate)CHECK(!chmod(r->asset,0640));
+}
+static void reclaim(Reclaim *r,SamosaTurnGate *gate) {
+    SamosaVisualTurnControl control={.gate=gate,.available=visual_available,.molmo_required_gb=required,
+        .total_memory_bytes=memory,.primary_running=primary_running,.primary_stop=primary_pause,
+        .primary_start=primary_resume,.primary_probe=primary_probe,.stopping=stopping,.now_ms=now_ms,
+        .sleep_ms=sleep_ms,.resource_budget=budget,.wait_for_molmo_memory=wait_memory,
+        .session_start=visual_start,.session_close=visual_stop,.context=r};
+    SamosaVisualTurn turn={0};char error[96];
+    CHECK(samosa_visual_turn_start(&control,&turn,error,sizeof(error)));
+    CHECK(r->paused&&!r->resumed&&turn.session.active);
+    samosa_visual_turn_release(&control,&turn);
+    CHECK(r->resumed==!r->mutate&&!samosa_turn_status(gate).specialist_active);
 }
 
 int main(int argc,char **argv) {
@@ -117,6 +175,12 @@ int main(int argc,char **argv) {
     CHECK(worker==read_pid(c.marker));track(worker);
     char *last=saved(activation);
     CHECK(strstr(last,"native-primary-v1")&&strstr(last,"\"revision\":1")&&strstr(last,"\"live_readiness\":\"unobserved\""));
+    Reclaim visual={.host=host};
+    reclaim(&visual,&gate);
+    CHECK(gone(worker));forget(worker);
+    CHECK(!samosa_primary_status(host,&worker,&revision)&&worker>1&&revision==1);
+    track(worker);
+    char *resumed=saved(activation);CHECK(!strcmp(last,resumed));free(resumed);
     if(!actual){
         CHECK(!chmod(inputs[1].path,0600));
         check_error(samosa_primary_status(host,&worker,&revision),"provider_artifact_changed");
@@ -139,7 +203,9 @@ int main(int argc,char **argv) {
         CHECK(!host&&!unlink(extra));
         CHECK(!samosa_primary_start(&host,&config));
         CHECK(!samosa_primary_status(host,&worker,&revision)&&worker>1&&revision==2);
-        track(worker);CHECK(!samosa_primary_stop(&host,NULL)&&gone(worker));forget(worker);
+        track(worker);visual=(Reclaim){.host=host,.mutate=1,.asset=inputs[1].path};
+        reclaim(&visual,&gate);
+        CHECK(!samosa_primary_stop(&host,NULL)&&gone(worker));forget(worker);
 
         config.launch.backend="maple";config.launch.port=free_port();
         const char *maple[]={"maple-manifest.json","config.json","maple-experts.bin","maple-resident.safetensors","tokenizer.json"};

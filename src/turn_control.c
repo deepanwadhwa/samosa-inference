@@ -141,7 +141,14 @@ int samosa_visual_turn_start(const SamosaVisualTurnControl *control, SamosaVisua
     if (turn->provider == 2 && control->total_memory_bytes(control->context) > 0 &&
         control->total_memory_bytes(control->context) <= 18LL * 1024 * 1024 * 1024) {
         int running = control->primary_running(control->context);
-        if (running) { control->primary_stop(control->context); turn->backend_paused = 1; }
+        if (running) {
+            if (!control->primary_stop(control->context)) {
+                path_copy(out_code, code_cap, "primary_cleanup_pending");
+                samosa_visual_turn_release(control, turn);
+                return 0;
+            }
+            turn->backend_paused = 1;
+        }
         turn->budget = control->resource_budget(control->context, turn->detail_needed);
         /* waitpid() proves the primary process is gone, but macOS releases its
            Metal/wired pages asynchronously. On the qualified 16-GiB machine

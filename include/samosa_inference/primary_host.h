@@ -40,6 +40,12 @@ typedef struct {
  * An error may retain *host until physical cleanup is confirmed. */
 const char *samosa_primary_start(SamosaPrimaryHost **host, const SamosaPrimaryConfig *);
 const char *samosa_primary_status(SamosaPrimaryHost *, pid_t *pid, unsigned *revision);
+/* Visual reclaim stops the worker while retaining Activation and verified
+ * inputs. The caller owns the visual reservation and serializes pause/resume.
+ * Resume checks retained identity, starts a fresh worker and probes generation.
+ * On refusal, stop releases the retained state after confirmed cleanup. */
+const char *samosa_primary_pause(SamosaPrimaryHost *, const SamosaBackendStopControl *);
+const char *samosa_primary_resume(SamosaPrimaryHost *);
 const char *samosa_primary_stop(SamosaPrimaryHost **host, const SamosaBackendStopControl *);
 const char *samosa_primary_last_good(const char *state, FILE *);
 

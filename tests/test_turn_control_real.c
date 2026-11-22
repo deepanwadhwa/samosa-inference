@@ -25,7 +25,7 @@ static int available(void *context,int provider){(void)context;return selected==
 static double required(void *context){(void)context;return 6.75;}
 static long long total(void *context){(void)context;return 0;} /* Explicit unknown in this compatibility driver; policy has its separate native tests. */
 static int primary(void *context){(void)context;return 0;}
-static void stop(void *context){(void)context;CHECK(0);}
+static int stop(void *context){(void)context;CHECK(0);return 0;}
 static int stopping(void *context){(void)context;return 0;}
 static long long now(void *context){(void)context;struct timespec t;CHECK(!clock_gettime(CLOCK_MONOTONIC,&t));return (long long)t.tv_sec*1000+t.tv_nsec/1000000;}
 static void sleep_ms(void *context,long ms){(void)context;struct timespec t={ms/1000,ms%1000*1000000};nanosleep(&t,NULL);}

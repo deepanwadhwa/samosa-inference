@@ -5,6 +5,7 @@
 #include "activation.h"
 #include "artifact.h"
 #include "backend_process_internal.h"
+#include "engine_runtime.h"
 #include "json.h"
 #include "library_runtime.h"
 #include "sha256.h"
@@ -32,7 +33,7 @@ struct SamosaPrimaryHost {
     struct stat engine, model;
     RetainedInput inputs[MAX_INPUTS], libraries[MAX_LIBRARIES], directory;
     const char *model_path;
-    int launched, ready;
+    int launched, ready, paused;
 };
 
 static int unavailable_cleanup(const char *error) {
@@ -46,6 +47,9 @@ static int cancelled(const SamosaPrimaryHost *host) {
 
 static const char *check_cancel(void *context) {
     return cancelled(context) ? "cancelled" : NULL;
+}
+static int probe_cancelled(void *context) {
+    return cancelled(context);
 }
 
 static int absolute(const char *path) {
@@ -316,11 +320,12 @@ static int generation_observed(const char *body, const char *backend) {
     return valid;
 }
 
-static const char *qualify(void *context) {
-    SamosaPrimaryHost *host = context;
+static const char *qualify_worker(SamosaPrimaryHost *host, SamosaTurnGate *gate, int resume) {
     const SamosaPrimaryConfig *c = &host->config;
     struct timespec start, now;
     if (clock_gettime(CLOCK_MONOTONIC, &start)) return "provider_clock_failed";
+    int startup_seconds = c->startup_seconds;
+    if (resume && startup_seconds > 60) startup_seconds = 60;
     pid_t pid;
     for (;;) {
         if (cancelled(host)) return "cancelled";
@@ -328,15 +333,22 @@ static const char *qualify(void *context) {
         if (error) return error;
         if (live_probe(host)) break;
         if (clock_gettime(CLOCK_MONOTONIC, &now)) return "provider_clock_failed";
-        if (now.tv_sec - start.tv_sec >= c->startup_seconds) return "provider_startup_deadline";
+        if (now.tv_sec - start.tv_sec >= startup_seconds) return "provider_startup_deadline";
         struct timespec wait = {0, 50000000};
         nanosleep(&wait, NULL);
     }
-    if (samosa_turn_generating(c->gate)) return "provider_busy";
+    if (samosa_turn_generating(gate)) return "provider_busy";
+    int generation_seconds = c->generation_seconds;
+    if (resume) {
+        if (clock_gettime(CLOCK_MONOTONIC, &now)) return "provider_clock_failed";
+        long remaining = 60 - (now.tv_sec - start.tv_sec);
+        if (remaining <= 0) return "provider_startup_deadline";
+        if (remaining < generation_seconds) generation_seconds = (int)remaining;
+    }
     SamosaBackendJson request = {
-        .port=c->launch.port, .timeout_seconds=c->generation_seconds, .gate=c->gate,
+        .port=c->launch.port, .timeout_seconds=generation_seconds, .gate=gate,
         .mutex=c->owner.mutex, .upstream_fd=c->upstream_fd, .probe=live_probe,
-        .context=host, .require_complete=1
+        .context=host, .require_complete=1, .cancelled=probe_cancelled
     };
     /* The original small stateless Qwen qualification request. The selected
      * llama alias is explicit for the existing file-model launch profiles. */
@@ -361,6 +373,11 @@ static const char *qualify(void *context) {
     if (error) return error;
     if (cancelled(host)) return "cancelled";
     return observed && owns_listener(pid, c->launch.port) ? NULL : "provider_qualification_failed";
+}
+
+static const char *qualify(void *context) {
+    SamosaPrimaryHost *host = context;
+    return qualify_worker(host, host->config.gate, 0);
 }
 
 static void write_pin(FILE *out, const SamosaPrimaryInput *pin) {
@@ -458,14 +475,53 @@ const char *samosa_primary_status(SamosaPrimaryHost *host, pid_t *pid, unsigned 
     return NULL;
 }
 
-const char *samosa_primary_stop(SamosaPrimaryHost **result, const SamosaBackendStopControl *control) {
-    if (!result || !*result) return NULL;
-    SamosaPrimaryHost *host = *result;
+static const char *stop_worker(SamosaPrimaryHost *host, const SamosaBackendStopControl *control) {
     host->ready = 0;
     const char *error = host->launched ? samosa_backend_process_stop_owned(&host->config.owner, control) : NULL;
     if (error && !strcmp(error, "engine_guardian_failed")) activation_cleanup_failed(&host->activation);
+    if (!unavailable_cleanup(error)) host->launched = 0;
+    return error;
+}
+
+const char *samosa_primary_pause(SamosaPrimaryHost *host, const SamosaBackendStopControl *control) {
+    if (!host || (!host->ready && !host->paused)) return "provider_unavailable";
+    SamosaTurnStatus turn = samosa_turn_status(host->config.gate);
+    if (!turn.specialist_active || turn.generating) return "provider_busy";
+    host->paused = 1;
+    return stop_worker(host, control);
+}
+
+const char *samosa_primary_resume(SamosaPrimaryHost *host) {
+    if (!host || !host->paused || host->launched) return "provider_unavailable";
+    const SamosaPrimaryConfig *c = &host->config;
+    SamosaTurnStatus turn = samosa_turn_status(c->gate);
+    if (!turn.specialist_active || turn.generating) return "provider_busy";
+    const char *error = activation_retained_status(&host->activation, c->state, c->engine.path,
+                                                   c->model.path, &host->engine, &host->model);
+    if (!error) error = engine_runtime_environment();
+    if (!error) error = inputs_unchanged(host);
+    if (error) return error;
+    /* The visual reservation still excludes public requests. A private gate
+     * lets only this synchronous probe use the original JSON transport. */
+    SamosaTurnGate probe = {0};
+    if (!samosa_turn_gate_init(&probe)) return "resource_limit";
+    error = launch(host, NULL, NULL, 0, 0, -1, -1, &host->activation.process);
+    if (!error) error = qualify_worker(host, &probe, 1);
+    samosa_turn_gate_destroy(&probe);
+    if (error) {
+        const char *cleanup = stop_worker(host, NULL);
+        return unavailable_cleanup(cleanup) ? cleanup : error;
+    }
+    host->paused = 0;
+    host->ready = 1;
+    return NULL;
+}
+
+const char *samosa_primary_stop(SamosaPrimaryHost **result, const SamosaBackendStopControl *control) {
+    if (!result || !*result) return NULL;
+    SamosaPrimaryHost *host = *result;
+    const char *error = stop_worker(host, control);
     if (unavailable_cleanup(error)) return error;
-    host->launched = 0;
     const char *cleanup = activation_stop(&host->activation);
     if (unavailable_cleanup(cleanup)) return cleanup;
     if (host->directory.fd >= 0) close(host->directory.fd);
