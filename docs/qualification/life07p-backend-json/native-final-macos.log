@@ -1,0 +1,6 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_backend_json.c build/libsamosa-inference-specialist.a -o build/test-backend-json
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-json
+PASS extracted backend JSON: 195 checks; original wire/trace/status/header/partial/deadline/size/cancellation behavior and scope cleanup
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_backend_json.c src/backend_json.c src/turn_control.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c src/vision_budget.c -o build/test-backend-json-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-json-sanitize
+PASS extracted backend JSON: 195 checks; original wire/trace/status/header/partial/deadline/size/cancellation behavior and scope cleanup

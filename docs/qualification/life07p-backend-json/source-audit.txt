@@ -1,0 +1,4 @@
+PASS whole original JSON transport/helpers preserved after explicit borrowed owner/trace input substitutions; original limits, deadlines, partial/body/status parsing and cancellation remain
+PASS complete Gateway restored byte-for-byte outside transport wrapper/include; all original web assertions/scenarios retained after three Node JSON-validator ports
+PASS original models, process/turn/guardian/managed owners and original process tests unchanged
+PASS complete package logic/assertions and native installer restored outside exact new owner-file membership/compilation

@@ -1,0 +1,4 @@
+mkdir -p build
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Isrc -c src/engine_process.c -o build/engine-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_supervisor.c -o build/specialist-supervisor.o
+make: *** No rule to make target `engines/json.h', needed by `build/specialist-protocol.o'.  Stop.

@@ -1,0 +1,7 @@
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference specialist
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/backend_json.c -o build/backend-json.o
+ar rcs build/libsamosa-inference-specialist.a build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/backend-json.o build/whisper-process.o build/vision-budget.o build/turn-control.o
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C "vendor/chutni" BUILD="/Users/deepanwadhwa/Documents/samosa-chat/build/chutni" OPT="-O2 -Wno-error=implicit-function-declaration" "/Users/deepanwadhwa/Documents/samosa-chat/build/chutni/chutni-mcp"
+make[1]: `/Users/deepanwadhwa/Documents/samosa-chat/build/chutni/chutni-mcp' is up to date.
+cc -O2 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  src/samosa_gateway.c components/samosa-inference/build/libsamosa-inference-specialist.a src/samosa_evidence.c src/samosa_html.c -o build/samosa-gateway 

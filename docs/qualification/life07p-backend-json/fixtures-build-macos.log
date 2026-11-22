@@ -1,0 +1,5 @@
+cc -O2 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc \
+	  tests/fake_openai_backend.c -o build/test_fake_openai_backend
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference build/fake-native-summarizer
+make[1]: `build/fake-native-summarizer' is up to date.
+cp components/samosa-inference/build/fake-native-summarizer build/test_fake_native_summarizer

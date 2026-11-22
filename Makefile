@@ -1138,7 +1138,9 @@ test: test-llama-launch
 sanitize: sanitize-llama-launch
 build/engine-process.o: src/engine_process.c src/engine_process.h src/json.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc -c $< -o $@
-build/libsamosa-inference-specialist.a: build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/whisper-process.o build/vision-budget.o build/turn-control.o Makefile
+build/backend-json.o: src/backend_json.c include/samosa_inference/backend_json.h include/samosa_inference/turn_control.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
+build/libsamosa-inference-specialist.a: build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/backend-json.o build/whisper-process.o build/vision-budget.o build/turn-control.o Makefile
 	$(AR) rcs $@ $(filter %.o,$^)
 build/fake-multimodal-helper: tests/fake_multimodal_helper.c | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread $< -o $@
@@ -1304,3 +1306,14 @@ sanitize-whisper-host: build/test-whisper-host-sanitize build/test-whisper build
 	$(abspath build/test-whisper-host-sanitize) $(abspath build/test-whisper) $(abspath build/samosa-inference-providers-sanitize)
 test-native: test-whisper-host
 sanitize-native: sanitize-whisper-host
+.PHONY: test-backend-json sanitize-backend-json
+build/test-backend-json: tests/test_backend_json.c include/samosa_inference/backend_json.h build/libsamosa-inference-specialist.a | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
+build/test-backend-json-sanitize: tests/test_backend_json.c src/backend_json.c src/turn_control.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c src/vision_budget.c include/samosa_inference/backend_json.h include/samosa_inference/turn_control.h | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $(filter %.c,$^) -o $@
+test-backend-json: build/test-backend-json
+	$(abspath build/test-backend-json)
+sanitize-backend-json: build/test-backend-json-sanitize
+	$(abspath build/test-backend-json-sanitize)
+test-native: test-backend-json
+sanitize-native: sanitize-backend-json

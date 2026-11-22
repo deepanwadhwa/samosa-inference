@@ -103,6 +103,13 @@ complements the existing controlled credential/redirect/quota/recovery gates.
 
 ## 3. Engine lifecycle and readiness — active
 
+LIFE-07p (2026-11-22) extracts Gateway's existing primary JSON request transport
+and wires its original caller, archive, package and native installer. Native,
+independent normal/SAN, original budget/web/selection and retained Qwen checks
+pass; see [evidence](qualification/life07p-backend-json/README.md). Reuse it with
+backend_process/Activation for common primary qualification next. It does not
+establish current identity, last-good semantics or full lifecycle readiness alone.
+
 LIFE-07o (2026-11-22) wraps the existing structured on-demand Whisper request
 with common controls and actual pinned-speech qualification. Native/independent
 normal/SAN and installed-engine runs pass; see

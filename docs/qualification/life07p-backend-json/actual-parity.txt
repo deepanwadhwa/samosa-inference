@@ -1,0 +1,13 @@
+Original LIFE-07k receipt: /private/tmp/samosa-primary-real.hpk1SG/response.json
+actual-source.txt: exact original text="Hello! How can" usage={"prompt_tokens":15,"completion_tokens":4,"total_tokens":19}
+[Memory Guard] Baseline swap: 533 MB
+[Memory Guard] Limits: 6144 MiB process-tree RSS, 0 MiB swap delta
+[Memory Guard] Process exited with code 0
+[Memory Guard] Peak process-tree RSS: 3476 MB
+[Memory Guard] Final swap delta: 0 MB
+actual-sanitize-source.txt: exact original text="Hello! How can" usage={"prompt_tokens":15,"completion_tokens":4,"total_tokens":19}
+[Memory Guard] Baseline swap: 533 MB
+[Memory Guard] Limits: 6144 MiB process-tree RSS, 0 MiB swap delta
+[Memory Guard] Process exited with code 0
+[Memory Guard] Peak process-tree RSS: 3430 MB
+[Memory Guard] Final swap delta: 0 MB

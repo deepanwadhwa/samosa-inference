@@ -5,23 +5,27 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-LIFE-07o checkpoint, 2026-11-22: the existing structured on-demand Whisper
-adapter now supports common start/status/stop through Activation and its original
-guarded request implementation. Actual pinned speech qualifies before last-good;
-idle status records qualified unchanged inputs and no resident engine. Managed
-requests retain ownership through suspended-guardian cleanup, and an unknown
-cleanup result retains the live host's fence. A native SIGXFSZ defect was traced
-to Apple's Metal cache exceeding the inherited global file cap; an explicit
-native file-output guardian opt-in preserves request/result/log/deadline checks.
-Final native and independent-source normal/SAN lifecycle 469/469, Activation
-158/168, original guardian 525/525 and Whisper 508/511 pass. Installed native
-Whisper qualifies/transcribes/requalifies in normal/SAN with zero swap growth.
-See [evidence and exclusions](qualification/life07o-whisper-lifecycle/README.md).
-This short structured-WAV profile does not replace the unchanged legacy long-window
-CLI or close its common controls. Default primary/visual controls, full identity/
-readiness/last-good, unknown-group and pre-admission recovery remain open, along
-with area3, areas4–7, Python removal, Agent/App, assembly and legacy retirement.
-Sources stays closed; Inkling remains deferred until the whole refactor finishes.
+LIFE-07p checkpoint, 2026-11-22: Gateway's original primary JSON request
+transport now belongs to Inference backend_json.c/public API; Gateway passes
+borrowed gate/mutex/cancellation and trace/probe adapters. The complete original
+transport/helpers and Gateway outside that wrapper compare byte-for-byte.
+Native/standalone normal/SAN195 checks, all15 original budget scenarios, original
+web/selection suites and exact package/native install/upgrade/boot pass. Three
+web-test JSON validators now use Node, preserving all original assertions.
+Retained Qwen normal/SAN clients return the original15 prompt/4 generated tokens
+and exact text/usage with zero swap growth. Evidence:
+[commands, hashes, scope and limits](qualification/life07p-backend-json/README.md).
+This is a reusable original transport for upcoming primary qualification, not
+common activation/readiness closure. Next reuse backend_process, this transport
+and Activation for original Qwen/Maple/llama controls, identity, actual generation
+and last-good handling. Long-window Whisper/default visual controls, unknown-group
+and pre-admission recovery, area3, later Inference areas, Python removal,
+Agent/App, assembly and qualified retirement remain required. Sources stays
+closed; Inkling stays deferred until the entire refactor finishes.
+
+Previous LIFE-07o qualified the separate structured on-demand Whisper lifecycle;
+see [its evidence](qualification/life07o-whisper-lifecycle/README.md).
+It does not replace the original long-window txt/SRT contract.
 
 Historical LIFE-07n checkpoint, 2026-11-21: the original shared text/visual generation gate,
 visual selection/reclaim/pause/resume/60-second wait and lower-side/owned-page
