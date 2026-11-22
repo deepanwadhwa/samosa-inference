@@ -44,9 +44,10 @@ static int serve(int argc,char **argv) {
             if(!strcmp(argv[1],"--model-dir"))
                 body="{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"Hello!\"},\"finish_reason\":\"length\"}]}";
             if(!strcmp(argv[1],"-m")){
+                CHECK(strstr(payload,"\"chat_template_kwargs\":{\"enable_thinking\":false}"));
                 int gateway=getenv("SAMOSA_PRIMARY_GATEWAY_FIXTURE")!=NULL;
                 if(gateway && strstr(payload,"\"model\":\"ornith-1.0-9b\""))
-                    body="{\"choices\":[{\"message\":{\"content\":\"\"}}],\"usage\":{\"completion_tokens\":0}}";
+                    body="{\"choices\":[{\"message\":{\"content\":\"\",\"reasoning_content\":\"Thinking\"}}],\"usage\":{\"completion_tokens\":4}}";
                 else CHECK(strstr(payload,gateway?"\"model\":\"bonsai-27b-1bit\"":"\"model\":\"fixture-gguf\""));
             }
             if(mode&&!strcmp(mode,"empty"))body="{\"choices\":[{\"message\":{\"content\":\"\"}}],\"usage\":{\"completion_tokens\":4}}";

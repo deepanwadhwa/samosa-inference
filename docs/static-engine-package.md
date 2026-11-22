@@ -45,3 +45,27 @@ This recipe and QA artifact are not yet a distributed installer/package catalog.
 Versioned distribution must include provider license notices, acquisition source,
 exact size/digest/platform/minimum OS/runtime policy and trusted recipe identity.
 Remote acquisition and complete product installation/recovery remain open.
+
+## LIFE-07v Gateway primary qualification on macOS
+
+The existing Metal build recipe was repeated from Prism
+`9fcaed763ccda38ea81068ad9d7f991aaddca451` in an isolated native build. The
+build explicitly disabled OpenMP and the server's embedded UI because the
+Gateway uses `--no-ui`. The pinned executable is 11,692,896 bytes with SHA-256
+`544e0df94e43167ef33c2918675dafb0e2a863e070d64dc918c854e014e5dce2`.
+The model is the same 5,629,108,704-byte Ornith GGUF above. Mach-O inspection
+listed only system frameworks and libraries.
+
+The former four-token qualification request returned empty final content and
+four reasoning tokens on real Ornith. The original Gateway chat request with
+`chat_template_kwargs.enable_thinking=false` returned final text under the same
+token limit. The Inference readiness request now supplies that existing template
+control for llama-server. The fixture still rejects a reasoning-only reply.
+
+The patched owner passed 174 primary host assertions in normal and sanitizer
+builds in both the module and a source-only copy. The parent Gateway on this Mac qualified actual Ornith with explicit
+engine and catalog model pins, returned a four-token public chat reply and
+reaped the worker and PID marker. The process tree peaked at 5,721 MB RSS
+with zero swap growth and ran at a 1,024-token context with two llama threads.
+The result covers the manually pinned, static-system Ornith profile. Release
+provisioning and actual Bonsai, Maple and projector tests remain open.

@@ -358,7 +358,9 @@ static const char *qualify_worker(SamosaPrimaryHost *host, SamosaTurnGate *gate,
     if (!out) return "resource_limit";
     fputc('{', out);
     if (!host->model_path) {
-        fputs("\"model\":", out);
+        /* llama-server uses the same template control as Gateway's bounded
+         * synthesis. Without it Ornith can spend all four tokens reasoning. */
+        fputs("\"chat_template_kwargs\":{\"enable_thinking\":false},\"temperature\":0,\"model\":", out);
         json_quote(out, c->launch.llama.alias, strlen(c->launch.llama.alias));
         fputc(',', out);
     }
