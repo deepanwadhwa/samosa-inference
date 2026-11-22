@@ -1,0 +1,9 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Isrc -c src/engine_process.c -o build/engine-process.o
+ar rcs build/libsamosa-inference-specialist.a build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/whisper-process.o build/vision-budget.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_guardian.c build/libsamosa-inference-specialist.a -o build/test-specialist-guardian
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-guardian /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+PASS original Molmo profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+Closed writer after helper exit: elapsed=0ms
+FAIL 110: start(framed,&supervisor,&session,relative_engine,relative_model)
+make: *** [test-specialist-guardian] Error 1

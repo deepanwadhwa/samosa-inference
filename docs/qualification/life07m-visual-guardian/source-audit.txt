@@ -1,0 +1,3 @@
+PASS original framing/codec/limits/timeouts/diagnostics and launch profiles unchanged; Mac write-HUP is the sole transport fix; external lifecycle branch preserved
+PASS all original supervisor/launch/protocol test assertions preserved; model engine sources unchanged; default launcher reuses the existing guardian
+PASS complete Gateway unchanged except explicit prepared-PDF-page handoff and ownership return/retake around the original lower-side retry

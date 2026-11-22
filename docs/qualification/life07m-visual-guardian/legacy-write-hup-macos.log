@@ -1,0 +1,3 @@
+BEGIN closed diagnostics
+Closed writer after helper exit: elapsed=1000ms
+FAIL 100: elapsed<500

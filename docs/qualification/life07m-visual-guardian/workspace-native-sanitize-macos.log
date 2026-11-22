@@ -1,0 +1,10 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_guardian.c build/libsamosa-inference-specialist.a -o build/test-specialist-guardian
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-guardian /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+PASS original Molmo profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+Visual guardian fixture: 258 checks
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_guardian.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o build/test-specialist-guardian-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-guardian-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+PASS original Molmo profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+Visual guardian fixture: 258 checks

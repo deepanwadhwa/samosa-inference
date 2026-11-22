@@ -1,0 +1,1 @@
+Two shared-build test runs overlapped; their combined log is invalid and excluded. Retained at /private/tmp/samosa-life07m-overlapped-invalid.log. Earlier run returned0; newer closed-stderr case hit its alarm. Native fixture peer75522 was confirmed absent after alarm. Final qualification must run serially.

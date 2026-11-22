@@ -1,8 +1,11 @@
 #define _POSIX_C_SOURCE 200809L
+#define _DARWIN_C_SOURCE
 
 #include <samosa_inference/specialist_supervisor.h>
 
 #include "controlled_pipe.h"
+#include "engine_process.h"
+#include "json.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -74,6 +77,7 @@ static int mm_wait_fd(int fd, short events, long long deadline, MmRequestControl
         if (rc == 0 && request && request->control) continue;
         if (rc <= 0) return 0;
         if (pfd.revents & (POLLERR | POLLNVAL)) return 0;
+        if ((events & POLLOUT) && (pfd.revents & POLLHUP)) return 0;
         if (pfd.revents & events) return 1;
         if ((events & POLLIN) && (pfd.revents & POLLHUP)) return 1;
     }
@@ -191,36 +195,47 @@ static void mm_supervisor_release(SamosaMmSession *session) {
     pthread_mutex_unlock(&supervisor->mutex);
 }
 
-static void mm_kill_and_reap(SamosaMmSession *session, int graceful) {
-    if (!session || session->pid <= 0) return;
-    if (graceful && session->in_fd >= 0) {
-        const char *quit = "{\"command\":\"quit\"}";
-        (void)mm_send(session, quit, strlen(quit), 250, NULL);
+typedef struct {EngineProcess process;int closing,directory,created;char workspace[PATH_MAX];} MmGuard;
+static void mm_wait_engine(MmGuard *guard,long long deadline) {
+    while(mm_now_ms()<deadline&&engine_process_running(&guard->process)){
+        struct timespec pause={0,20000000};nanosleep(&pause,NULL);
     }
-    if (session->in_fd >= 0) close(session->in_fd);
-    if (session->out_fd >= 0) close(session->out_fd);
-    session->in_fd = session->out_fd = -1;
-
-    int status = 0;
-    long long deadline = mm_now_ms() + (graceful ? session->shutdown_grace_ms : 0);
-    while (graceful && mm_now_ms() < deadline) {
-        pid_t rc = waitpid(session->pid, &status, WNOHANG);
-        if (rc == session->pid || (rc < 0 && errno == ECHILD)) return;
-        struct timespec pause = {.tv_sec = 0, .tv_nsec = 20000000};
-        nanosleep(&pause, NULL);
+}
+static const char *mm_guard_close(SamosaMmSession *session) {
+    MmGuard *guard=session->guardian;
+    if(!guard->closing){
+        guard->closing=1;
+        int graceful=session->active;
+        if(graceful&&session->in_fd>=0){const char *quit="{\"command\":\"quit\"}";
+            (void)mm_send(session,quit,strlen(quit),250,NULL);}
+        if(session->in_fd>=0)close(session->in_fd);
+        if(session->out_fd>=0)close(session->out_fd);
+        session->in_fd=session->out_fd=-1;
+        if(graceful)mm_wait_engine(guard,mm_now_ms()+session->shutdown_grace_ms);
+        /* Guardian reserves the leader until acknowledgement. Keep the original
+         * grace/TERM750ms/KILL sequence and finish helpers before releasing it. */
+        if(session->pid>1&&engine_process_running(&guard->process)){
+            (void)kill(-session->pid,SIGTERM);mm_wait_engine(guard,mm_now_ms()+750);
+            if(engine_process_running(&guard->process))(void)kill(-session->pid,SIGKILL);
+        }
+        session->active=0;
+        /* Withdraw signal publication while identity is still reserved, but
+         * retain reservation/context until guardian cleanup is confirmed. */
+        SamosaMmSupervisor *supervisor=session->supervisor;
+        pthread_mutex_lock(&supervisor->mutex);
+        if(supervisor->generation==session->generation){supervisor->active_pid=supervisor->active_pgid=0;supervisor->reserved=1;}
+        pthread_mutex_unlock(&supervisor->mutex);
     }
-    if (session->pgid > 1 && session->pgid != getpgrp()) (void)kill(-session->pgid, SIGTERM);
-    else (void)kill(session->pid, SIGTERM);
-    deadline = mm_now_ms() + 750;
-    while (mm_now_ms() < deadline) {
-        pid_t rc = waitpid(session->pid, &status, WNOHANG);
-        if (rc == session->pid || (rc < 0 && errno == ECHILD)) return;
-        struct timespec pause = {.tv_sec = 0, .tv_nsec = 20000000};
-        nanosleep(&pause, NULL);
-    }
-    if (session->pgid > 1 && session->pgid != getpgrp()) (void)kill(-session->pgid, SIGKILL);
-    else (void)kill(session->pid, SIGKILL);
-    while (waitpid(session->pid, &status, 0) < 0 && errno == EINTR) {}
+    const char *error=engine_process_stop(&guard->process);
+    if(error&&!strcmp(error,"engine_shutdown_pending"))return error;
+    if(error&&!strcmp(error,"engine_guardian_failed")&&session->pid>0)return error;
+    if(guard->directory>=0){
+        struct stat retained,named;
+        if(guard->created&&!fstat(guard->directory,&retained)&&!lstat(guard->workspace,&named)&&
+           retained.st_dev==named.st_dev&&retained.st_ino==named.st_ino)rmdir(guard->workspace);
+        close(guard->directory);
+    }else if(guard->created)rmdir(guard->workspace);
+    free(guard);session->guardian=NULL;return NULL;
 }
 
 int samosa_mm_supervisor_init(SamosaMmSupervisor *supervisor) {
@@ -294,44 +309,45 @@ static int mm_session_start(SamosaMmSupervisor *supervisor,
             return 0;
         }
     } else {
+        /* Capture inherited diagnostics before allocating pipes: a closed fd2
+           must not be mistaken for a newly allocated protocol reader. */
+        int inherited_error=fcntl(STDERR_FILENO,F_DUPFD_CLOEXEC,20);
+        if(inherited_error<0&&errno==EBADF)inherited_error=open("/dev/null",O_WRONLY|O_CLOEXEC);
+        if(inherited_error<0){mm_error(error_code,error_cap,"multimodal_pipe_failed");mm_supervisor_release(session);return 0;}
         int in_pipe[2] = {-1, -1}, out_pipe[2] = {-1, -1};
         if (pipe(in_pipe) != 0 || pipe(out_pipe) != 0) {
+            close(inherited_error);
             if (in_pipe[0] >= 0) { close(in_pipe[0]); close(in_pipe[1]); }
             if (out_pipe[0] >= 0) { close(out_pipe[0]); close(out_pipe[1]); }
             mm_error(error_code, error_cap, "multimodal_pipe_failed");
             mm_supervisor_release(session);
             return 0;
         }
-        pid_t pid = fork();
-        if (pid < 0) {
-            close(in_pipe[0]); close(in_pipe[1]); close(out_pipe[0]); close(out_pipe[1]);
-            mm_error(error_code, error_cap, "multimodal_fork_failed");
-            mm_supervisor_release(session);
-            return 0;
+        int all[]={in_pipe[0],in_pipe[1],out_pipe[0],out_pipe[1]};int prepared=1;
+        for(size_t i=0;i<4;i++)if(fcntl(all[i],F_SETFD,FD_CLOEXEC))prepared=0;
+        MmGuard *guard=prepared?calloc(1,sizeof(*guard)):NULL;
+        if(guard){guard->directory=-1;
+            snprintf(guard->workspace,sizeof(guard->workspace),"/tmp/samosa-inference-specialist-XXXXXX");
+            guard->created=mkdtemp(guard->workspace)!=NULL;
+            if(guard->created)guard->directory=open(guard->workspace,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
         }
-        if (pid == 0) {
-            (void)setpgid(0, 0);
-            if (dup2(in_pipe[0], STDIN_FILENO) < 0 ||
-                dup2(out_pipe[1], STDOUT_FILENO) < 0) _Exit(126);
-            close(in_pipe[0]); close(in_pipe[1]); close(out_pipe[0]); close(out_pipe[1]);
-            execl(provider->executable, provider->executable, provider->model_dir, (char *)NULL);
-            _Exit(127);
+        if(!guard||!guard->created||guard->directory<0)prepared=0;
+        char self[PATH_MAX],*command=NULL;size_t bytes=0;
+        FILE *encoded=prepared&&engine_process_executable(self)?open_memstream(&command,&bytes):NULL;
+        if(encoded){fputc('[',encoded);json_quote(encoded,provider->executable,strlen(provider->executable));fputc(',',encoded);json_quote(encoded,provider->model_dir,strlen(provider->model_dir));fputc(']',encoded);prepared=!fclose(encoded);}else prepared=0;
+        if(guard)guard->process=(EngineProcess){.guardian=-1,.control=-1,.response=-1};
+        const char *error=prepared?engine_process_start_specialist(self,command,in_pipe[0],out_pipe[1],inherited_error,guard->workspace,guard->directory,&guard->process):"engine_io_failed";
+        free(command);close(in_pipe[0]);close(out_pipe[1]);close(inherited_error);
+        session->in_fd=in_pipe[1];session->out_fd=out_pipe[0];session->guardian=guard;
+        if(error){
+            if(!guard){close(session->in_fd);close(session->out_fd);session->in_fd=session->out_fd=-1;mm_supervisor_release(session);session->supervisor=NULL;}
+            else samosa_mm_session_close(session);
+            mm_error(error_code,error_cap,!strcmp(error,"engine_exec_failed")?"multimodal_readiness_failed":"multimodal_fork_failed");return 0;
         }
-        (void)setpgid(pid, pid);
-        close(in_pipe[0]); close(out_pipe[1]);
-        session->pid = pid;
-        session->pgid = pid;
-        session->in_fd = in_pipe[1];
-        session->out_fd = out_pipe[0];
-        (void)mm_set_nonblock(session->in_fd);
-        (void)mm_set_nonblock(session->out_fd);
-
+        session->pid=session->pgid=guard->process.engine;
+        (void)mm_set_nonblock(session->in_fd);(void)mm_set_nonblock(session->out_fd);
         pthread_mutex_lock(&supervisor->mutex);
-        if (supervisor->generation == session->generation) {
-            supervisor->active_pid = pid;
-            supervisor->active_pgid = pid;
-            supervisor->reserved = 0;
-        }
+        if(supervisor->generation==session->generation){supervisor->active_pid=session->pid;supervisor->active_pgid=session->pgid;supervisor->reserved=0;}
         pthread_mutex_unlock(&supervisor->mutex);
 
     }
@@ -346,7 +362,7 @@ static int mm_session_start(SamosaMmSupervisor *supervisor,
         !mm_reply_ok(reply, reply_len)) {
         free(reply);
         mm_error(error_code, error_cap, request.error ? request.error : "multimodal_readiness_failed");
-        (void)samosa_mm_session_close_owned(session);
+        if(lifecycle)(void)samosa_mm_session_close_owned(session);else samosa_mm_session_close(session);
         return 0;
     }
     free(reply);
@@ -368,7 +384,7 @@ int samosa_mm_session_start_owned(SamosaMmSupervisor *supervisor,
     if (!lifecycle || !lifecycle->open || !lifecycle->close || !session) {
         mm_error(error_code, error_cap, "multimodal_invalid_lifecycle"); return 0;
     }
-    if (session->supervisor || session->active || session->pid || session->lifecycle.close) {
+    if (session->supervisor || session->active || session->pid || session->lifecycle.close || session->guardian) {
         mm_error(error_code, error_cap, "multimodal_session_owned"); return 0;
     }
     return mm_session_start(supervisor, provider, session, lifecycle, control, error_code, error_cap);
@@ -424,7 +440,9 @@ const char *samosa_mm_session_close_owned(SamosaMmSession *session) {
         if (error) return error;
         /* Only the lifecycle owner closes/reaps its descriptors and child. */
         session->in_fd = session->out_fd = -1;
-    } else if (session->pid > 0) mm_kill_and_reap(session, session->active);
+    } else if (session->guardian) {
+        const char *error=mm_guard_close(session);if(error)return error;
+    }
     mm_supervisor_release(session);
     session->active = 0;
     session->pid = session->pgid = 0;
@@ -434,7 +452,10 @@ const char *samosa_mm_session_close_owned(SamosaMmSession *session) {
 }
 
 void samosa_mm_session_close(SamosaMmSession *session) {
-    (void)samosa_mm_session_close_owned(session);
+    if(!session)return;
+    if(session->guardian){while(samosa_mm_session_close_owned(session)){
+        struct timespec pause={0,20000000};nanosleep(&pause,NULL);}}
+    else (void)samosa_mm_session_close_owned(session);
 }
 
 int samosa_mm_supervisor_cancel(SamosaMmSupervisor *supervisor) {
@@ -442,10 +463,10 @@ int samosa_mm_supervisor_cancel(SamosaMmSupervisor *supervisor) {
     pthread_mutex_lock(&supervisor->mutex);
     pid_t pid = supervisor->active_pid;
     pid_t pgid = supervisor->active_pgid;
-    pthread_mutex_unlock(&supervisor->mutex);
-    if (pid <= 0) return 0;
+    if (pid <= 0) {pthread_mutex_unlock(&supervisor->mutex);return 0;}
     if (pgid > 1 && pgid != getpgrp()) (void)kill(-pgid, SIGTERM);
     else (void)kill(pid, SIGTERM);
+    pthread_mutex_unlock(&supervisor->mutex);
     return 1;
 }
 
@@ -466,4 +487,32 @@ int samosa_mm_supervisor_is_active(SamosaMmSupervisor *supervisor,
         snprintf(provider, provider_cap, "%s", supervisor->active_provider);
     pthread_mutex_unlock(&supervisor->mutex);
     return active;
+}
+
+int samosa_mm_process_dispatch(int argc,char **argv) {return engine_guardian_dispatch(argc,argv);}
+
+int samosa_mm_session_take_temporary_image(SamosaMmSession *session,const char *source,char *out,size_t capacity) {
+    if(!session||!session->active||!session->guardian||!source||!out)return 0;
+    MmGuard *guard=session->guardian;struct stat directory,named,image;
+    char path[PATH_MAX];
+    if(guard->closing||guard->directory<0||fstat(guard->directory,&directory)||lstat(guard->workspace,&named)||
+       directory.st_dev!=named.st_dev||directory.st_ino!=named.st_ino||lstat(source,&image)||
+       !S_ISREG(image.st_mode)||image.st_uid!=geteuid()||image.st_nlink!=1||
+       snprintf(path,sizeof(path),"%s/input.ppm",guard->workspace)>=(int)sizeof(path)||strlen(path)>=capacity)return 0;
+    if(rename(source,path))return 0;
+    if(chmod(path,0600))return 0;
+    memcpy(out,path,strlen(path)+1);return 1;
+}
+
+int samosa_mm_session_return_temporary_image(SamosaMmSession *session,const char *destination) {
+    if(!session||!session->guardian||!destination)return 0;
+    MmGuard *guard=session->guardian;struct stat directory,named,image;
+    if(guard->closing||guard->directory<0||fstat(guard->directory,&directory)||lstat(guard->workspace,&named)||
+       directory.st_dev!=named.st_dev||directory.st_ino!=named.st_ino||
+       fstatat(guard->directory,"input.ppm",&image,AT_SYMLINK_NOFOLLOW)||!S_ISREG(image.st_mode)||image.st_nlink!=1)return 0;
+    /* Link exclusively before unlinking our name; never replace another file.
+       Caller regains ownership for the existing unload/lower-side/restart retry. */
+    if(linkat(guard->directory,"input.ppm",AT_FDCWD,destination,0))return 0;
+    if(unlinkat(guard->directory,"input.ppm",0)){unlink(destination);return 0;}
+    return 1;
 }

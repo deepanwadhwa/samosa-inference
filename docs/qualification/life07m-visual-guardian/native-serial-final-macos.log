@@ -1,0 +1,63 @@
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-guardian /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+PASS original Molmo profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+Closed writer after helper exit: elapsed=0ms
+Visual guardian fixture: 276 checks
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_guardian.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o build/test-specialist-guardian-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-guardian-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+PASS original Molmo profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+Closed writer after helper exit: elapsed=0ms
+Visual guardian fixture: 276 checks
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_multimodal_supervisor.c build/libsamosa-inference-specialist.a -o build/test-specialist-supervisor
+./build/test-specialist-supervisor /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+multimodal supervisor: PASS
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_multimodal_supervisor.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-supervisor-sanitize
+./build/test-specialist-supervisor-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+multimodal supervisor: PASS
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_launch.c build/libsamosa-inference-specialist.a -o build/test-specialist-launch
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-launch /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+PASS original Molmo2 launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_launch.c src/specialist_protocol.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-launch-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-launch-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+PASS original Molmo2 launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_protocol.c build/libsamosa-inference-specialist.a -o build/test-specialist-protocol
+./build/test-specialist-protocol
+specialist protocol: PASS (25 native exchanges/refusals, exact inherited wire/defaults, Unicode, bounds, errors, traces)
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_protocol.c src/specialist_protocol.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-protocol-sanitize
+./build/test-specialist-protocol-sanitize
+specialist protocol: PASS (25 native exchanges/refusals, exact inherited wire/defaults, Unicode, bounds, errors, traces)
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -Isrc tests/test_specialist_owned.c src/engine_process.c build/libsamosa-inference-specialist.a -o build/test-specialist-owned
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-owned /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+specialist owned guardian: PASS (both protocols, reuse, reservation, pending close, failed open, deadline, crash/reap, workspace, cache cap, owner death)
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_owned.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-owned-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-owned-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+specialist owned guardian: PASS (both protocols, reuse, reservation, pending close, failed open, deadline, crash/reap, workspace, cache cap, owner death)
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Isrc tests/test_engine_process.c src/engine_process.c -o build/test-engine-process
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-engine-process
+PASS engine process ownership: 525 checks; bounded logs/lifetime, owned stop/group/parent-death, foreign survivor
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc tests/test_engine_process.c src/engine_process.c -o build/test-engine-process-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-engine-process-sanitize
+PASS engine process ownership: 525 checks; bounded logs/lifetime, owned stop/group/parent-death, foreign survivor
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_backend_process.c build/libsamosa-inference-specialist.a -o build/test-backend-process
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process
+samosa-gateway: refusing to start qwen: private backend port 62728 is already occupied by an untracked process
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-4ElO1y/backend.pid
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-4ElO1y/backend.pid
+PASS primary backend owner: 676 checks; original launch/environment/health/marker/stop, literal paths, rollback inputs; guardian parent-death, actual PID reservation, lease exclusion, unlimited append logs, foreign process survives
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_backend_process.c src/backend_process.c src/llama_launch.c src/engine_process.c -o build/test-backend-process-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-backend-process
+samosa-gateway: refusing to start qwen: private backend port 62852 is already occupied by an untracked process
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-ETVWLR/backend.pid
+samosa-gateway: could not persist backend pid marker /tmp/samosa-primary-process-ETVWLR/backend.pid
+PASS primary backend owner: 676 checks; original launch/environment/health/marker/stop, literal paths, rollback inputs; guardian parent-death, actual PID reservation, lease exclusion, unlimited append logs, foreign process survives
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_whisper_process.c build/libsamosa-inference-specialist.a -o build/test-whisper-process
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-whisper-process /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-whisper-process
+PASS extracted Whisper runner (522 checks): original txt/SRT/argv,271-second input, UTF-8/16-MiB bounds, busy/preserve-cancel, failure, exact-child cancellation/reap and complete result cleanup; guardian parent-death, descendant/foreign-process safety, held-PID/workspace cleanup, stalled guardian, relative/escaped paths and discarded verbose logs
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_process.c src/whisper_process.c src/engine_process.c -o build/test-whisper-process-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-whisper-process-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-whisper-process
+PASS extracted Whisper runner (522 checks): original txt/SRT/argv,271-second input, UTF-8/16-MiB bounds, busy/preserve-cancel, failure, exact-child cancellation/reap and complete result cleanup; guardian parent-death, descendant/foreign-process safety, held-PID/workspace cleanup, stalled guardian, relative/escaped paths and discarded verbose logs
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_guardian_real.c build/libsamosa-inference-specialist.a -o build/test-specialist-guardian-real
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_guardian_real.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o build/test-specialist-guardian-real-sanitize

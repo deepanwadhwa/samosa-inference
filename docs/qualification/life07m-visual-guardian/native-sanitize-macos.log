@@ -1,0 +1,33 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_supervisor.c -o build/specialist-supervisor.o
+ar rcs build/libsamosa-inference-specialist.a build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/whisper-process.o build/vision-budget.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_guardian.c build/libsamosa-inference-specialist.a -o build/test-specialist-guardian
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread tests/fake_multimodal_helper.c -o build/fake-multimodal-helper
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-guardian /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+PASS original Molmo profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+Visual guardian fixture: 209 checks
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_guardian.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o build/test-specialist-guardian-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-guardian-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+PASS original Molmo profile: leader gone, stubborn helper gone; unrelated peer survives; fixture survivors cleaned
+Visual guardian fixture: 209 checks
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_multimodal_supervisor.c build/libsamosa-inference-specialist.a -o build/test-specialist-supervisor
+./build/test-specialist-supervisor /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+multimodal supervisor: PASS
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_multimodal_supervisor.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-supervisor-sanitize
+./build/test-specialist-supervisor-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+multimodal supervisor: PASS
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_launch.c build/libsamosa-inference-specialist.a -o build/test-specialist-launch
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-launch /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+PASS original Molmo2 launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_launch.c src/specialist_protocol.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-launch-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-specialist-launch-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS original VisionPsy launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+PASS original Molmo2 launch profile: availability/failure, traces, configured limits, busy peer, reuse, close/reap and failed-exchange restart
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_specialist_protocol.c build/libsamosa-inference-specialist.a -o build/test-specialist-protocol
+./build/test-specialist-protocol
+specialist protocol: PASS (25 native exchanges/refusals, exact inherited wire/defaults, Unicode, bounds, errors, traces)
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_protocol.c src/specialist_protocol.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-protocol-sanitize
+./build/test-specialist-protocol-sanitize
+specialist protocol: PASS (25 native exchanges/refusals, exact inherited wire/defaults, Unicode, bounds, errors, traces)

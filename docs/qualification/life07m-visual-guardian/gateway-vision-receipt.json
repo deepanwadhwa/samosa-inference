@@ -1,0 +1,26 @@
+{
+  "root": "/private/tmp/samosa-visual-gateway.KJLuqE",
+  "gateway": "/Users/deepanwadhwa/Documents/samosa-chat/build/samosa-gateway",
+  "engine": "/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper",
+  "backend": "/Users/deepanwadhwa/Documents/samosa-chat/build/test_fake_openai_backend",
+  "kind": "vision",
+  "primary": 79447,
+  "worker": 79467,
+  "helper": 79468,
+  "guardian": 79466,
+  "prepared": "/tmp/samosa-inference-specialist-4rUwTD/input.ppm",
+  "workspace": "/tmp/samosa-inference-specialist-4rUwTD",
+  "workerGone": true,
+  "helperGone": true,
+  "guardianGone": true,
+  "primaryGone": true,
+  "preparedGone": true,
+  "workspaceGone": true,
+  "callerPagesGone": true,
+  "peerSurvives": true,
+  "durablePdfRetained": true,
+  "modelRetained": true,
+  "request": {
+    "error": "TypeError"
+  }
+}

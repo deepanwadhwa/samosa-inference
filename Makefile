@@ -1057,7 +1057,7 @@ sanitize-summary-process: build/fake-native-summarizer | build
 	./build/test-summary-process-sanitize $(abspath build/fake-native-summarizer)
 test: test-summary-process
 sanitize: sanitize-summary-process
-build/specialist-supervisor.o: src/specialist_supervisor.c src/controlled_pipe.h include/samosa_inference/specialist_supervisor.h | build
+build/specialist-supervisor.o: src/specialist_supervisor.c src/engine_process.h src/json.h src/controlled_pipe.h include/samosa_inference/specialist_supervisor.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
 build/specialist-protocol.o: src/specialist_protocol.c engines/json.h include/samosa_inference/specialist_protocol.h include/samosa_inference/specialist_supervisor.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
@@ -1067,7 +1067,7 @@ build/test-specialist-protocol: tests/test_specialist_protocol.c include/samosa_
 test-specialist-protocol: build/test-specialist-protocol
 	./build/test-specialist-protocol
 sanitize-specialist-protocol: tests/test_specialist_protocol.c src/specialist_protocol.c engines/json.h src/specialist_supervisor.c src/controlled_pipe.h include/samosa_inference/specialist_protocol.h include/samosa_inference/specialist_supervisor.h | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_protocol.c src/specialist_protocol.c src/specialist_supervisor.c -o build/test-specialist-protocol-sanitize
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_protocol.c src/specialist_protocol.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-protocol-sanitize
 	./build/test-specialist-protocol-sanitize
 test: test-specialist-protocol
 sanitize: sanitize-specialist-protocol
@@ -1077,7 +1077,7 @@ build/test-specialist-launch: tests/test_specialist_launch.c include/samosa_infe
 test-specialist-launch: build/test-specialist-launch build/fake-multimodal-helper
 	$(abspath build/test-specialist-launch) $(abspath build/fake-multimodal-helper)
 sanitize-specialist-launch: tests/test_specialist_launch.c src/specialist_protocol.c engines/json.h src/specialist_supervisor.c src/controlled_pipe.h include/samosa_inference/specialist_protocol.h include/samosa_inference/specialist_supervisor.h build/fake-multimodal-helper | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_launch.c src/specialist_protocol.c src/specialist_supervisor.c -o build/test-specialist-launch-sanitize
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_launch.c src/specialist_protocol.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-launch-sanitize
 	$(abspath build/test-specialist-launch-sanitize) $(abspath build/fake-multimodal-helper)
 test: test-specialist-launch
 sanitize: sanitize-specialist-launch
@@ -1147,7 +1147,7 @@ build/test-specialist-supervisor: tests/test_multimodal_supervisor.c build/libsa
 test-specialist-supervisor: build/test-specialist-supervisor build/fake-multimodal-helper
 	./build/test-specialist-supervisor $(abspath build/fake-multimodal-helper)
 sanitize-specialist-supervisor: build/fake-multimodal-helper | build
-	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_multimodal_supervisor.c src/specialist_supervisor.c -o build/test-specialist-supervisor-sanitize
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_multimodal_supervisor.c src/specialist_supervisor.c src/engine_process.c -o build/test-specialist-supervisor-sanitize
 	./build/test-specialist-supervisor-sanitize $(abspath build/fake-multimodal-helper)
 test: test-specialist-supervisor
 sanitize: sanitize-specialist-supervisor
@@ -1263,3 +1263,17 @@ sanitize-specialist-owned: build/fake-multimodal-helper | build
 	$(abspath build/test-specialist-owned-sanitize) $(abspath build/fake-multimodal-helper)
 test: test-specialist-owned
 sanitize: sanitize-specialist-owned
+
+.PHONY: test-specialist-guardian sanitize-specialist-guardian
+build/test-specialist-guardian: tests/test_specialist_guardian.c include/samosa_inference/specialist_supervisor.h build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
+build/test-specialist-guardian-sanitize: tests/test_specialist_guardian.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c src/engine_process.h src/json.h include/samosa_inference/specialist_supervisor.h | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_guardian.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o $@
+test-specialist-guardian: build/test-specialist-guardian build/fake-multimodal-helper
+	$(abspath build/test-specialist-guardian) $(abspath build/fake-multimodal-helper)
+sanitize-specialist-guardian: build/test-specialist-guardian-sanitize build/fake-multimodal-helper
+	$(abspath build/test-specialist-guardian-sanitize) $(abspath build/fake-multimodal-helper)
+build/test-specialist-guardian-real: tests/test_specialist_guardian_real.c include/samosa_inference/specialist_supervisor.h build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
+build/test-specialist-guardian-real-sanitize: tests/test_specialist_guardian_real.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c src/engine_process.h src/json.h include/samosa_inference/specialist_supervisor.h | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_guardian_real.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o $@

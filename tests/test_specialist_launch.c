@@ -26,6 +26,7 @@ static void reaped(pid_t pid) {
     errno=0;assert(kill(pid,0)<0&&errno==ESRCH);
 }
 int main(int argc,char **argv) {
+    int dispatch=samosa_mm_process_dispatch(argc,argv);if(dispatch>=0)return dispatch;
     assert(argc==2&&argv[1][0]=='/');alarm(60);
     char model[]="/tmp/samosa-launch-quote\"-XXXXXX";assert(mkdtemp(model));
     SamosaMmSupervisor supervisor;assert(samosa_mm_supervisor_init(&supervisor));

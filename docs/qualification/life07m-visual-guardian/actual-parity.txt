@@ -1,0 +1,3 @@
+PASS actual-owner: six observations exactly match f06d5c1 baseline; native1536 heading/2048 execution, Molmo changed image/joint2/native1sec2frame video; owner prepared-page/PID close passes.
+PASS actual-owner-sanitize: six observations exactly match f06d5c1 baseline; native1536 heading/2048 execution, Molmo changed image/joint2/native1sec2frame video; owner prepared-page/PID close passes.
+2048 semantic heading quality fails the original baseline and remains unqualified. Models/kernels were retained unchanged; only ownership/harness are sanitizer builds.

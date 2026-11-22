@@ -1,0 +1,7 @@
+[Memory Guard] Baseline swap: 541 MB
+[Memory Guard] Limits: 6144 MiB process-tree RSS, 0 MiB swap delta
+FAIL actual 36: strstr(lower,"hello")&&generated_tokens>0
+Actual default VisionPsy: I; prompt=1119 generated=1 side=2048
+[Memory Guard] Process exited with code 1
+[Memory Guard] Peak process-tree RSS: 776 MB
+[Memory Guard] Final swap delta: 0 MB

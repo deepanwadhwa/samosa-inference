@@ -35,7 +35,7 @@ typedef struct {
     size_t max_frame_bytes;
 } SamosaMmProvider;
 
-/* One instance belongs to the gateway.  A reservation is made before fork,
+/* One instance belongs to the gateway.  A reservation is made before launch,
    so concurrent visual turns cannot race into launching two Metal models. */
 typedef struct {
     pthread_mutex_t mutex;
@@ -80,13 +80,17 @@ typedef struct {
     uint64_t generation;
     char provider[SAMOSA_MM_PROVIDER_NAME_MAX];
     SamosaMmLifecycle lifecycle;
+    void *guardian; /* Private default-owner handle; never copy/free/adopt. */
 } SamosaMmSession;
 
 int samosa_mm_supervisor_init(SamosaMmSupervisor *supervisor);
 /* All session closes must be confirmed before destroying their supervisor. */
 void samosa_mm_supervisor_destroy(SamosaMmSupervisor *supervisor);
 
-/* Starts a process group, negotiates the configured private protocol, and
+/* Dispatch before normal host configuration; returns -1 for ordinary entry. */
+int samosa_mm_process_dispatch(int argc,char **argv);
+
+/* Starts an existing Inference guardian and process group, negotiates the configured private protocol, and
    holds the global specialist lease until session_close. */
 int samosa_mm_session_start(SamosaMmSupervisor *supervisor,
                             const SamosaMmProvider *provider,
@@ -118,10 +122,21 @@ int samosa_mm_session_request_controlled(SamosaMmSession *session,
                               char **reply, size_t *reply_len,
                               char *error_code, size_t error_cap);
 
-/* Graceful quit, bounded wait, SIGTERM, then SIGKILL.  Safe on partially
+/* Graceful quit, bounded wait, SIGTERM, then SIGKILL. Default close waits for
+   confirmed guardian cleanup and keeps ownership if it is stalled. Typed
+   close_owned exposes pending/error cleanup for callers retaining the session.  Safe on partially
    started sessions with the default launcher. External owners must use the
    typed close_owned and retain their context on unconfirmed cleanup. */
 void samosa_mm_session_close(SamosaMmSession *session);
+
+/* Explicit handoff of a caller-prepared regular singly linked temporary image
+   on the workspace filesystem. Session serializes requests: its previous owned
+   image may be replaced after completion. Guardian owns input.ppm through final
+   reap/parent death. Borrowed durable images/video are never passed here. */
+int samosa_mm_session_take_temporary_image(SamosaMmSession *,const char *,char *,size_t);
+/* Return ownership before an existing unload/restart retry; destination must
+   be absent. No durable/foreign destination is replaced. */
+int samosa_mm_session_return_temporary_image(SamosaMmSession *,const char *);
 
 /* Used by the authenticated cancel and shutdown paths.  The owning request
    thread still performs the wait/reap and releases the lease. */

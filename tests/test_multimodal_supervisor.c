@@ -128,6 +128,7 @@ static void broken_pipe_case(void) {
 }
 
 int main(int argc, char **argv) {
+    int dispatch=samosa_mm_process_dispatch(argc,argv);if(dispatch>=0)return dispatch;
     assert(argc == 2 && argv[1][0] == '/');
     char model_template[] = "/tmp/samosa-mm-model-XXXXXX";
     char *model_dir = mkdtemp(model_template);

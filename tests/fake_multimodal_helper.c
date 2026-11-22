@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,7 +75,20 @@ static int send_message(int framed, const char *message) {
     return write_all(message, len) && write_all("\n", 1);
 }
 
-int main(void) {
+int main(int argc,char **argv) {
+    const char *expected=getenv("SAMOSA_FAKE_MM_EXPECTED_MODEL");
+    if(expected&&(argc!=2||strcmp(argv[1],expected)))return 77;
+    const char *child_file=getenv("SAMOSA_FAKE_MM_HELPER_PID_FILE");
+    pid_t helper=0;
+    if(child_file){helper=fork();if(helper<0)return 78;if(!helper){signal(SIGTERM,SIG_IGN);close(STDIN_FILENO);close(STDOUT_FILENO);for(;;)pause();}
+        FILE *file=fopen(child_file,"w");if(!file)return 79;fprintf(file,"%ld\n",(long)helper);fclose(file);}
+    const char *identity=getenv("SAMOSA_FAKE_MM_IDENTITY");
+    if(identity){FILE *file=fopen(identity,"w");if(!file)return 80;fprintf(file,"%ld %ld %ld\n",(long)getpid(),(long)getppid(),(long)getpgrp());fclose(file);}
+    const char *lifecycle=getenv("SAMOSA_FAKE_MM_LIFECYCLE");
+    if(lifecycle&&!strcmp(lifecycle,"stubborn"))signal(SIGTERM,SIG_IGN);
+    if(lifecycle&&!strcmp(lifecycle,"crash"))return 73;
+    if(lifecycle&&!strcmp(lifecycle,"noisy")){char text[4096];memset(text,'L',sizeof(text));for(int i=0;i<300;i++)if(fwrite(text,sizeof(text),1,stderr)!=1)return 81;fflush(stderr);}
+
     const char *cache = getenv("SAMOSA_FAKE_MM_CACHE_PROBE");
     if (cache) {
         int fd = open(cache, O_CREAT | O_WRONLY, 0600);
@@ -92,12 +106,16 @@ int main(void) {
             FILE *log = fopen(log_path, "a");
             if (log) { fwrite(message, 1, len, log); fputc('\n', log); fclose(log); }
         }
+        if(getenv("SAMOSA_FAKE_MM_BLOCK_REQUEST")&&(strstr(message,"\"command\":\"inspect\"")||strstr(message,"\"command\":\"analyze\""))){
+            const char *ready=getenv("SAMOSA_FAKE_MM_HANG_READY");if(ready){FILE *file=fopen(ready,"w");if(!file)return 82;fputs("ready\n",file);fclose(file);}free(message);for(;;)pause();}
         if (strstr(message, "\"command\":\"quit\"")) {
+            if(lifecycle&&(!strcmp(lifecycle,"stubborn")||!strcmp(lifecycle,"ignore-quit"))){free(message);for(;;)pause();}
             free(message);
             (void)send_message(framed, "{\"status\":\"ok\"}");
             return 0;
         }
         if (strstr(message, "\"command\":\"hang\"")) {
+            const char *ready=getenv("SAMOSA_FAKE_MM_HANG_READY");if(ready){FILE *file=fopen(ready,"w");if(!file)return 82;fputs("ready\n",file);fclose(file);}
             struct timespec pause = {.tv_sec = 30, .tv_nsec = 0};
             free(message);
             nanosleep(&pause, NULL);
@@ -107,6 +125,7 @@ int main(void) {
             free(message);
             return 73;
         }
+        size_t response_bytes=0;const char *boundary=strstr(message,"\"response_bytes\":");if(boundary)response_bytes=(size_t)strtoul(boundary+17,NULL,10);
         int image = strstr(message, "\"media_kind\":\"image\"") != NULL;
         int images = strstr(message, "\"media_kind\":\"images\"") != NULL;
         int video = strstr(message, "\"media_kind\":\"video\"") != NULL;
@@ -130,6 +149,10 @@ int main(void) {
                 while (nanosleep(&pause, &pause) && errno == EINTR) {}
             }
         }
+        if(response_bytes){const char *prefix="{\"status\":\"ok\",\"data\":\"",*suffix="\"}";size_t left=strlen(prefix),right=strlen(suffix);
+            if(response_bytes<left+right||response_bytes>1048577)return 83;
+            char *large=malloc(response_bytes+1);if(!large)return 84;memcpy(large,prefix,left);memset(large+left,'x',response_bytes-left-right);memcpy(large+response_bytes-right,suffix,right);large[response_bytes]=0;
+            int ok=send_message(framed,large);free(large);if(!ok)return 1;continue;}
         const char *response = unsafe_video_budget
             ? "{\"status\":\"error\",\"id\":\"gateway\",\"code\":\"molmo2_inference_failed\","
               "\"message\":\"fixture video sequence envelope overflow\"}"
@@ -152,6 +175,7 @@ int main(void) {
               "\"prompt_tokens\":3,\"generated_tokens\":4,\"images\":0,\"frames\":8,\"duration_seconds\":30}";
         if (!send_message(framed, response))
             return 1;
+        if(getenv("SAMOSA_FAKE_MM_EXIT_AFTER_READY"))return 0;
         if (getenv("SAMOSA_FAKE_MM_STOP_READING")) {
             struct timespec pause = {.tv_sec = 30};
             while (nanosleep(&pause, &pause) && errno == EINTR) {}

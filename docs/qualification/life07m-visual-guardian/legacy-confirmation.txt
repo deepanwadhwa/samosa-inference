@@ -1,0 +1,1 @@
+Confirmed expected old-runner exit1; both profile helper survivors cleaned.
