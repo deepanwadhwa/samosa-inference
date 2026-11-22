@@ -1,5 +1,6 @@
 #ifndef SAMOSA_INFERENCE_WHISPER_PROCESS_H
 #define SAMOSA_INFERENCE_WHISPER_PROCESS_H
+#include <sys/stat.h>
 #include <sys/types.h>
 #ifdef __cplusplus
 extern "C" {
@@ -16,6 +17,14 @@ enum {
 typedef struct {
     const char *engine, *model, *temporary_directory;
 } SamosaWhisperProcessConfig;
+typedef struct {
+    struct stat engine, model;
+} SamosaWhisperProcessIdentity;
+
+/* Observe the installed input files. A positive model size requires an exact
+ * match. This is a presence and identity check; it does not execute a probe. */
+int samosa_whisper_process_inspect(const SamosaWhisperProcessConfig *,
+    off_t expected_model_size, SamosaWhisperProcessIdentity *);
 /* Borrowed synchronous host coordination. A supplied control has all callbacks.
  * acquire returns1 after reserving this operation,0 for busy; it preserves or
  * clears the existing cancellation scope according to preserve_cancel.
@@ -53,6 +62,12 @@ int samosa_whisper_process_run(const SamosaWhisperProcessConfig *,
 int samosa_whisper_process_run_owned(const SamosaWhisperProcessConfig *,
     const SamosaWhisperProcessControl *,const char *wav_path,int timestamped,
     int preserve_cancel,char **output);
+/* Run against the identity already observed by the host. Changed inputs return
+ * NOT_READY with no transcript, including changes during execution or cleanup.
+ * own_input selects the same prepared-input handoff as run_owned(). */
+int samosa_whisper_process_run_checked(const SamosaWhisperProcessConfig *,
+    const SamosaWhisperProcessIdentity *, const SamosaWhisperProcessControl *,
+    const char *wav_path, int timestamped, int preserve_cancel, int own_input, char **output);
 #ifdef __cplusplus
 }
 #endif

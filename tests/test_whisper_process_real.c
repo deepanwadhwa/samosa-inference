@@ -13,16 +13,19 @@
  * This is bounded recognition evidence, not a general model-quality claim. */
 int main(int argc,char **argv) {
     int dispatched=samosa_whisper_process_dispatch(argc,argv);if(dispatched>=0)return dispatched;
-    assert(argc==4&&argv[1][0]=='/'&&argv[2][0]=='/'&&argv[3][0]=='/');alarm(180);
+    assert((argc==4||argc==5)&&argv[1][0]=='/'&&argv[2][0]=='/'&&argv[3][0]=='/');alarm(180);
     char temporary[]="/tmp/samosa-whisper-process-real-XXXXXX";assert(mkdtemp(temporary));
     SamosaWhisperProcessConfig config={argv[1],argv[2],temporary};
+    SamosaWhisperProcessIdentity identity;
+    assert(samosa_whisper_process_inspect(&config,0,&identity));
     for(int srt=0;srt<2;srt++) {
-        char *text=NULL;int result=samosa_whisper_process_run(&config,NULL,argv[3],srt,0,&text);
+        char *text=NULL;int result=samosa_whisper_process_run_checked(&config,&identity,NULL,argv[3],srt,0,0,&text);
         if(result!=SAMOSA_WHISPER_OK||!text)fprintf(stderr,"actual Whisper mode=%d result=%d\n",srt,result);
         assert(result==SAMOSA_WHISPER_OK&&text);
         printf("Actual %s: %s\n",srt?"SRT":"text",text);
         for(char *p=text;*p;p++)*p=(char)tolower((unsigned char)*p);
         assert(strstr(text,"fox")&&strstr(text,"dog"));if(srt)assert(strstr(text," --> "));
+        if(argc==5)assert(strstr(text,argv[4]));
         free(text);DIR *d=opendir(temporary);assert(d);struct dirent *entry;
         while((entry=readdir(d)))assert(!strcmp(entry->d_name,".")||!strcmp(entry->d_name,".."));
         assert(!closedir(d));

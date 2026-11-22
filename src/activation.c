@@ -5,6 +5,7 @@
 #include "json.h"
 #include "sha256.h"
 #include "engine_runtime.h"
+#include "input_identity.h"
 #include <sqlite3.h>
 #include <sys/stat.h>
 #include <sys/file.h>
@@ -34,14 +35,7 @@ static int lease_same(Activation *a) {
 }
 static int unchanged(const Input *input,const char *path) {
     struct stat now;
-    if(fstat(input->fd,&now)||!same_path(path,input->fd)||now.st_size!=input->before.st_size)return 0;
-#ifdef __APPLE__
-    return now.st_mtimespec.tv_sec==input->before.st_mtimespec.tv_sec&&now.st_mtimespec.tv_nsec==input->before.st_mtimespec.tv_nsec&&
-        now.st_ctimespec.tv_sec==input->before.st_ctimespec.tv_sec&&now.st_ctimespec.tv_nsec==input->before.st_ctimespec.tv_nsec;
-#else
-    return now.st_mtim.tv_sec==input->before.st_mtim.tv_sec&&now.st_mtim.tv_nsec==input->before.st_mtim.tv_nsec&&
-        now.st_ctim.tv_sec==input->before.st_ctim.tv_sec&&now.st_ctim.tv_nsec==input->before.st_ctim.tv_nsec;
-#endif
+    return !fstat(input->fd,&now)&&same_path(path,input->fd)&&inference_same_input(&input->before,&now);
 }
 int activation_input_unchanged(int fd,const char *path,const struct stat *before) {
     if(fd<0||!path||!before)return 0;

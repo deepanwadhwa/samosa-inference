@@ -86,6 +86,8 @@ typedef struct {
     pthread_mutex_t mutex;
     int installing,active,attachment,acquires,starts,reaps,releases,cancel_on_start;
     pid_t pid,last_pid;atomic_int cancel;const char *temporary;int hold_notice;
+    const char *change_model_on_reap;
+    int cancel_on_reap;
 } State;
 static int acquire(void *context,int preserve) {
     State *s=context;pthread_mutex_lock(&s->mutex);s->acquires++;
@@ -101,6 +103,8 @@ static void started(void *context,pid_t pid) {
 static void reaped(void *context,pid_t pid) {
     State *s=context;pthread_mutex_lock(&s->mutex);assert(pid==s->pid);errno=0;assert(waitpid(pid,NULL,WNOHANG)==-1&&errno==ECHILD);
     assert(!kill(pid,0));s->last_pid=pid;s->pid=0;s->reaps++;pthread_mutex_unlock(&s->mutex);
+    if(s->change_model_on_reap)write_file(s->change_model_on_reap,"modified model");
+    if(s->cancel_on_reap)atomic_store(&s->cancel,1);
     if(s->hold_notice>0){char ready='R';assert(write(s->hold_notice,&ready,1)==1);for(;;)pause();}
 }
 static void release(void *context) {
@@ -232,6 +236,33 @@ int main(int argc,char **argv) {
         assert(!strcmp(text,srt?"1\n00:00:00,000 --> 00:04:31,000\nLong input: café 🥟":"Hello café 🥟"));free(text);text=NULL;
         empty(temporary);assert(!state.active&&!state.pid&&state.starts==state.reaps);
     }
+#ifndef SAMOSA_WHISPER_LEGACY
+    SamosaWhisperProcessIdentity identity;
+    assert(!samosa_whisper_process_inspect(&config,1,&identity));
+    /* Same-size, same-timestamp replacement evades the old evidence cache key. */
+    char replacement[PATH_MAX];
+    assert(snprintf(replacement,sizeof(replacement),"%s/replacement.bin",root)<(int)sizeof(replacement));
+    write_file(replacement,"controlled model fixture");
+    struct timespec same_times[]={{1700000000,0},{1700000000,0}};
+    assert(!utimensat(AT_FDCWD,model,same_times,0)&&!utimensat(AT_FDCWD,replacement,same_times,0));
+    assert(samosa_whisper_process_inspect(&config,0,&identity));
+    assert(!rename(replacement,model));
+    int starts_before=state.starts;
+    assert(samosa_whisper_process_run_checked(&config,&identity,&control,input,1,0,1,&text)==SAMOSA_WHISPER_NOT_READY);
+    assert(!text&&state.starts==starts_before&&!state.active&&!access(input,F_OK));
+    assert(samosa_whisper_process_inspect(&config,0,&identity));
+    state.change_model_on_reap=model;
+    assert(samosa_whisper_process_run_checked(&config,&identity,&control,input,1,0,0,&text)==SAMOSA_WHISPER_NOT_READY);
+    assert(!text&&!state.active&&state.starts==state.reaps);
+    state.change_model_on_reap=NULL;
+    assert(samosa_whisper_process_inspect(&config,0,&identity));
+    state.cancel_on_reap=1;
+    assert(samosa_whisper_process_run_checked(&config,&identity,&control,input,1,0,0,&text)==SAMOSA_WHISPER_CANCELLED);
+    assert(!text&&!state.active&&state.starts==state.reaps);
+    state.cancel_on_reap=0;
+    assert(samosa_whisper_process_run_checked(&config,&identity,&control,input,1,0,0,&text)==SAMOSA_WHISPER_OK);
+    assert(text&&strstr(text,"Long input: café"));free(text);text=NULL;empty(temporary);
+#endif
     for(int i=0;i<3;i++) {
         state.installing=i==0;state.active=i==1;state.attachment=i==2;int before=state.releases;
         assert(samosa_whisper_process_run(&config,&control,input,0,0,&text)==SAMOSA_WHISPER_BUSY&&!text&&state.releases==before);

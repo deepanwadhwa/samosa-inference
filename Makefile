@@ -11,7 +11,7 @@ HEADERS = src/registry.h src/platform.h src/embedding.h src/inference.h src/json
 .PHONY: all test sanitize release clean native test-native sanitize-native test-admission test-operations test-artifact sanitize-artifact test-install sanitize-install test-artifacts-cli test-engine-process sanitize-engine-process test-activation sanitize-activation
 .PHONY: test-visual-host sanitize-visual-host
 VISUAL_HOST_SOURCES = src/visual_host.c src/activation.c src/engine_runtime.c src/vision.c src/temporal.c src/temporal_input.c src/temporal_package.c src/visual_assets.c src/visual_bridge.c src/artifact.c src/specialist_supervisor.c $(SOURCES)
-VISUAL_HOST_HEADERS = src/visual_host.h src/visual_assets.h src/activation.h src/vision.h src/temporal.h src/temporal_package.h src/controlled_pipe.h $(HEADERS) include/samosa_inference/specialist_supervisor.h
+VISUAL_HOST_HEADERS = src/visual_host.h src/visual_assets.h src/activation.h src/input_identity.h src/vision.h src/temporal.h src/temporal_package.h src/controlled_pipe.h $(HEADERS) include/samosa_inference/specialist_supervisor.h
 build/test-visual-host: tests/test_visual_host.c tests/vision_fixture.h tests/whisper_fixture.h $(VISUAL_HOST_SOURCES) $(VISUAL_HOST_HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -DJSON_TOKENS_MAX=8192 -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -Iinclude -Isrc $< $(VISUAL_HOST_SOURCES) $(LIBS) -o $@
 build/test-visual-host-sanitize: tests/test_visual_host.c tests/vision_fixture.h tests/whisper_fixture.h $(VISUAL_HOST_SOURCES) $(VISUAL_HOST_HEADERS) | build
@@ -35,7 +35,7 @@ sanitize-registry: | build
 	./build/test-registry-sanitize
 REGISTRY_FLAGS = -Iinclude -DSAMOSA_WITH_DECISION $(NATIVE_FLAGS) -DSAMOSA_WITH_SPEECH -DSAMOSA_WITH_WHISPER -DSAMOSA_WITH_VISION -DSAMOSA_WITH_TEMPORAL -DSAMOSA_WITH_SUMMARY
 REGISTRY_SOURCES = src/whisper_host.c src/visual_host.c src/specialist_supervisor.c src/decision_host.c src/speech_host.c src/summary_host.c src/summary_process.c src/managed_host.c src/managed_provider.c src/activation.c src/managed_stream.c src/decision.c src/decision_assets.c src/speech.c src/audio_store.c src/speech_worker.c src/speech_session.c src/speech_runtime.c src/speech_package.c src/speech_package_loader.c src/library_runtime.c src/engine_runtime.c $(SOURCES) src/llama.c src/whisper.c src/vision.c src/visual_assets.c src/visual_bridge.c src/temporal.c src/temporal_input.c src/temporal_package.c src/summary.c src/summary_protocol.c src/artifact.c
-REGISTRY_HEADERS = src/whisper_host.h src/visual_host.h src/visual_assets.h include/samosa_inference/specialist_supervisor.h src/decision_host.h src/speech_host.h src/controlled_pipe.h src/speech_session.h src/summary_host.h include/samosa_inference/summary_process.h src/managed_host.h src/managed_provider.h src/activation.h src/managed_stream.h src/rgba_input.h src/decision.h src/decision_assets.h engines/decision/tokenizer/request.h engines/decision/tokenizer/tokenizer.h src/speech.h src/audio_store.h $(SPEECH_WORKER_HEADERS) $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/visual_assets.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
+REGISTRY_HEADERS = src/whisper_host.h src/visual_host.h src/visual_assets.h include/samosa_inference/specialist_supervisor.h src/decision_host.h src/speech_host.h src/controlled_pipe.h src/speech_session.h src/summary_host.h include/samosa_inference/summary_process.h src/managed_host.h src/managed_provider.h src/activation.h src/input_identity.h src/managed_stream.h src/rgba_input.h src/decision.h src/decision_assets.h engines/decision/tokenizer/request.h engines/decision/tokenizer/tokenizer.h src/speech.h src/audio_store.h $(SPEECH_WORKER_HEADERS) $(HEADERS) src/registry_host.h src/whisper.h src/vision.h src/visual_assets.h src/temporal.h src/temporal_package.h src/summary.h src/summary_protocol.h src/artifact.h src/private_key.h
 .PHONY: providers
 providers: build/samosa-inference-providers
 build/samosa-inference-providers: src/registry_main.c src/registry_host.c $(REGISTRY_SOURCES) $(REGISTRY_HEADERS) $(DECISION_TOKENIZER_ARCHIVE) | build
@@ -179,7 +179,7 @@ test-engine-process: build/test-engine-process
 sanitize-engine-process: | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc tests/test_engine_process.c src/engine_process.c -o build/test-engine-process-sanitize
 	$(abspath build/test-engine-process-sanitize)
-build/test-activation: tests/test_activation.c src/activation.c src/activation.h src/artifact.c src/artifact.h src/engine_process.c src/engine_process.h src/engine_runtime.c src/engine_runtime.h src/json.h src/sha256.h | build
+build/test-activation: tests/test_activation.c src/activation.c src/activation.h src/input_identity.h src/artifact.c src/artifact.h src/engine_process.c src/engine_process.h src/engine_runtime.c src/engine_runtime.h src/json.h src/sha256.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -DSAMOSA_INFERENCE_TEST_FAULTS -Isrc tests/test_activation.c src/activation.c src/artifact.c src/engine_process.c src/engine_runtime.c $(LIBS) -o $@
 test-activation: build/test-activation
 	$(abspath build/test-activation)
@@ -227,9 +227,9 @@ NATIVE_FLAGS = -DSAMOSA_WITH_LLAMA -DJSON_TOKENS_MAX=8192 $(CURL_CFLAGS)
 native: build/samosa-inference-llama build/samosa-inference-managed build/samosa-inference-download build/samosa-inference-setup
 build/samosa-inference-download: src/artifact_main.c src/remote_artifact.c src/remote_artifact.h src/package_remote_cache.h src/package_assemble.h src/package_index.h src/catalog.h src/artifact.c src/install.c src/artifact.h src/sha256.h src/json.h src/private_key.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(CURL_CFLAGS) -DSAMOSA_REMOTE_ARTIFACTS src/artifact_main.c src/remote_artifact.c src/artifact.c src/install.c $(CURL_LIBS) -o $@
-build/samosa-inference-managed: src/managed_main.c src/managed_host.c src/managed_stream.c src/managed_stream.h src/managed_provider.c src/managed_provider.h src/managed_host.h src/activation.c src/activation.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h $(SOURCES) src/llama.c $(HEADERS) | build
+build/samosa-inference-managed: src/managed_main.c src/managed_host.c src/managed_stream.c src/managed_stream.h src/managed_provider.c src/managed_provider.h src/managed_host.h src/activation.c src/activation.h src/input_identity.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h $(SOURCES) src/llama.c $(HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(NATIVE_FLAGS) src/managed_main.c src/managed_host.c src/managed_stream.c src/managed_provider.c src/activation.c src/artifact.c src/engine_runtime.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) -pthread -o $@
-build/samosa-inference-managed-sanitize: src/managed_main.c src/managed_host.c src/managed_stream.c src/managed_stream.h src/managed_provider.c src/managed_provider.h src/managed_host.h src/activation.c src/activation.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h $(SOURCES) src/llama.c $(HEADERS) | build
+build/samosa-inference-managed-sanitize: src/managed_main.c src/managed_host.c src/managed_stream.c src/managed_stream.h src/managed_provider.c src/managed_provider.h src/managed_host.h src/activation.c src/activation.h src/input_identity.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h $(SOURCES) src/llama.c $(HEADERS) | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) $(NATIVE_FLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer src/managed_main.c src/managed_host.c src/managed_stream.c src/managed_provider.c src/activation.c src/artifact.c src/engine_runtime.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) -pthread -o build/samosa-inference-managed-sanitize
 build/samosa-inference-llama: src/main.c $(SOURCES) src/llama.c $(HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(NATIVE_FLAGS) src/main.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) -pthread -o $@
@@ -262,7 +262,7 @@ sanitize-native: sanitize-remote-artifact sanitize-remote-cli build/test-llama-s
 	sh tests/managed_cli.sh ./build/samosa-inference-managed-sanitize
 build/launch-engine: tests/launch_engine.c | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) tests/launch_engine.c -o $@
-build/activation-native: tests/activation_native.c src/activation.c src/activation.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h src/managed_provider.c src/managed_provider.h $(SOURCES) src/llama.c $(HEADERS) | build
+build/activation-native: tests/activation_native.c src/activation.c src/activation.h src/input_identity.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h src/managed_provider.c src/managed_provider.h $(SOURCES) src/llama.c $(HEADERS) | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(NATIVE_FLAGS) -Isrc tests/activation_native.c src/activation.c src/artifact.c src/engine_runtime.c src/managed_provider.c $(SOURCES) src/llama.c $(LIBS) $(CURL_LIBS) -pthread -o $@
 
 .PHONY: test-catalog sanitize-catalog
@@ -1098,7 +1098,7 @@ sanitize-backend-process: build/test-backend-process-sanitize build/test-backend
 	$(abspath build/test-backend-process-sanitize) $(abspath build/test-backend-process)
 test: test-backend-process
 sanitize: sanitize-backend-process
-build/whisper-process.o: src/whisper_process.c src/engine_process.h src/json.h include/samosa_inference/whisper_process.h | build
+build/whisper-process.o: src/whisper_process.c src/input_identity.h src/engine_process.h src/json.h include/samosa_inference/whisper_process.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
 build/vision-budget.o: src/vision_budget.c include/samosa_inference/vision_budget.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
@@ -1124,7 +1124,7 @@ test: test-whisper-process
 sanitize: sanitize-whisper-process
 build/test-whisper-process-real: tests/test_whisper_process_real.c include/samosa_inference/whisper_process.h build/libsamosa-inference-specialist.a
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude $< build/libsamosa-inference-specialist.a -o $@
-build/test-whisper-process-real-sanitize: tests/test_whisper_process_real.c src/whisper_process.c src/engine_process.c src/engine_process.h src/json.h include/samosa_inference/whisper_process.h | build
+build/test-whisper-process-real-sanitize: tests/test_whisper_process_real.c src/whisper_process.c src/engine_process.c src/input_identity.h src/engine_process.h src/json.h include/samosa_inference/whisper_process.h | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_whisper_process_real.c src/whisper_process.c src/engine_process.c -o $@
 .PHONY: test-llama-launch sanitize-llama-launch
 build/test-llama-launch: tests/test_llama_launch.c src/llama_launch.c include/samosa_inference/llama_launch.h | build
@@ -1157,7 +1157,7 @@ sanitize: sanitize-specialist-supervisor
 
 # Shared original HTTP fixture exercised through actual activation/guardian.
 MANAGED_READINESS_SOURCES = src/managed_provider.c src/activation.c src/artifact.c src/engine_runtime.c $(SOURCES) src/llama.c
-MANAGED_READINESS_HEADERS = src/managed_provider.h src/activation.h src/artifact.h src/engine_runtime.h $(HEADERS)
+MANAGED_READINESS_HEADERS = src/managed_provider.h src/activation.h src/input_identity.h src/artifact.h src/engine_runtime.h $(HEADERS)
 .PHONY: test-managed-readiness sanitize-managed-readiness
 build/fake-owned-llama: tests/fake_owned_llama.c tests/llama_http_fixture.h src/json.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc tests/fake_owned_llama.c -o $@
@@ -1319,9 +1319,9 @@ sanitize-backend-json: build/test-backend-json-sanitize
 test-native: test-backend-json
 sanitize-native: sanitize-backend-json
 .PHONY: test-backend-lifecycle sanitize-backend-lifecycle
-build/test-backend-lifecycle: tests/test_backend_lifecycle.c tests/test_backend_process.c src/backend_process_internal.h src/activation.c src/activation.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h src/sha256.h include/samosa_inference/backend_process.h build/libsamosa-inference-specialist.a | build
+build/test-backend-lifecycle: tests/test_backend_lifecycle.c tests/test_backend_process.c src/backend_process_internal.h src/activation.c src/activation.h src/input_identity.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h src/sha256.h include/samosa_inference/backend_process.h build/libsamosa-inference-specialist.a | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -DSAMOSA_BACKEND_LIFECYCLE_API tests/test_backend_lifecycle.c src/activation.c src/artifact.c src/engine_runtime.c build/libsamosa-inference-specialist.a $(LIBS) -o $@
-build/test-backend-lifecycle-sanitize: tests/test_backend_lifecycle.c tests/test_backend_process.c src/backend_process.c src/backend_process_internal.h src/llama_launch.c src/engine_process.c src/engine_process.h src/json.h src/activation.c src/activation.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h src/sha256.h include/samosa_inference/backend_process.h | build
+build/test-backend-lifecycle-sanitize: tests/test_backend_lifecycle.c tests/test_backend_process.c src/backend_process.c src/backend_process_internal.h src/llama_launch.c src/engine_process.c src/engine_process.h src/json.h src/activation.c src/activation.h src/input_identity.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h src/sha256.h include/samosa_inference/backend_process.h | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -DSAMOSA_BACKEND_LIFECYCLE_API -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_backend_lifecycle.c src/backend_process.c src/llama_launch.c src/engine_process.c src/activation.c src/artifact.c src/engine_runtime.c $(LIBS) -o $@
 test-backend-lifecycle: build/test-backend-lifecycle
 	$(abspath build/test-backend-lifecycle) $(abspath build/test-backend-lifecycle)
@@ -1331,7 +1331,7 @@ test-native: test-backend-lifecycle
 sanitize-native: sanitize-backend-lifecycle
 
 PRIMARY_HOST_SOURCES = src/primary_host.c src/activation.c src/artifact.c $(LIBRARY_RUNTIME_SOURCES)
-PRIMARY_HOST_HEADERS = include/samosa_inference/primary_host.h src/backend_process_internal.h src/activation.h src/artifact.h $(LIBRARY_RUNTIME_HEADERS)
+PRIMARY_HOST_HEADERS = include/samosa_inference/primary_host.h src/backend_process_internal.h src/activation.h src/input_identity.h src/artifact.h $(LIBRARY_RUNTIME_HEADERS)
 .PHONY: primary-host test-primary-host sanitize-primary-host
 primary-host: build/libsamosa-inference-primary.a
 PRIMARY_HOST_OBJECTS = $(patsubst src/%.c,build/primary-%.o,$(PRIMARY_HOST_SOURCES))

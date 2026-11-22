@@ -139,3 +139,32 @@ The actual input SHA-256 is
 `010926ca7582e7345a90ed3f24864b2d4e3b70b26cdd2fa15b707b79ca15089f`.
 The original public lifecycle work must preserve the long-window txt/SRT path
 and its timing semantics while adding observed readiness and identity.
+
+## LIFE-08b input identity through transcript publication
+
+Gateway now passes the observed engine and model identity to the existing
+Inference runner for voice recordings and attachment windows. The runner uses
+the same file-version comparison as Activation. Changes to either input reject
+the transcript with `SAMOSA_WHISPER_NOT_READY`. A stale request refused before
+launch leaves the caller's prepared WAV in place. A change or cancellation
+observed during execution or final cleanup discards the result before returning
+it to Gateway. The existing CLI arguments and transcript cache key are retained.
+
+Normal and ASan/UBSan runner fixtures passed 572 assertions each. They cover
+replacement with the same size and modification time, mutation during cleanup,
+cancellation after the engine returns, and a successful retry. An independent
+Inference checkout passed the runner and Activation tests. Actual Base English
+passed both checked txt and SRT runs with the same 33.482-second recording,
+including the final phrase. Peak RSS was 344 MB and 374 MB with zero swap
+growth. Gateway also transcribed that recording through its authenticated
+voice endpoint and cleared the temporary workspace.
+
+Run `test-whisper-process sanitize-whisper-process test-activation
+sanitize-activation` in the standalone Inference Makefile under the native
+guard. Build `build/test-whisper-process-real` and its `-sanitize` variant for
+the real run. Both accept absolute engine, model and WAV paths and an optional
+lowercase phrase to check. For the retained recording, use `silver compass`.
+
+The legacy status endpoint still reports installed input presence. The common
+long-window start and stop controls, a bounded speech probe for verified
+readiness and shared recovery remain open.
