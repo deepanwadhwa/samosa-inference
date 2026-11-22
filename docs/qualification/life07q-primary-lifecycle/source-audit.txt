@@ -1,0 +1,3 @@
+PASS entire original backend launch/bootstrap/health/environment/marker implementation preserved outside typed status/stop, retained unknown-cleanup fence and one borrowed canonical process record
+PASS original engines, Activation, guardian, JSON/turn/llama code and all original primary process assertions unchanged
+PASS Gateway unchanged; package/install logic and assertions differ only by the required private owner header membership

@@ -1085,12 +1085,12 @@ build/summary-process.o: src/summary_process.c src/controlled_pipe.h src/json.h 
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
 build/llama-launch.o: src/llama_launch.c include/samosa_inference/llama_launch.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Iinclude -c $< -o $@
-build/backend-process.o: src/engine_process.h src/json.h src/backend_process.c include/samosa_inference/backend_process.h include/samosa_inference/llama_launch.h | build
+build/backend-process.o: src/engine_process.h src/json.h src/backend_process.c src/backend_process_internal.h include/samosa_inference/backend_process.h include/samosa_inference/llama_launch.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c src/backend_process.c -o $@
 .PHONY: test-backend-process sanitize-backend-process
 build/test-backend-process: tests/test_backend_process.c include/samosa_inference/backend_process.h build/libsamosa-inference-specialist.a
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
-build/test-backend-process-sanitize: tests/test_backend_process.c src/backend_process.c src/llama_launch.c src/engine_process.c src/engine_process.h src/json.h include/samosa_inference/backend_process.h include/samosa_inference/llama_launch.h | build
+build/test-backend-process-sanitize: tests/test_backend_process.c src/backend_process.c src/backend_process_internal.h src/llama_launch.c src/engine_process.c src/engine_process.h src/json.h include/samosa_inference/backend_process.h include/samosa_inference/llama_launch.h | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_backend_process.c src/backend_process.c src/llama_launch.c src/engine_process.c -o $@
 test-backend-process: build/test-backend-process
 	$(abspath build/test-backend-process) $(abspath build/test-backend-process)
@@ -1317,3 +1317,14 @@ sanitize-backend-json: build/test-backend-json-sanitize
 	$(abspath build/test-backend-json-sanitize)
 test-native: test-backend-json
 sanitize-native: sanitize-backend-json
+.PHONY: test-backend-lifecycle sanitize-backend-lifecycle
+build/test-backend-lifecycle: tests/test_backend_lifecycle.c tests/test_backend_process.c src/backend_process_internal.h src/activation.c src/activation.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h src/sha256.h include/samosa_inference/backend_process.h build/libsamosa-inference-specialist.a | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -DSAMOSA_BACKEND_LIFECYCLE_API tests/test_backend_lifecycle.c src/activation.c src/artifact.c src/engine_runtime.c build/libsamosa-inference-specialist.a $(LIBS) -o $@
+build/test-backend-lifecycle-sanitize: tests/test_backend_lifecycle.c tests/test_backend_process.c src/backend_process.c src/backend_process_internal.h src/llama_launch.c src/engine_process.c src/engine_process.h src/json.h src/activation.c src/activation.h src/artifact.c src/artifact.h src/engine_runtime.c src/engine_runtime.h src/sha256.h include/samosa_inference/backend_process.h | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -DSAMOSA_BACKEND_LIFECYCLE_API -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_backend_lifecycle.c src/backend_process.c src/llama_launch.c src/engine_process.c src/activation.c src/artifact.c src/engine_runtime.c $(LIBS) -o $@
+test-backend-lifecycle: build/test-backend-lifecycle
+	$(abspath build/test-backend-lifecycle) $(abspath build/test-backend-lifecycle)
+sanitize-backend-lifecycle: build/test-backend-lifecycle-sanitize build/test-backend-lifecycle
+	$(abspath build/test-backend-lifecycle-sanitize) $(abspath build/test-backend-lifecycle)
+test-native: test-backend-lifecycle
+sanitize-native: sanitize-backend-lifecycle

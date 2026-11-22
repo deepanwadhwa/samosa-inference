@@ -2,6 +2,7 @@
 #define _DARWIN_C_SOURCE
 #include <samosa_inference/backend_process.h>
 #include "engine_process.h"
+#include "backend_process_internal.h"
 #include "json.h"
 #include <sys/file.h>
 #include <arpa/inet.h>
@@ -74,7 +75,19 @@ static int backend_send_all(int fd, const void *data, size_t size) {
 /* Private same-executable bootstrap transport, never a public request format.
  * The existing launch body below runs in its original child context. This avoids
  * changing the host environment or rebuilding its engine-specific argv rules. */
-typedef struct { EngineProcess child; } BackendGuard;
+typedef struct {
+    EngineProcess child;
+    EngineProcess *process;
+    int lease;
+    const char *status_error;
+} BackendGuard;
+static int cleanup_retained(const char *error) {
+    return error&&(!strcmp(error,"engine_shutdown_pending")||!strcmp(error,"engine_guardian_failed"));
+}
+static void guard_release(BackendGuard *guard) {
+    if(guard->lease>=0)close(guard->lease);
+    free(guard);
+}
 typedef struct {
     uint32_t magic; int port,runtime[8],llama[4]; uint64_t ram;
     uint32_t lengths[15];
@@ -129,23 +142,28 @@ pid_t samosa_backend_process_pid(const SamosaBackendOwner *owner) {
     return pid;
 }
 
-int samosa_backend_process_running(const SamosaBackendOwner *owner) {
+const char *samosa_backend_process_status(const SamosaBackendOwner *owner,pid_t *observed) {
     pthread_mutex_lock(owner->mutex);
-    pid_t pid = owner->process->pid;
-    if (pid <= 0) {
-        pthread_mutex_unlock(owner->mutex);
-        return 0;
-    }
+    *observed=0;
     BackendGuard *guard=owner->process->guardian;
-    int running=guard&&engine_process_running(&guard->child);
-    if(!running){
+    if(owner->process->pid<=0){
+        const char *error=guard?(guard->status_error?guard->status_error:"engine_shutdown_pending"):"provider_unavailable";
+        pthread_mutex_unlock(owner->mutex);return error;
+    }
+    int running=guard&&engine_process_running(guard->process);
+    const char *error=NULL;
+    if(running)*observed=owner->process->pid;
+    else{
         owner->process->pid=owner->process->pgid=0;
         unlink(owner->pid_file);
-        if(guard){const char *error=engine_process_stop(&guard->child);
-            if(!error||strcmp(error,"engine_shutdown_pending")){free(guard);owner->process->guardian=NULL;}}
+        if(guard){error=engine_process_stop(guard->process);guard->status_error=error;
+            if(!cleanup_retained(error)){guard_release(guard);owner->process->guardian=NULL;}}
+        if(!error)error="owned_engine_exited";
     }
-    pthread_mutex_unlock(owner->mutex);
-    return running;
+    pthread_mutex_unlock(owner->mutex);return error;
+}
+int samosa_backend_process_running(const SamosaBackendOwner *owner) {
+    pid_t observed;return samosa_backend_process_status(owner,&observed)==NULL;
 }
 
 int samosa_backend_process_probe(const SamosaBackendOwner *owner, const char *backend, int port) {
@@ -174,7 +192,7 @@ int samosa_backend_process_probe(const SamosaBackendOwner *owner, const char *ba
     return ok;
 }
 
-void samosa_backend_process_stop(const SamosaBackendOwner *owner, const SamosaBackendStopControl *control) {
+const char *samosa_backend_process_stop_owned(const SamosaBackendOwner *owner, const SamosaBackendStopControl *control) {
     pthread_mutex_lock(owner->mutex);
     BackendGuard *guard=owner->process->guardian;
     owner->process->pid=owner->process->pgid=0;
@@ -182,16 +200,20 @@ void samosa_backend_process_stop(const SamosaBackendOwner *owner, const SamosaBa
     if(control&&control->detach)control->detach(control->context);
     pthread_mutex_unlock(owner->mutex);
     if(control&&control->interrupted)control->interrupted(control->context);
-    if(!guard)return;
-    const char *error=engine_process_stop(&guard->child);
-    if(error&&!strcmp(error,"engine_shutdown_pending"))return;
+    if(!guard)return NULL;
+    const char *error=engine_process_stop(guard->process);
     pthread_mutex_lock(owner->mutex);
-    owner->process->guardian=NULL;
+    guard->status_error=error;
+    if(!cleanup_retained(error))owner->process->guardian=NULL;
     pthread_mutex_unlock(owner->mutex);
-    free(guard);
+    if(!cleanup_retained(error))guard_release(guard);
+    return error;
+}
+void samosa_backend_process_stop(const SamosaBackendOwner *owner, const SamosaBackendStopControl *control) {
+    (void)samosa_backend_process_stop_owned(owner,control);
 }
 
-int samosa_backend_process_start(const SamosaBackendOwner *owner, const SamosaBackendLaunch *config) {
+static const char *start_owned(const SamosaBackendOwner *owner, const SamosaBackendLaunch *config,EngineProcess *delegated) {
     /* Never launch into a port already owned by an untracked process. Before
        this guard, the new child would fail its bind while backend_probe()
        happily accepted the old process's /health response. That made every
@@ -202,37 +224,51 @@ int samosa_backend_process_start(const SamosaBackendOwner *owner, const SamosaBa
         fprintf(stderr, "samosa-gateway: refusing to start %s: private backend port %d "
                         "is already occupied by an untracked process\n",
                 config->backend, config->port);
-        return 0;
+        return "backend_port_occupied";
     }
     /* The caller serializes whole start/stop. A timed-out guardian keeps its
      * ownership lease; never overwrite that handle or publish a replacement. */
     pthread_mutex_lock(owner->mutex);
-    int retained=owner->process->guardian!=NULL;
+    BackendGuard *retained=owner->process->guardian;
+    const char *retained_error=retained?(retained->status_error?retained->status_error:"backend_already_started"):NULL;
     pthread_mutex_unlock(owner->mutex);
-    if(retained)return 0;
-    int lease=owner_lease(owner->pid_file);if(lease<0)return 0;
+    if(retained)return retained_error;
+    int lease=owner_lease(owner->pid_file);if(lease<0)return "backend_ownership_unavailable";
     char self[PATH_MAX];FILE *configuration=tmpfile();
-    if(!configuration){close(lease);return 0;}
+    if(!configuration){close(lease);return "engine_io_failed";}
     int fd=fileno(configuration);
     int ok=fcntl(fd,F_SETFD,FD_CLOEXEC)==0&&engine_process_executable(self)&&configuration_write(configuration,config);
     char *command=NULL;size_t length=0;FILE *args=ok?open_memstream(&command,&length):NULL;
     if(args){fputc('[',args);json_quote(args,self,strlen(self));fputs(",\"--inference-primary-backend\"]",args);ok=!fclose(args);}else ok=0;
     BackendGuard *guard=ok?calloc(1,sizeof(*guard)):NULL;
+    if(guard){guard->process=delegated?delegated:&guard->child;guard->lease=lease;}
     EngineServer server={fd,STDOUT_FILENO,STDERR_FILENO,owner->pid_file};
-    const char *error=guard?engine_process_start_server(self,command,lease,&server,&guard->child):"engine_io_failed";
-    free(command);fclose(configuration);close(lease);
+    const char *error=guard?engine_process_start_server(self,command,lease,&server,guard->process):"engine_io_failed";
+    free(command);fclose(configuration);if(!guard)close(lease);
     if(error){
-        if(guard&&guard->child.guardian>0){pthread_mutex_lock(owner->mutex);owner->process->guardian=guard;pthread_mutex_unlock(owner->mutex);}else free(guard);
-        return 0;
+        if(guard&&!strcmp(guard->process->reason,"engine_guardian_failed"))error="engine_guardian_failed";
+        if(guard&&(guard->process->guardian>0||cleanup_retained(error))){pthread_mutex_lock(owner->mutex);owner->process->guardian=guard;guard->status_error=error;pthread_mutex_unlock(owner->mutex);}else if(guard)guard_release(guard);
+        return error;
     }
     pthread_mutex_lock(owner->mutex);
     owner->process->guardian=guard;
-    owner->process->pid=owner->process->pgid=guard->child.engine;
-    char pid_text[32];snprintf(pid_text,sizeof(pid_text),"%ld\n",(long)guard->child.engine);
+    owner->process->pid=owner->process->pgid=guard->process->engine;
+    char pid_text[32];snprintf(pid_text,sizeof(pid_text),"%ld\n",(long)guard->process->engine);
     if(!backend_write_small_file(owner->pid_file,pid_text))
         fprintf(stderr,"samosa-gateway: could not persist backend pid marker %s\n",owner->pid_file);
     pthread_mutex_unlock(owner->mutex);
-    return 1;
+    return NULL;
+}
+
+const char *samosa_backend_process_start_owned(const SamosaBackendOwner *owner,const SamosaBackendLaunch *config) {
+    return start_owned(owner,config,NULL);
+}
+int samosa_backend_process_start(const SamosaBackendOwner *owner,const SamosaBackendLaunch *config) {
+    return samosa_backend_process_start_owned(owner,config)==NULL;
+}
+const char *backend_process_start_delegated(const SamosaBackendOwner *owner,const SamosaBackendLaunch *config,EngineProcess *process) {
+    if(!process)return "invalid_engine_configuration";
+    return start_owned(owner,config,process);
 }
 
 static void configuration_free(SamosaBackendLaunch *c) {

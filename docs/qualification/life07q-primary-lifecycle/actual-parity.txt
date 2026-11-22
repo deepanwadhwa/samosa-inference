@@ -1,0 +1,6 @@
+PASS exact LIFE-07p text/usage: "Hello! How can" {"prompt_tokens":15,"completion_tokens":4,"total_tokens":19}
+[Memory Guard] Baseline swap: 533 MB
+[Memory Guard] Limits: 6144 MiB process-tree RSS, 0 MiB swap delta
+[Memory Guard] Process exited with code 0
+[Memory Guard] Peak process-tree RSS: 3492 MB
+[Memory Guard] Final swap delta: 0 MB

@@ -52,6 +52,17 @@ int samosa_backend_process_probe(const SamosaBackendOwner *, const char *backend
 int samosa_backend_process_dispatch(int argc,char **argv);
 int samosa_backend_process_start(const SamosaBackendOwner *, const SamosaBackendLaunch *);
 void samosa_backend_process_stop(const SamosaBackendOwner *, const SamosaBackendStopControl *);
+/* Typed counterparts for lifecycle adapters. Same launch/stop implementation
+ * and original caller serialization. NULL means start accepted / cleanup
+ * confirmed respectively; start is not generation qualification. Pending or
+ * unknown guardian cleanup retains ownership and the marker lease. Stop may
+ * be retried; no unknown-outcome reset or foreign PID adoption is provided. */
+const char *samosa_backend_process_start_owned(const SamosaBackendOwner *,const SamosaBackendLaunch *);
+const char *samosa_backend_process_stop_owned(const SamosaBackendOwner *,const SamosaBackendStopControl *);
+/* Current physical owner observation, not capability or pinned readiness.
+ * Always writes observed_pid (zero when unavailable/withdrawing). Unknown
+ * cleanup stays typed even after the guardian itself has been reaped. */
+const char *samosa_backend_process_status(const SamosaBackendOwner *,pid_t *observed_pid);
 #ifdef __cplusplus
 }
 #endif

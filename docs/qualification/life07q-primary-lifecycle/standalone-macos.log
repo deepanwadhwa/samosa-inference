@@ -1,0 +1,18 @@
+mkdir -p build
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Isrc -c src/engine_process.c -o build/engine-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_supervisor.c -o build/specialist-supervisor.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_protocol.c -o build/specialist-protocol.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/summary_process.c -o build/summary-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/llama_launch.c -o build/llama-launch.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/backend_process.c -o build/backend-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/backend_json.c -o build/backend-json.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/whisper_process.c -o build/whisper-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/vision_budget.c -o build/vision-budget.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/turn_control.c -o build/turn-control.o
+ar rcs build/libsamosa-inference-specialist.a build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/backend-json.o build/whisper-process.o build/vision-budget.o build/turn-control.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -DSAMOSA_BACKEND_LIFECYCLE_API tests/test_backend_lifecycle.c src/activation.c src/artifact.c src/engine_runtime.c build/libsamosa-inference-specialist.a -lsqlite3 -o build/test-backend-lifecycle
+/private/tmp/samosa-life07q-source.73QSCr/build/test-backend-lifecycle /private/tmp/samosa-life07q-source.73QSCr/build/test-backend-lifecycle
+PASS primary lifecycle boundary: 163 checks; lost-guardian fence, resistant descendant, typed ownership and one delegated process record
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -DSAMOSA_BACKEND_LIFECYCLE_API -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_backend_lifecycle.c src/backend_process.c src/llama_launch.c src/engine_process.c src/activation.c src/artifact.c src/engine_runtime.c -lsqlite3 -o build/test-backend-lifecycle-sanitize
+/private/tmp/samosa-life07q-source.73QSCr/build/test-backend-lifecycle-sanitize /private/tmp/samosa-life07q-source.73QSCr/build/test-backend-lifecycle
+PASS primary lifecycle boundary: 163 checks; lost-guardian fence, resistant descendant, typed ownership and one delegated process record

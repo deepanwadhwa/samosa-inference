@@ -103,6 +103,14 @@ complements the existing controlled credential/redirect/quota/recovery gates.
 
 ## 3. Engine lifecycle and readiness — active
 
+LIFE-07q (2026-11-22) adds typed existing-primary outcomes and a single delegated
+Activation process record, fixing a reproduced lost-guardian fence release.
+Native/independent normal/SAN transactions, original primary assertions and Mac
+assembly/install/Qwen checks pass; see
+[evidence and remaining scope](qualification/life07q-primary-lifecycle/README.md).
+Full primary bundle/native-dependency identity, actual generation qualification
+and common caller controls remain open. No area3 completion is claimed.
+
 LIFE-07p (2026-11-22) extracts Gateway's existing primary JSON request transport
 and wires its original caller, archive, package and native installer. Native,
 independent normal/SAN, original budget/web/selection and retained Qwen checks
