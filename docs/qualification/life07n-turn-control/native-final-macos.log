@@ -1,0 +1,8 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_turn_control.c build/libsamosa-inference-specialist.a -o build/test-turn-control
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-turn-control /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS extracted turn coordination: 12500 checks; shared exclusion/counts, original availability/reclaim/resume deadlines, retry/give-back and native guardian pages; no new scheduler
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_turn_control.c src/turn_control.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o build/test-turn-control-sanitize
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-turn-control-sanitize /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+PASS extracted turn coordination: 12140 checks; shared exclusion/counts, original availability/reclaim/resume deadlines, retry/give-back and native guardian pages; no new scheduler
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_turn_control_real.c build/libsamosa-inference-specialist.a -o build/test-turn-control-real
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_turn_control_real.c src/turn_control.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o build/test-turn-control-real-sanitize

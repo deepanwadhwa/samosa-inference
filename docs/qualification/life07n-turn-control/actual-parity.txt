@@ -1,0 +1,3 @@
+PASS actual-final: six observations exactly match the original f06d5c1 launcher baseline; original1536 heading/2048 execution, changed images, joint2-image/native1sec2-frame video and owner/gate cleanup.
+PASS actual-final-sanitize: six observations exactly match the original f06d5c1 launcher baseline; original1536 heading/2048 execution, changed images, joint2-image/native1sec2-frame video and owner/gate cleanup.
+2048 semantic heading quality remains unqualified. Final runs use independently built normal/SAN ownership/harness; retained native engines/models are not sanitizer builds. Telemetry is explicitly unknown in this compatibility driver; threshold/reclaim policy has separate native/product gates.

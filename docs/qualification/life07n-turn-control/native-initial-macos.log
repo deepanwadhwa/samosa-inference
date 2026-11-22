@@ -1,0 +1,7 @@
+ar rcs build/libsamosa-inference-specialist.a build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/whisper-process.o build/vision-budget.o build/turn-control.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_turn_control.c build/libsamosa-inference-specialist.a -o build/test-turn-control
+tests/test_turn_control.c:132:79: error: call to undeclared function 'mkdtemp'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+  132 |     char directory[]="/tmp/samosa-turn-control-XXXXXX",source[PATH_MAX];CHECK(mkdtemp(directory));CHECK(snprintf(source,sizeof(source),"%s/page.ppm",directory)<(int)sizeof(source));
+      |                                                                               ^
+1 error generated.
+make: *** [build/test-turn-control] Error 1

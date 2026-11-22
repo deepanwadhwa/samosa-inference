@@ -1,0 +1,4 @@
+PASS original availability/resource/pause/resume/60-second wait/lower-side/owned-page retry bodies moved through explicit callbacks; all other Gateway code unchanged except dedicated runtime/gate access
+PASS sole gate behavior fix: direct health withdrawal preserves a newly admitted primary count; the original reset window is present in the baseline
+PASS existing model engines, protocols, process guardians, backend/Whisper ownership and resource-budget implementations unchanged
+PASS original C prompt-budget inputs/domain assertions and cancellation retained; all15 original driver scenarios ported to Node and old Python driver/caller retired

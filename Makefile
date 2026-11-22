@@ -1138,7 +1138,7 @@ test: test-llama-launch
 sanitize: sanitize-llama-launch
 build/engine-process.o: src/engine_process.c src/engine_process.h src/json.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc -c $< -o $@
-build/libsamosa-inference-specialist.a: build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/whisper-process.o build/vision-budget.o Makefile
+build/libsamosa-inference-specialist.a: build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/whisper-process.o build/vision-budget.o build/turn-control.o Makefile
 	$(AR) rcs $@ $(filter %.o,$^)
 build/fake-multimodal-helper: tests/fake_multimodal_helper.c | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread $< -o $@
@@ -1277,3 +1277,19 @@ build/test-specialist-guardian-real: tests/test_specialist_guardian_real.c inclu
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
 build/test-specialist-guardian-real-sanitize: tests/test_specialist_guardian_real.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c src/engine_process.h src/json.h include/samosa_inference/specialist_supervisor.h | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_guardian_real.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o $@
+
+build/turn-control.o: src/turn_control.c include/samosa_inference/turn_control.h include/samosa_inference/specialist_protocol.h include/samosa_inference/vision_budget.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
+.PHONY: test-turn-control sanitize-turn-control
+build/test-turn-control: tests/test_turn_control.c include/samosa_inference/turn_control.h build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
+build/test-turn-control-sanitize: tests/test_turn_control.c src/turn_control.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c src/engine_process.h src/json.h include/samosa_inference/turn_control.h | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_turn_control.c src/turn_control.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o $@
+test-turn-control: build/test-turn-control build/fake-multimodal-helper
+	$(abspath build/test-turn-control) $(abspath build/fake-multimodal-helper)
+sanitize-turn-control: build/test-turn-control-sanitize build/fake-multimodal-helper
+	$(abspath build/test-turn-control-sanitize) $(abspath build/fake-multimodal-helper)
+build/test-turn-control-real: tests/test_turn_control_real.c include/samosa_inference/turn_control.h build/libsamosa-inference-specialist.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
+build/test-turn-control-real-sanitize: tests/test_turn_control_real.c src/turn_control.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c src/engine_process.h src/json.h include/samosa_inference/turn_control.h | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_turn_control_real.c src/turn_control.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o $@

@@ -103,6 +103,13 @@ complements the existing controlled credential/redirect/quota/recovery gates.
 
 ## 3. Engine lifecycle and readiness — active
 
+LIFE-07n (2026-11-21) extracts the original shared turn gate, visual reclaim/
+pause/resume/retry into turn_control.c/public API. Native/standalone normal/SAN,
+original workflows, repaired Python-free budget scenarios and source packaging
+qualify its recorded scope; see qualification/life07n-turn-control/README.md.
+Common default-path controls/identity/readiness/last-good/guardian-death and
+pre-admission recovery remain open. This does not close area3 or area4.
+
 - Extend existing guardian/activation ownership to the supported provider set.
 - Start, verify, load, unload and stop through public controls; readiness reflects
   current identity, health and a successful provider qualification request.

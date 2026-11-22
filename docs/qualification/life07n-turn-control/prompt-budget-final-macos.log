@@ -1,0 +1,21 @@
+/Applications/Xcode-26.5.0.app/Contents/Developer/usr/bin/make -C components/samosa-inference specialist
+make[1]: Nothing to be done for `specialist'.
+cc -O1 -Wall -Wextra -Werror -I/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/include -Wno-unused-function -std=c11 -pthread -Isrc tests/test_prompt_budget.c components/samosa-inference/build/libsamosa-inference-specialist.a src/samosa_evidence.c src/samosa_html.c -o build/test_prompt_budget 
+BUILD_DIR="build" node tests/test_prompt_budget.mjs
+node:internal/modules/run_main:104
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: small  Assertion failed: (reachable), function main, file test_prompt_budget.c, line 44.
+
+    at file:///Users/deepanwadhwa/Documents/samosa-chat/tests/test_prompt_budget.mjs:49:5
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '=='
+}
+
+Node.js v23.10.0
+make: *** [test-prompt-budget] Error 1

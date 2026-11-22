@@ -1,0 +1,13 @@
+[Memory Guard] Baseline swap: 533 MB
+[Memory Guard] Limits: 6144 MiB process-tree RSS, 0 MiB swap delta
+Actual default VisionPsy side=2048: I) happening)))))))))))))))))))))))))))))))))))))))))))))))))))))))))); prompt=1126 generated=32
+Actual default VisionPsy side=1536: Hello from
+HelloHello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello; prompt=671 generated=32
+Actual default Molmo image: The color shown is a vibrant, bright red. It's a striking and intense shade that stands out strongly against the white background. This red is not a muted or pastel tone, but rather a bold, eye-catching hue that exudes energy and passion. The saturation of the red is high, giving it a powerful and dynamic appearance. It's the kind of red that immediately captures attention and creates a sense of urgency or excitement.; prompt=423 generated=87 images=1 frames=0 duration=0.000
+Actual default Molmo image blue: The color shown is a vibrant royal blue. It's a rich, deep blue that falls somewhere between royal blue and royal purple. This hue is often described as a striking, intense blue that can evoke feelings of calm and serenity. The royal blue color is known for its regal and dignified appearance, making it a popular choice for formal or official settings.; prompt=423 generated=73 images=1 frames=0 duration=0.000
+Actual default Molmo images: The color shown is royal blue. It's a vibrant, deep blue that falls between royal blue and royal purple on the color spectrum. This rich, saturated hue has a regal quality and is often associated with luxury and authority. In the image, it appears as a solid, uniform color filling the entire frame, creating a striking and powerful visual impact.; prompt=839 generated=71 images=2 frames=0 duration=0.000
+Actual default Molmo video: The color is a vibrant, bright red. It's a striking and intense shade that stands out strongly against the white background. The red appears to be a deep, saturated tone - not too dark or muted, but rather a bold, eye-catching hue that commands attention.; prompt=188 generated=54 images=0 frames=2 duration=1.000
+PASS actual extracted turn coordinator: native1536 heading,2048 execution, changed image/joint/native video and actual PID/group close
+[Memory Guard] Process exited with code 0
+[Memory Guard] Peak process-tree RSS: 3404 MB
+[Memory Guard] Final swap delta: 0 MB

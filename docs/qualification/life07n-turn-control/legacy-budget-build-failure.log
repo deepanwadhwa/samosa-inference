@@ -1,0 +1,4 @@
+/private/tmp/samosa-life07n-budget-legacy.CrHUBw/tests/test_prompt_budget.c:39:8: error: no member named 'backend_pid' in 'Gateway'
+   39 |     g->backend_pid = child; g->upstream_fd = -1;
+      |     ~  ^
+1 error generated.

@@ -1,0 +1,20 @@
+mkdir -p build
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Isrc -c src/engine_process.c -o build/engine-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_supervisor.c -o build/specialist-supervisor.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/specialist_protocol.c -o build/specialist-protocol.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/summary_process.c -o build/summary-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/llama_launch.c -o build/llama-launch.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/backend_process.c -o build/backend-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/whisper_process.c -o build/whisper-process.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -Iinclude -c src/vision_budget.c -o build/vision-budget.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -c src/turn_control.c -o build/turn-control.o
+ar rcs build/libsamosa-inference-specialist.a build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/whisper-process.o build/vision-budget.o build/turn-control.o
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_turn_control.c build/libsamosa-inference-specialist.a -o build/test-turn-control
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread tests/fake_multimodal_helper.c -o build/fake-multimodal-helper
+/private/tmp/samosa-life07n-source.yFLJUl/build/test-turn-control /private/tmp/samosa-life07n-source.yFLJUl/build/fake-multimodal-helper
+PASS extracted turn coordination: 7877 checks; shared exclusion/counts, original availability/reclaim/resume deadlines, retry/give-back and native guardian pages; no new scheduler
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_turn_control.c src/turn_control.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o build/test-turn-control-sanitize
+/private/tmp/samosa-life07n-source.yFLJUl/build/test-turn-control-sanitize /private/tmp/samosa-life07n-source.yFLJUl/build/fake-multimodal-helper
+PASS extracted turn coordination: 9059 checks; shared exclusion/counts, original availability/reclaim/resume deadlines, retry/give-back and native guardian pages; no new scheduler
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_turn_control_real.c build/libsamosa-inference-specialist.a -o build/test-turn-control-real
+cc  -O1 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_turn_control_real.c src/turn_control.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o build/test-turn-control-real-sanitize

@@ -1,0 +1,4 @@
+cc  -O2 -g -std=c11 -Wall -Wextra -Werror -Wpedantic -pthread -Iinclude tests/test_turn_control.c build/libsamosa-inference-specialist.a -o build/test-turn-control
+/Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/test-turn-control /Users/deepanwadhwa/Documents/samosa-chat/components/samosa-inference/build/fake-multimodal-helper
+FAIL 92: samosa_turn_generating(&f.gate)==1
+make: *** [test-turn-control] Abort trap: 6
