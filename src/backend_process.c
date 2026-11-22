@@ -109,6 +109,19 @@ static int configuration_write(FILE *out,const SamosaBackendLaunch *c) {
     for(size_t i=0;i<15;i++)if(wire.lengths[i]&&fwrite(*slots[i],wire.lengths[i],1,out)!=1)return 0;
     return !fflush(out)&&!fseek(out,0,SEEK_SET);
 }
+const char *backend_process_launch_snapshot(const SamosaBackendLaunch *config,char **snapshot) {
+    *snapshot=NULL;FILE *wire_file=tmpfile();if(!wire_file)return "engine_io_failed";
+    PrimaryWire wire;int ok=configuration_write(wire_file,config)&&fread(&wire,sizeof(wire),1,wire_file)==1;
+    fclose(wire_file);if(!ok)return "invalid_primary_configuration";
+    size_t bytes=0;FILE *out=open_memstream(snapshot,&bytes);if(!out)return "resource_limit";
+    fprintf(out,"{\"format\":\"primary-wire-v1\",\"port\":%d,\"runtime\":[",wire.port);
+    for(size_t i=0;i<sizeof(wire.runtime)/sizeof(wire.runtime[0]);i++)fprintf(out,"%s%d",i?",":"",wire.runtime[i]);
+    fputs("],\"llama\":[",out);for(size_t i=0;i<sizeof(wire.llama)/sizeof(wire.llama[0]);i++)fprintf(out,"%s%d",i?",":"",wire.llama[i]);
+    fprintf(out,"],\"ram\":%llu,\"strings\":[",(unsigned long long)wire.ram);
+    SamosaBackendLaunch copy=*config;const char **slots[15];string_slots(&copy,slots);
+    for(size_t i=0;i<15;i++){if(i)fputc(',',out);if(*slots[i])json_quote(out,*slots[i],strlen(*slots[i]));else fputs("null",out);}
+    fputs("]}",out);if(fclose(out)||bytes>12288){free(*snapshot);*snapshot=NULL;return "primary_configuration_limit";}return NULL;
+}
 static int configuration_read(SamosaBackendLaunch *c) {
     int flags=fcntl(9,F_GETFL);struct stat st;
     if(flags<0||(flags&O_ACCMODE)!=O_RDWR||fcntl(9,F_SETFD,FD_CLOEXEC)||fstat(9,&st)||

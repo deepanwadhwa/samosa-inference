@@ -1140,7 +1140,8 @@ build/engine-process.o: src/engine_process.c src/engine_process.h src/json.h | b
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -Isrc -c $< -o $@
 build/backend-json.o: src/backend_json.c include/samosa_inference/backend_json.h include/samosa_inference/turn_control.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
-build/libsamosa-inference-specialist.a: build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/backend-json.o build/whisper-process.o build/vision-budget.o build/turn-control.o Makefile
+SPECIALIST_OBJECTS = build/engine-process.o build/specialist-supervisor.o build/specialist-protocol.o build/summary-process.o build/llama-launch.o build/backend-process.o build/backend-json.o build/whisper-process.o build/vision-budget.o build/turn-control.o
+build/libsamosa-inference-specialist.a: $(SPECIALIST_OBJECTS) Makefile
 	$(AR) rcs $@ $(filter %.o,$^)
 build/fake-multimodal-helper: tests/fake_multimodal_helper.c | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread $< -o $@
@@ -1328,3 +1329,21 @@ sanitize-backend-lifecycle: build/test-backend-lifecycle-sanitize build/test-bac
 	$(abspath build/test-backend-lifecycle-sanitize) $(abspath build/test-backend-lifecycle)
 test-native: test-backend-lifecycle
 sanitize-native: sanitize-backend-lifecycle
+
+PRIMARY_HOST_SOURCES = src/primary_host.c src/activation.c src/artifact.c $(LIBRARY_RUNTIME_SOURCES)
+PRIMARY_HOST_HEADERS = include/samosa_inference/primary_host.h src/backend_process_internal.h src/activation.h src/artifact.h $(LIBRARY_RUNTIME_HEADERS)
+.PHONY: primary-host test-primary-host sanitize-primary-host
+primary-host: build/libsamosa-inference-primary.a
+PRIMARY_HOST_OBJECTS = $(patsubst src/%.c,build/primary-%.o,$(PRIMARY_HOST_SOURCES))
+build/primary-%.o: src/%.c $(PRIMARY_HOST_HEADERS) src/json.h src/sha256.h | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -Isrc -c $< -o $@
+build/libsamosa-inference-primary.a: $(PRIMARY_HOST_OBJECTS) $(SPECIALIST_OBJECTS) Makefile
+	$(AR) rcs $@ $(filter %.o,$^)
+build/test-primary-host: tests/test_primary_host.c tests/test_backend_process.c $(PRIMARY_HOST_HEADERS) build/libsamosa-inference-primary.a | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -Isrc $< build/libsamosa-inference-primary.a $(LIBS) -o $@
+build/test-primary-host-sanitize: tests/test_primary_host.c tests/test_backend_process.c $(PRIMARY_HOST_SOURCES) $(PRIMARY_HOST_HEADERS) src/backend_process.c src/backend_json.c src/llama_launch.c src/engine_process.c src/turn_control.c src/vision_budget.c src/specialist_supervisor.c src/specialist_protocol.c | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $(filter %.c,$(filter-out tests/test_backend_process.c,$^)) $(LIBS) -o $@
+test-primary-host: build/test-primary-host
+	$(abspath build/test-primary-host) $(abspath build/test-primary-host) $$(shasum -a 256 build/test-primary-host | cut -d ' ' -f 1)
+sanitize-primary-host: build/test-primary-host-sanitize build/test-primary-host
+	$(abspath build/test-primary-host-sanitize) $(abspath build/test-primary-host) $$(shasum -a 256 build/test-primary-host | cut -d ' ' -f 1)

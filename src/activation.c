@@ -121,12 +121,16 @@ static const char *current(sqlite3 *db,unsigned *revision,char **config) {
     sqlite3_finalize(q);return e;
 }
 void activation_cleanup_failed(Activation *a) {
-    if(a&&a->on_demand)atomic_store(&a->cleanup_failed,1);
+    if(a)atomic_store(&a->cleanup_failed,1);
 }
 const char *activation_stop(Activation *a) {
     if(atomic_load(&a->cleanup_failed))return "engine_guardian_failed";
     const char *e=engine_process_stop(&a->process);
     if(e&&!strcmp(e,"engine_shutdown_pending"))return e;
+    if(a->retain_unknown_cleanup&&e&&!strcmp(e,"engine_guardian_failed")){
+        activation_cleanup_failed(a);
+        return e;
+    }
     if(a->engine_fd>=0){close(a->engine_fd);a->engine_fd=-1;}
     if(a->model_fd>=0){close(a->model_fd);a->model_fd=-1;}
     if(a->lease>=0){close(a->lease);a->lease=-1;}
@@ -167,11 +171,12 @@ static int bundle_valid(const ActivationConfig *c) {
 const char *activation_start(const ActivationConfig *c,Activation *a) {
     *a=(Activation){.process={.guardian=-1,.control=-1,.response=-1},.root=-1,.lease=-1,.engine_fd=-1,.model_fd=-1};
     if(!c||!c->qualify||!c->self||c->self[0]!='/'||!c->engine||!c->model||c->expected_revision>=2147483646||
-        (c->advance_current!=0&&c->advance_current!=1)||(c->on_demand!=0&&c->on_demand!=1)||(c->on_demand&&c->launch)||(c->model_argument&&(!c->launch||c->model_argument[0]!='/'))||(c->trusted_host_runtime&&(!c->launch||c->require_system_runtime||strcmp(c->engine,c->self)))||
+        (c->advance_current!=0&&c->advance_current!=1)||(c->on_demand!=0&&c->on_demand!=1)||(c->on_demand&&c->launch)||(c->readable_inputs!=0&&c->readable_inputs!=1)||(c->readable_inputs&&(!c->launch||!c->verify_runtime))||(c->model_argument&&(!c->launch||c->model_argument[0]!='/'))||(c->trusted_host_runtime&&(!c->launch||c->require_system_runtime||strcmp(c->engine,c->self)))||
         (c->verify_runtime&&((!c->launch&&!c->on_demand)||c->require_system_runtime||c->trusted_host_runtime||!c->bundle_identity))||
         !bundle_valid(c))
         return "invalid_activation_configuration";
     a->on_demand=c->on_demand;
+    a->retain_unknown_cleanup=c->readable_inputs;
     a->root=root_open(c->state,1);if(a->root<0)return "unsafe_activation_state";
     a->lease=openat(a->root,"residency.lock",O_RDWR|O_CREAT|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC,0600);
     const char *e=NULL;
@@ -183,11 +188,11 @@ const char *activation_start(const ActivationConfig *c,Activation *a) {
     free(saved);
     if(!e&&revision>=2147483646)e="activation_revision_limit";
     if(!e&&!c->advance_current&&revision!=c->expected_revision)e="activation_revision_conflict";
-    if(!e)e=verified(c->engine,c->engine_sha,c->engine_size,c->byte_ceiling,&engine,c->on_demand);
+    if(!e)e=verified(c->engine,c->engine_sha,c->engine_size,c->byte_ceiling,&engine,c->on_demand||c->readable_inputs);
     a->engine_fd=engine.fd;
     if(!e&&(c->require_system_runtime||c->trusted_host_runtime||c->verify_runtime))e=engine_runtime_environment();
     if(!e&&c->require_system_runtime)e=engine_system_runtime(a->engine_fd);
-    if(!e)e=verified(c->model,c->model_sha,c->model_size,c->byte_ceiling,&model,c->on_demand);
+    if(!e)e=verified(c->model,c->model_sha,c->model_size,c->byte_ceiling,&model,c->on_demand||c->readable_inputs);
     a->model_fd=model.fd;
     if(!e&&c->verify_runtime)e=c->verify_runtime(c->runtime_context,a->engine_fd,a->model_fd);
     if(!e && !(args=render(c)))e="invalid_activation_configuration";
@@ -222,7 +227,11 @@ const char *activation_start(const ActivationConfig *c,Activation *a) {
             if(fsync(a->root))e="activation_commit_uncertain";}
     }
     free(args);free(config);if(db)sqlite3_close(db);if(anchor>=0)close(anchor);
-    if(e&&c->on_demand&&!strcmp(e,"engine_guardian_failed"))activation_cleanup_failed(a);
-    if(e&&strcmp(e,"activation_commit_uncertain")){const char *cleanup=activation_stop(a);if(cleanup&&!strcmp(cleanup,"engine_shutdown_pending"))e=cleanup;}
+    if(e&&(c->on_demand||c->readable_inputs)&&!strcmp(e,"engine_guardian_failed"))activation_cleanup_failed(a);
+    if(e&&strcmp(e,"activation_commit_uncertain")){
+        const char *cleanup=activation_stop(a);
+        if(cleanup&&(!strcmp(cleanup,"engine_shutdown_pending")||
+                     (c->readable_inputs&&!strcmp(cleanup,"engine_guardian_failed"))))e=cleanup;
+    }
     return e;
 }

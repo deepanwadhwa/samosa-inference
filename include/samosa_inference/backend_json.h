@@ -26,6 +26,9 @@ typedef struct {
     void (*trace_payload)(void *,const char *,const char *,const char *,size_t);
     void (*trace_event)(void *,const char *,const char *);
     void *context;
+    /* Qualification requires a complete successful HTTP response. Ordinary
+     * callers keep the original partial-response behavior. */
+    int require_complete;
 } SamosaBackendJson;
 /* Returns the existing raw HTTP body or NULL. Caller frees a non-NULL result.
  * Original result ceiling permits a final read chunk beyond body+header limit;

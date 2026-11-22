@@ -8,4 +8,7 @@
  * releasing this storage. Outside code must not independently poll/stop it
  * while the backend owner is published. All launch inputs remain borrowed. */
 const char *backend_process_start_delegated(const SamosaBackendOwner *,const SamosaBackendLaunch *,EngineProcess *);
+/* Recoverable JSON projection of the existing private bootstrap serialization.
+ * All fields/strings come from configuration_write, not rebuilt launch rules. */
+const char *backend_process_launch_snapshot(const SamosaBackendLaunch *,char **);
 #endif

@@ -29,4 +29,13 @@ typedef struct {const char *name;enum LibraryRuntimeKind kind;} LibraryRuntimeFi
  * Caller verifies every native image and revalidates package bytes afterwards. */
 const char *library_runtime_graph(const LibraryRuntimePolicy *,const LibraryRuntimeFile *,
     const LibraryRuntimeImage *,size_t,const char *(*)(void *),void *);
+/* Explicit native-host input profile. Caller holds/rechecks every pinned file.
+ * Paths are absolute admitted inputs; Mach-O absolute install IDs and direct
+ * dependencies must match those exact entries, including transitive libraries.
+ * This adds no trusted directory/search path. Default package APIs above retain
+ * their original sibling/system-only policy. Native code's arbitrary dlopen or
+ * data-file access is outside either inspector's proof. */
+const char *library_runtime_inspect_declared(int,const LibraryRuntimePolicy *,LibraryRuntimeImage *,int,const char *);
+const char *library_runtime_graph_declared(const LibraryRuntimePolicy *,const LibraryRuntimeFile *,
+    const LibraryRuntimeImage *,size_t,const char *(*)(void *),void *);
 #endif

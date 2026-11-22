@@ -5,6 +5,15 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
+LIFE-07r, 2026-11-22. The Inference primary C adapter now uses the original
+backend owner, JSON transport, loader inspector and Activation transaction to
+qualify a pinned engine and model before reporting readiness. The retained
+native Qwen model passed on this Mac. Maple and llama passed protocol fixtures.
+Next connect the adapter to Gateway selection, rollback and visual pause/resume.
+Reuse verified inputs on an intentional resume. Actual Maple and llama,
+long-window Whisper, default visual controls and crash recovery remain open.
+[Native evidence and remaining scope](qualification/life07r-primary-readiness/README.md).
+
 LIFE-07q checkpoint, 2026-11-22: the original primary owner now exposes typed
 start/physical-status/stop and can use Activation's one canonical process record.
 A real native reproduction found lost-guardian cleanup releasing the marker fence

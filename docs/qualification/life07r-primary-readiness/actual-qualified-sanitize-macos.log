@@ -1,0 +1,7 @@
+Installed OpenMP pin: b6d9b621ca10f9e097de32b77b1bd50ca0b6e606168a0d7368e82fd279dbfb4f /opt/homebrew/opt/libomp/lib/libomp.dylib
+[Memory Guard] Baseline swap: 533 MB
+[Memory Guard] Limits: 6144 MiB process-tree RSS, 0 MiB swap delta
+PASS primary host retained native Qwen: 53 assertions, actual generation response required before readiness
+[Memory Guard] Process exited with code 0
+[Memory Guard] Peak process-tree RSS: 3730 MB
+[Memory Guard] Final swap delta: 0 MB

@@ -90,7 +90,7 @@ static const char *dependency(LibraryRuntimeImage *image,const char *name,uint32
     strcpy(image->dependencies[image->count].name,name);
     image->dependencies[image->count++].compatibility_version=compatibility;return NULL;
 }
-static const char *mach(int fd,const unsigned char *h,uint64_t size,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image,int executable) {
+static const char *mach(int fd,const unsigned char *h,uint64_t size,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image,int executable,const char *declared_path) {
     uint32_t subtype=u32(h+8)&0xffffff;
     if(u32(h+4)!=policy->cpu||u32(h+12)!=(executable?2u:6u)||
         (policy->cpu==0x100000c?subtype!=0:subtype!=3)||!(u32(h+24)&0x80)||(u32(h+24)&0x100))return "incompatible_library_binary";
@@ -125,7 +125,7 @@ static const char *mach(int fd,const unsigned char *h,uint64_t size,const Librar
                 if(!strncmp(name,"@rpath/",7))base=name+7;
                 else if(!strncmp(name,"@loader_path/",13))base=name+13;
                 if(executable||id_count++)e="invalid_library_loader";
-                else if(!bare_name(base))e="unqualified_library_dependencies";
+                else if(!bare_name(base)&&(!declared_path||strcmp(name,declared_path)))e="unqualified_library_dependencies";
                 else image->current_version=u32(c+16);
             } else e=dependency(image,name,u32(c+20));
         } else if(cmd==0x32) {
@@ -260,7 +260,7 @@ static const char *elf(int fd,const unsigned char *h,uint64_t size,const Library
     if(!e)e=elf_versions(fd,&map,(const char *)table,(size_t)string_size,version_address,version_count,policy,image);
     free(table);return e;
 }
-static const char *inspect(int fd,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image,int executable) {
+static const char *inspect(int fd,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image,int executable,const char *declared_path) {
     if(!policy||!image||(policy->mach_o!=0&&policy->mach_o!=1)||
         (policy->mach_o?(policy->cpu!=0x100000c&&policy->cpu!=0x1000007):(policy->cpu!=183&&policy->cpu!=62)))return "invalid_configuration";
     memset(image,0,sizeof(*image));image->mach_o=policy->mach_o;
@@ -268,27 +268,39 @@ static const char *inspect(int fd,const LibraryRuntimePolicy *policy,LibraryRunt
     if(fstat(fd,&before)||!S_ISREG(before.st_mode)||before.st_size<64||
         !read_at(fd,h,64,0,(uint64_t)before.st_size))return "incompatible_library_binary";
     const char *e=NULL;
-    if(policy->mach_o&&u32(h)==0xfeedfacf)e=mach(fd,h,(uint64_t)before.st_size,policy,image,executable);
+    if(policy->mach_o&&u32(h)==0xfeedfacf)e=mach(fd,h,(uint64_t)before.st_size,policy,image,executable,declared_path);
     else if(!policy->mach_o&&!memcmp(h,"\177ELF",4))e=elf(fd,h,(uint64_t)before.st_size,policy,image,executable);
     else e="incompatible_library_binary";
     if(!e&&(fstat(fd,&after)||before.st_dev!=after.st_dev||before.st_ino!=after.st_ino||before.st_size!=after.st_size))e="artifact_changed";
     return e;
 }
-const char *library_runtime_inspect(int fd,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image){return inspect(fd,policy,image,0);}
-const char *library_runtime_inspect_executable(int fd,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image){return inspect(fd,policy,image,1);}
+const char *library_runtime_inspect(int fd,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image){return inspect(fd,policy,image,0,NULL);}
+const char *library_runtime_inspect_executable(int fd,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image){return inspect(fd,policy,image,1,NULL);}
+
+static int absolute_path(const char *path) {
+    if(!path||path[0]!='/'||!path[1]||strlen(path)>4095)return 0;
+    for(const char *p=path;*p;){if(*p++!='/')return 0;const char *begin=p;while(*p&&*p!='/')p++;
+        size_t n=(size_t)(p-begin);if(!n||(n==1&&begin[0]=='.')||(n==2&&begin[0]=='.'&&begin[1]=='.'))return 0;}
+    return path[strlen(path)-1]!='/';
+}
+const char *library_runtime_inspect_declared(int fd,const LibraryRuntimePolicy *policy,LibraryRuntimeImage *image,int executable,const char *path) {
+    if(!absolute_path(path)||(executable!=0&&executable!=1))return "invalid_configuration";
+    return inspect(fd,policy,image,executable,path);
+}
 
 static int graph_sibling(const LibraryRuntimeFile *files,size_t count,size_t source,const char *base){
     const char *slash=strrchr(files[source].name,'/');size_t prefix=slash?(size_t)(slash-files[source].name)+1:0;
-    char name[256];if(prefix+strlen(base)>=sizeof(name))return -1;
+    char name[4096];if(prefix+strlen(base)>=sizeof(name))return -1;
     memcpy(name,files[source].name,prefix);strcpy(name+prefix,base);
     for(size_t i=0;i<count;i++)if(!strcmp(name,files[i].name))return (int)i;
     return -1;
 }
-const char *library_runtime_graph(const LibraryRuntimePolicy *policy,const LibraryRuntimeFile *files,const LibraryRuntimeImage *images,size_t count,const char *(*control)(void *),void *context){
+static const char *graph(const LibraryRuntimePolicy *policy,const LibraryRuntimeFile *files,const LibraryRuntimeImage *images,size_t count,const char *(*control)(void *),void *context,int declared){
     if(!policy||!files||!images||!count||count>512||(policy->mach_o!=0&&policy->mach_o!=1))return "invalid_configuration";
     const char *e=control?control(context):NULL;if(e)return e;
     for(size_t i=0;i<count;i++){
-        if(!files[i].name||!files[i].name[0]||strnlen(files[i].name,256)>255||files[i].kind<LIBRARY_RUNTIME_OTHER||files[i].kind>LIBRARY_RUNTIME_EXECUTABLE)return "invalid_configuration";
+        if(!files[i].name||!files[i].name[0]||strnlen(files[i].name,declared?4096:256)>(declared?4095u:255u)||files[i].kind<LIBRARY_RUNTIME_OTHER||files[i].kind>LIBRARY_RUNTIME_EXECUTABLE)return "invalid_configuration";
+        if(declared&&!absolute_path(files[i].name))return "invalid_configuration";
         if(files[i].kind!=LIBRARY_RUNTIME_OTHER&&(images[i].count>LIBRARY_DEPENDENCIES||images[i].mach_o!=policy->mach_o||(images[i].origin_search!=0&&images[i].origin_search!=1)))return "invalid_configuration";
     }
     for(size_t i=0;!e&&i<count;i++){
@@ -300,6 +312,12 @@ const char *library_runtime_graph(const LibraryRuntimePolicy *policy,const Libra
             if(!memchr(name,0,sizeof(images[i].dependencies[k].name))){e="invalid_library_loader";break;}
             if(engine_trusted_system_library(policy->mach_o,name)){
                 if(!policy->mach_o&&graph_sibling(files,count,i,name)>=0)e="unqualified_library_dependencies";
+                continue;
+            }
+            if(declared&&policy->mach_o&&name[0]=='/'){
+                int target=-1;for(size_t j=0;j<count;j++)if(!strcmp(files[j].name,name)){if(target>=0)return "invalid_configuration";target=(int)j;}
+                if(target<0||files[target].kind!=LIBRARY_RUNTIME_LIBRARY)e="unqualified_library_dependencies";
+                else if(images[target].current_version<images[i].dependencies[k].compatibility_version)e="incompatible_library_version";
                 continue;
             }
             if(policy->mach_o){
@@ -314,4 +332,11 @@ const char *library_runtime_graph(const LibraryRuntimePolicy *policy,const Libra
         }
     }
     return e;
+}
+
+const char *library_runtime_graph(const LibraryRuntimePolicy *policy,const LibraryRuntimeFile *files,const LibraryRuntimeImage *images,size_t count,const char *(*control)(void *),void *context){
+    return graph(policy,files,images,count,control,context,0);
+}
+const char *library_runtime_graph_declared(const LibraryRuntimePolicy *policy,const LibraryRuntimeFile *files,const LibraryRuntimeImage *images,size_t count,const char *(*control)(void *),void *context){
+    return graph(policy,files,images,count,control,context,1);
 }

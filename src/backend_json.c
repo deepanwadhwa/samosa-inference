@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <time.h>
@@ -89,6 +90,34 @@ static void trace_event(const SamosaBackendJson *r, const char *event, const cha
     if (r->trace_event) r->trace_event(r->context,event,fields);
 }
 
+static int complete_body(const TextBuffer *response, const char *separator) {
+    if (memchr(response->data, 0, response->len)) return 0;
+    size_t bytes = response->len - (size_t)(separator + 4 - response->data);
+    const char *line = strchr(response->data, '\n');
+    int seen = 0;
+    while (line && ++line < separator) {
+        const char *end = strstr(line, "\r\n");
+        if (!end || end > separator) return 0;
+        if (!strncasecmp(line, "Transfer-Encoding:", 18)) return 0;
+        if (!strncasecmp(line, "Content-Length:", 15)) {
+            if (seen++) return 0;
+            const char *value = line + 15;
+            while (value < end && (*value == ' ' || *value == '\t')) value++;
+            if (value == end || *value < '0' || *value > '9') return 0;
+            size_t length = 0;
+            for (; value < end && *value >= '0' && *value <= '9'; value++) {
+                unsigned digit = (unsigned)(*value - '0');
+                if (length > (SIZE_MAX - digit) / 10) return 0;
+                length = length * 10 + digit;
+            }
+            while (value < end && (*value == ' ' || *value == '\t')) value++;
+            if (value != end || length != bytes) return 0;
+        }
+        line = end + 1;
+    }
+    return 1;
+}
+
 char *samosa_backend_json(const SamosaBackendJson *request, const char *payload) {
     if (!request || !payload || !request->probe || !request->gate ||
         !request->mutex || !request->upstream_fd) return NULL;
@@ -133,6 +162,7 @@ char *samosa_backend_json(const SamosaBackendJson *request, const char *payload)
         return NULL;
     }
     TextBuffer response = {0}; char chunk[65536];
+    int complete = 0;
     long long deadline = started + timeout_seconds * 1000LL;
     while (response.len < SAMOSA_BACKEND_JSON_MAX_BODY + SAMOSA_BACKEND_JSON_MAX_HEADER) {
         long long remaining = deadline - monotonic_millis();
@@ -140,7 +170,7 @@ char *samosa_backend_json(const SamosaBackendJson *request, const char *payload)
         backend_receive_timeout(fd, (int)((remaining + 999) / 1000));
         ssize_t got = recv(fd, chunk, sizeof(chunk), 0);
         if (got < 0 && errno == EINTR) continue;
-        if (got <= 0) break;
+        if (got <= 0) { complete = got == 0; break; }
         if (!text_add_n(&response, chunk, (size_t)got)) break;
     }
     pthread_mutex_lock(request->mutex); if (*request->upstream_fd == fd) *request->upstream_fd = -1; pthread_mutex_unlock(request->mutex);
@@ -148,6 +178,12 @@ char *samosa_backend_json(const SamosaBackendJson *request, const char *payload)
     if (response.data)
         trace_payload(request, "internal_model_response", "chat_backend_http",
                                 response.data, response.len);
+    if (request->require_complete && (!complete || !response.data ||
+        (strncmp(response.data, "HTTP/1.1 200 ", 13) &&
+         strncmp(response.data, "HTTP/1.0 200 ", 13)))) {
+        free(response.data);
+        return NULL;
+    }
     if (!response.data || !strstr(response.data, " 200 ")) {
         char fields[128];
         snprintf(fields, sizeof(fields), "\"code\":\"non_200_response\",\"duration_ms\":%lld",
@@ -157,6 +193,10 @@ char *samosa_backend_json(const SamosaBackendJson *request, const char *payload)
     }
     char *body = strstr(response.data, "\r\n\r\n");
     if (!body) { free(response.data); return NULL; }
+    if (request->require_complete && !complete_body(&response, body)) {
+        free(response.data);
+        return NULL;
+    }
     body += 4;
     char *copy = strdup(body);
     free(response.data); return copy;

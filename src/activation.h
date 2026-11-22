@@ -41,11 +41,14 @@ typedef struct {
     /* Trusted nonresident adapter: qualify executes the existing guarded
      * request and leaves no engine alive. No launch hook is accepted. */
     int on_demand;
+    /* Native owning adapter preserves readable installed assets. Requires a
+     * custom verified launch/runtime hook; private state policy is unchanged. */
+    int readable_inputs;
 #ifdef SAMOSA_INFERENCE_TEST_FAULTS
     void (*checkpoint)(const char *,void *);void *checkpoint_context;
 #endif
 } ActivationConfig;
-typedef struct {EngineProcess process;int root,lease,engine_fd,model_fd;unsigned revision;int on_demand;atomic_int cleanup_failed;} Activation;
+typedef struct {EngineProcess process;int root,lease,engine_fd,model_fd;unsigned revision;int on_demand,retain_unknown_cleanup;atomic_int cleanup_failed;} Activation;
 const char *activation_start(const ActivationConfig *,Activation *);
 const char *activation_stop(Activation *);
 /* Nonresident executor lost its guardian: keep the lifecycle fence and refuse

@@ -103,6 +103,15 @@ complements the existing controlled credential/redirect/quota/recovery gates.
 
 ## 3. Engine lifecycle and readiness — active
 
+LIFE-07r, 2026-11-22. The Inference primary C adapter now uses the original
+backend owner, JSON transport, loader inspector and Activation transaction to
+qualify a pinned engine and model before reporting readiness. The retained
+native Qwen model passed on this Mac. Maple and llama passed protocol fixtures.
+Next connect the adapter to Gateway selection, rollback and visual pause/resume.
+Reuse verified inputs on an intentional resume. Actual Maple and llama,
+long-window Whisper, default visual controls and crash recovery remain open.
+[Native evidence and remaining scope](qualification/life07r-primary-readiness/README.md).
+
 LIFE-07q (2026-11-22) adds typed existing-primary outcomes and a single delegated
 Activation process record, fixing a reproduced lost-guardian fence release.
 Native/independent normal/SAN transactions, original primary assertions and Mac
