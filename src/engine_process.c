@@ -40,11 +40,11 @@ static int fifo_mode(int fd,int mode){
     struct stat s;int flags=fcntl(fd,F_GETFL);
     return flags>=0&&(flags&O_ACCMODE)==mode&&!fstat(fd,&s)&&S_ISFIFO(s.st_mode);
 }
-static int spawn_attributes(posix_spawnattr_t *a) {
+static int spawn_attributes(posix_spawnattr_t *a,short descriptor_flags) {
     sigset_t empty,defaults;sigemptyset(&empty);sigemptyset(&defaults);
     sigaddset(&defaults,SIGPIPE);sigaddset(&defaults,SIGTERM);sigaddset(&defaults,SIGINT);
     sigaddset(&defaults,SIGHUP);sigaddset(&defaults,SIGCHLD);sigaddset(&defaults,SIGXFSZ);
-    return !posix_spawnattr_setflags(a,POSIX_SPAWN_SETPGROUP|POSIX_SPAWN_SETSIGDEF|POSIX_SPAWN_SETSIGMASK) &&
+    return !posix_spawnattr_setflags(a,descriptor_flags|POSIX_SPAWN_SETPGROUP|POSIX_SPAWN_SETSIGDEF|POSIX_SPAWN_SETSIGMASK) &&
         !posix_spawnattr_setpgroup(a,0) && !posix_spawnattr_setsigmask(a,&empty) &&
         !posix_spawnattr_setsigdefault(a,&defaults);
 }
@@ -137,6 +137,17 @@ int engine_guardian_dispatch(int argc,char **argv) {
      * spawned workers still get their explicit default signal dispositions. */
     signal(SIGHUP,SIG_IGN);
     signal(SIGPIPE,SIG_IGN);
+    /* If the owner already closed its lifeline, clean up the handed-off
+     * workspace before admitting an engine. After admission the normal
+     * process-group cleanup continues to handle a disappearing owner. */
+    struct pollfd lifeline={3,POLLIN,0};
+    int admission;
+    do{admission=poll(&lifeline,1,0);}while(admission<0&&errno==EINTR);
+    if(admission){
+        if(workspace)clean_workspace(argv[4]);
+        fputs(admission<0?"poll_failed\n":"stopped\n",stdout);
+        return admission<0;
+    }
     int output[2],capture[2]={-1,-1};if(pipe(output))return 2;
     if(captured&&(pipe(capture)||!cloexec(capture[0])||!cloexec(capture[1]))){
         close(output[0]);close(output[1]);if(capture[0]>=0)close(capture[0]);if(capture[1]>=0)close(capture[1]);return 2;}
@@ -144,7 +155,7 @@ int engine_guardian_dispatch(int argc,char **argv) {
     posix_spawn_file_actions_t actions;posix_spawnattr_t attributes;
     int ar=posix_spawn_file_actions_init(&actions)==0,at=posix_spawnattr_init(&attributes)==0;
     int ok=ar&&at;pid_t child=-1;
-    if(ok)ok=spawn_attributes(&attributes) &&
+    if(ok)ok=spawn_attributes(&attributes,0) &&
         !((protocol||duplex)?posix_spawn_file_actions_adddup2(&actions,7,STDIN_FILENO):posix_spawn_file_actions_addopen(&actions,STDIN_FILENO,"/dev/null",O_RDONLY,0)) &&
         !(command_profile?posix_spawn_file_actions_addopen(&actions,STDOUT_FILENO,"/dev/null",O_WRONLY,0):posix_spawn_file_actions_adddup2(&actions,server?10:captured?capture[1]:(protocol||duplex)?8:output[1],STDOUT_FILENO)) &&
         !(command_profile?posix_spawn_file_actions_addopen(&actions,STDERR_FILENO,"/dev/null",O_WRONLY,0):posix_spawn_file_actions_adddup2(&actions,specialist?4:server?11:output[1],STDERR_FILENO)) &&
@@ -288,7 +299,13 @@ static const char *start(const char *self,const char *argv_json,double lifetime,
         posix_spawn_file_actions_t actions;posix_spawnattr_t attr;
         int ar=posix_spawn_file_actions_init(&actions)==0,at=posix_spawnattr_init(&attr)==0;
         int ok=ar&&at;
-        if(ok)ok=spawn_attributes(&attr) &&
+        short descriptor_flags=0;
+#ifdef __APPLE__
+        /* The host can open descriptors on other threads before setting
+         * CLOEXEC. Inherit only the descriptors mapped by this launch. */
+        descriptor_flags=POSIX_SPAWN_CLOEXEC_DEFAULT;
+#endif
+        if(ok)ok=spawn_attributes(&attr,descriptor_flags) &&
             !posix_spawn_file_actions_adddup2(&actions,control[0],3) &&
             !posix_spawn_file_actions_adddup2(&actions,response[1],STDOUT_FILENO) &&
             !posix_spawn_file_actions_addopen(&actions,STDIN_FILENO,"/dev/null",O_RDONLY,0) &&

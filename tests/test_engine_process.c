@@ -128,6 +128,75 @@ static void leased_command_tests(const char *self,const char *root) {
     CHECK(!rmdir(workspace) && !unlink(residency_path));
     free(cmd);
 }
+#ifdef __APPLE__
+static void lifeline_inheritance(const char *self,const char *root) {
+    char first_path[512],other_path[512];
+    snprintf(first_path,sizeof(first_path),"%s/lifeline-owner",root);
+    snprintf(other_path,sizeof(other_path),"%s/lifeline-peer",root);
+    char *first_args=command(self,"sleep",first_path);
+    char *other_args=command(self,"sleep",other_path);
+    EngineProcess first,other;
+    CHECK(!engine_process_start(self,first_args,30,65536,&first));
+    observe(first_path,0);
+    /* Model the interval between opening a pipe and setting close-on-exec in
+     * another owner thread. A new process must never inherit this writer. */
+    int exposed=fcntl(first.control,F_DUPFD,32);
+    CHECK(exposed>=0);
+    CHECK(!engine_process_start(self,other_args,30,65536,&other));
+    CHECK(!close(exposed));
+    observe(other_path,0);
+    const char *first_stop=engine_process_stop(&first);
+    int peer_survived=!released(other_path);
+    CHECK(!engine_process_stop(&other));
+    if(first_stop) CHECK(!engine_process_stop(&first));
+    observe(first_path,1);
+    observe(other_path,1);
+    CHECK(!unlink(first_path)&&!unlink(other_path));
+    free(first_args);free(other_args);
+    CHECK(!first_stop&&peer_survived);
+}
+#endif
+static void owner_lost_before_admission(const char *self,const char *root) {
+    char workspace[512],engine_path[512];
+    snprintf(workspace,sizeof(workspace),"%s/abandoned-start",root);
+    snprintf(engine_path,sizeof(engine_path),"%s/abandoned-engine",root);
+    CHECK(!mkdir(workspace,0700));
+    int directory=open(workspace,O_RDONLY|O_DIRECTORY|O_CLOEXEC);
+    CHECK(directory>=0);
+    int prepared=openat(directory,"input.wav",O_CREAT|O_EXCL|O_WRONLY|O_CLOEXEC,0600);
+    CHECK(prepared>=0&&!close(prepared));
+
+    int control[2],response[2];
+    protocol_pipes(control,response);
+    /* Host exited after handing off the workspace, before the guardian ran. */
+    CHECK(!close(control[1]));
+    int sources[]={control[0],response[1],directory};
+    int targets[]={3,STDOUT_FILENO,6};
+    posix_spawn_file_actions_t actions;
+    CHECK(!posix_spawn_file_actions_init(&actions));
+    for(size_t i=0;i<sizeof(sources)/sizeof(*sources);++i) {
+        int fd=fcntl(sources[i],F_DUPFD_CLOEXEC,20);
+        CHECK(fd>=0);
+        CHECK(!posix_spawn_file_actions_adddup2(&actions,fd,targets[i]));
+        sources[i]=fd;
+    }
+    char *args[]={(char *)self,"--inference-owned-engine-command","0","1",workspace,
+                  (char *)self,"--fixture","sleep",engine_path,NULL};
+    pid_t guardian;
+    CHECK(!posix_spawn(&guardian,self,&actions,NULL,args,environ));
+    CHECK(!posix_spawn_file_actions_destroy(&actions));
+    for(size_t i=0;i<sizeof(sources)/sizeof(*sources);++i) CHECK(!close(sources[i]));
+    CHECK(!close(control[0])&&!close(response[1])&&!close(directory));
+    int status;
+    CHECK(waitpid(guardian,&status,0)==guardian&&WIFEXITED(status)&&!WEXITSTATUS(status));
+    char reply[128]={0};
+    ssize_t received=read(response[0],reply,sizeof(reply)-1);
+    CHECK(received>0&&!close(response[0]));
+    CHECK(access(workspace,F_OK)<0&&errno==ENOENT);
+    int started=!unlink(engine_path);
+    CHECK(!started&&errno==ENOENT);
+    CHECK(!strcmp(reply,"stopped\n"));
+}
 static void duplex_tests(const char *self,const char *root){
     char path[512],descendant[600],residency_path[512],model_path[512],ready[512],foreign[512];
     snprintf(path,sizeof(path),"%s/duplex-engine",root);snprintf(descendant,sizeof(descendant),"%s.descendant",path);
@@ -221,6 +290,10 @@ int main(int argc,char **argv){
         int fd=open(argv[3],O_WRONLY|O_CREAT|O_EXCL,0600);if(fd<0)return 3;close(fd);for(;;)pause();
     }
     CHECK(argv[0][0]=='/');char root[]="/tmp/samosa-engine-process-XXXXXX";CHECK(mkdtemp(root));
+#ifdef __APPLE__
+    lifeline_inheritance(argv[0],root);
+#endif
+    owner_lost_before_admission(argv[0],root);
     char path[512],descendant[512],ready[512];snprintf(path,sizeof(path),"%s/engine",root);
     snprintf(descendant,sizeof(descendant),"%s/engine.descendant",root);snprintf(ready,sizeof(ready),"%s/ready",root);
     EngineProcess p;char *cmd=command(argv[0],"grandchild",path);

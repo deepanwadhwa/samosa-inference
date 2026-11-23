@@ -5,8 +5,24 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-LIFE-08f, 2026-11-22. The native release routes stock VisionPsy and Molmo
-through the Inference visual lifecycle. Activation verifies and probes the
+LIFE-08g, 2026-11-22. A native regression reproduced an overlapping guardian
+launch keeping another operation's control pipe open. On macOS each guardian
+now inherits only the descriptors mapped for that launch. A second regression
+reproduced a worker starting after the owner had closed its control pipe.
+The guardian now checks the pipe before admission and cleans the retained
+workspace when the owner has already gone. Native and sanitizer runs pass
+592 engine-process checks.
+
+Recovery after guardian loss with an already-started worker and cleanup
+before workspace handoff remain open. A standalone Mac reproduction stopped
+Whisper's owner in its cancellation callback immediately after it opened its
+new result directory. Killing the owner at that point left the empty result
+directory behind and preserved the borrowed WAV. The runner had yet to
+publish a worker PID.
+
+Previous LIFE-08f, 2026-11-22. The Inference visual lifecycle qualified
+stock VisionPsy and Molmo. The current Mac release uses VisionPsy as its
+visual specialist. Activation verifies and probes the
 original workers before admitting requests. Retained receipts allow a
 lower-resolution retry to reuse verification while model inputs keep their
 verified identity. Shared recovery after guardian loss or interruption
