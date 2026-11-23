@@ -5,7 +5,15 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-LIFE-07s, 2026-11-22. Gateway startup, selection, rollback and visual reclaim
+LIFE-08f, 2026-11-22. The native release routes stock VisionPsy and Molmo
+through the Inference visual lifecycle. Activation verifies and probes the
+original workers before admitting requests. Retained receipts allow a
+lower-resolution retry to reuse verification while model inputs keep their
+verified identity. Shared recovery after guardian loss or interruption
+before admission remains open.
+[Visual lifecycle and release inputs](DEFAULT_VISUAL_LIFECYCLE.md).
+
+Previous LIFE-07s, 2026-11-22. Gateway startup, selection, rollback and visual reclaim
 use the Inference primary owner for pinned deployments. Native Qwen passes
 Gateway startup and the separate visual reservation reclaim test on this Mac.
 Resume rechecks retained identity and qualifies the fresh worker at the same

@@ -325,35 +325,52 @@ SamosaMmProvider mm_visual_profile(int molmo, const char *engine, const char *mo
     };
 }
 
-int samosa_mm_visionpsy_start(SamosaMmSupervisor *supervisor, SamosaMmSession *s,
-                             const SamosaMmTrace *trace, const char *engine,
-                             const char *model, int available) {
-    if (!s) return 0;
-    if (!available) {
-        protocol_trace_event(trace, "visionpsy_start_failed", "\"code\":\"model_unavailable\"");
-        return 0;
+void mm_visual_trace_start(int molmo, const SamosaMmTrace *trace, const char *engine, const char *model) {
+    if (molmo) {
+        protocol_trace_event(trace,"molmo2_starting","\"provider\":\"molmo2_4b\",\"protocol\":\"framed_v1\"");
+        return;
     }
     TextBuffer start_fields = {0};
     if (text_add(&start_fields, "\"engine\":") && text_json_string(&start_fields, engine) &&
         text_add(&start_fields, ",\"model_path\":") && text_json_string(&start_fields, model))
         protocol_trace_event(trace, "visionpsy_starting", start_fields.data);
     free(start_fields.data);
+}
+
+void mm_visual_trace_failed(int molmo, const SamosaMmTrace *trace, const char *error) {
+    TextBuffer fields = {0};
+    if (text_add(&fields,"\"code\":") && text_json_string(&fields,error&&*error?error:"start_failed"))
+        protocol_trace_event(trace,molmo?"molmo2_start_failed":"visionpsy_start_failed",fields.data);
+    free(fields.data);
+}
+
+void mm_visual_trace_ready(int molmo, const SamosaMmTrace *trace, pid_t pid) {
+    char fields[128];
+    snprintf(fields,sizeof(fields),"\"pid\":%ld,\"supervisor\":\"multimodal_v1\"",(long)pid);
+    if (molmo) protocol_trace_event(trace,"molmo2_ready",fields);
+    else {
+        protocol_trace_event(trace,"visionpsy_process_started",fields);
+        protocol_trace_event(trace,"visionpsy_ready",NULL);
+    }
+}
+
+int samosa_mm_visionpsy_start(SamosaMmSupervisor *supervisor, SamosaMmSession *s,
+                             const SamosaMmTrace *trace, const char *engine,
+                             const char *model, int available) {
+    if (!s) return 0;
+    if (!available) {
+        mm_visual_trace_failed(0,trace,"model_unavailable");
+        return 0;
+    }
+    mm_visual_trace_start(0,trace,engine,model);
     SamosaMmProvider provider = mm_visual_profile(0, engine, model);
     char error_code[SAMOSA_MM_ERROR_MAX] = {0};
     if (!samosa_mm_session_start(supervisor, &provider, s,
                                  error_code, sizeof(error_code))) {
-        TextBuffer fields = {0};
-        if (text_add(&fields, "\"code\":") &&
-            text_json_string(&fields, error_code[0] ? error_code : "start_failed"))
-            protocol_trace_event(trace, "visionpsy_start_failed", fields.data);
-        free(fields.data);
+        mm_visual_trace_failed(0,trace,error_code);
         return 0;
     }
-    char fields[96];
-    snprintf(fields, sizeof(fields), "\"pid\":%ld,\"supervisor\":\"multimodal_v1\"",
-             (long)s->pid);
-    protocol_trace_event(trace, "visionpsy_process_started", fields);
-    protocol_trace_event(trace, "visionpsy_ready", NULL);
+    mm_visual_trace_ready(0,trace,s->pid);
     return 1;
 }
 
@@ -362,21 +379,14 @@ int samosa_mm_molmo2_start(SamosaMmSupervisor *supervisor, SamosaMmSession *s,
                            const char *model, int available) {
     if (!s || !available) return 0;
     SamosaMmProvider provider = mm_visual_profile(1, engine, model);
-    protocol_trace_event(trace, "molmo2_starting",
-                          "\"provider\":\"molmo2_4b\",\"protocol\":\"framed_v1\"");
+    mm_visual_trace_start(1,trace,engine,model);
     char error_code[SAMOSA_MM_ERROR_MAX] = {0};
     if (!samosa_mm_session_start(supervisor, &provider, s,
                                  error_code, sizeof(error_code))) {
-        TextBuffer fields = {0};
-        if (text_add(&fields, "\"code\":") &&
-            text_json_string(&fields, error_code[0] ? error_code : "start_failed"))
-            protocol_trace_event(trace, "molmo2_start_failed", fields.data);
-        free(fields.data);
+        mm_visual_trace_failed(1,trace,error_code);
         return 0;
     }
-    char fields[128];
-    snprintf(fields, sizeof(fields), "\"pid\":%ld,\"supervisor\":\"multimodal_v1\"", (long)s->pid);
-    protocol_trace_event(trace, "molmo2_ready", fields);
+    mm_visual_trace_ready(1,trace,s->pid);
     return 1;
 }
 

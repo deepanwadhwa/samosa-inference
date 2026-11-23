@@ -153,48 +153,50 @@ temporal_package_verify(int directory, const char *path, const char *pin,
                    !same(&manifest, &after)))
         error = "artifact_changed";
     close(fd);
-    Json j;
+    /* This verifier also runs inside Gateway connection threads. */
+    Json *j = error ? NULL : malloc(sizeof(*j));
+    if (!error && !j) error = "resource_limit";
     size_t resident = 0, bits = 0, group = 0;
     int files = -1, quant = -1;
     if (!error &&
-        (!json_parse(&j, body, length) || j.tokens[0].type != JT_OBJECT))
+        (!json_parse(j, body, length) || j->tokens[0].type != JT_OBJECT))
         error = "invalid_model_package";
     if (!error) {
-        files = json_get(&j, 0, "files");
-        quant = json_get(&j, 0, "quantization");
-        if (!equal(&j, 0, "format", "samosa.molmo2.mlx.v1") ||
-            !equal(&j, 0, "package_id", "molmo2-4b-mlx-q4-v1") ||
-            !equal(&j, 0, "model_id", "allenai/Molmo2-4B") ||
-            !equal(&j, 0, "upstream_revision",
+        files = json_get(j, 0, "files");
+        quant = json_get(j, 0, "quantization");
+        if (!equal(j, 0, "format", "samosa.molmo2.mlx.v1") ||
+            !equal(j, 0, "package_id", "molmo2-4b-mlx-q4-v1") ||
+            !equal(j, 0, "model_id", "allenai/Molmo2-4B") ||
+            !equal(j, 0, "upstream_revision",
                    "042abfa7a38879a376cec03d949eff0aefaa0600") ||
-            !equal(&j, 0, "processor_fingerprint",
+            !equal(j, 0, "processor_fingerprint",
                    "808de9add76144a557348c5f5180a8408b12ca83592c7a6a257ae69c968"
                    "e51df") ||
-            quant < 0 || j.tokens[quant].type != JT_OBJECT ||
-            !equal(&j, quant, "mode", "affine") ||
-            !json_uint(&j, json_get(&j, quant, "bits"), &bits) || bits != 4 ||
-            !json_uint(&j, json_get(&j, quant, "group_size"), &group) ||
+            quant < 0 || j->tokens[quant].type != JT_OBJECT ||
+            !equal(j, quant, "mode", "affine") ||
+            !json_uint(j, json_get(j, quant, "bits"), &bits) || bits != 4 ||
+            !json_uint(j, json_get(j, quant, "group_size"), &group) ||
             group != 64 ||
-            !json_uint(&j, json_get(&j, 0, "estimated_resident_bytes"),
+            !json_uint(j, json_get(j, 0, "estimated_resident_bytes"),
                        &resident) ||
             !resident || resident > UINT64_C(3932160000) || files < 0 ||
-            j.tokens[files].type != JT_ARRAY || j.tokens[files].count < 4 ||
-            j.tokens[files].count > 64)
+            j->tokens[files].type != JT_ARRAY || j->tokens[files].count < 4 ||
+            j->tokens[files].count > 64)
             error = "invalid_model_package";
     }
     size_t count = 0;
     uint64_t total = 0;
     int config = 0, tokenizer = 0, processor = 0, weights = 0;
-    if (!error && recheck && receipt->count != (size_t)j.tokens[files].count)
+    if (!error && recheck && receipt->count != (size_t)j->tokens[files].count)
         error = "artifact_changed";
-    for (int item = files + 1; !error && item < j.tokens[files].next;
-         item = j.tokens[item].next) {
-        char *name = json_string(&j, json_get(&j, item, "name")),
-             *digest = json_string(&j, json_get(&j, item, "sha256")),
-             *role = json_string(&j, json_get(&j, item, "role"));
+    for (int item = files + 1; !error && item < j->tokens[files].next;
+         item = j->tokens[item].next) {
+        char *name = json_string(j, json_get(j, item, "name")),
+             *digest = json_string(j, json_get(j, item, "sha256")),
+             *role = json_string(j, json_get(j, item, "role"));
         size_t bytes = 0;
-        if (j.tokens[item].type != JT_OBJECT || !leaf(name) || !sha(digest) ||
-            !role || !json_uint(&j, json_get(&j, item, "bytes"), &bytes) ||
+        if (j->tokens[item].type != JT_OBJECT || !leaf(name) || !sha(digest) ||
+            !role || !json_uint(j, json_get(j, item, "bytes"), &bytes) ||
             !bytes || bytes > PACKAGE_MAX || total > PACKAGE_MAX - bytes)
             error = "invalid_model_package";
         for (size_t k = 0; !error && k < count; k++)
@@ -266,6 +268,7 @@ temporal_package_verify(int directory, const char *path, const char *pin,
             receipt->directory = before;
         error = control ? control(context) : NULL;
     }
+    free(j);
     free(body);
     return error;
 }

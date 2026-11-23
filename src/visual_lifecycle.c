@@ -27,8 +27,7 @@ struct SamosaVisualLifecycle {
     SamosaMmSupervisor *supervisor;
     SamosaMmSession *session;
     SamosaMmControl control;
-    const SamosaMmTrace *trace;
-    int directory, kernel, probe, attempted, qualified;
+    int directory, kernel, probe, attempted, qualified, model_verified;
     struct stat engine_receipt, anchor_receipt, kernel_receipt, probe_receipt;
     struct stat directory_receipt, model_receipts[VISION_FILES];
     TemporalPackageReceipt temporal;
@@ -83,6 +82,20 @@ static const char *verify_file(SamosaVisualLifecycle *h, int directory, const ch
     return error;
 }
 
+static int model_unchanged(SamosaVisualLifecycle *h) {
+    const SamosaVisualLifecycleConfig *c=&h->config;
+    if (c->profile==SAMOSA_VISUAL_MOLMO)
+        return temporal_package_unchanged(h->directory,c->model_directory,&h->temporal);
+    struct stat held,named;
+    if (fstat(h->directory,&held) || lstat(c->model_directory,&named) ||
+        !same_input(&h->directory_receipt,&held) || !same_input(&held,&named))
+        return 0;
+    for (size_t i=0;i<VISION_FILES;++i)
+        if (fstatat(h->directory,vision_files[i],&named,AT_SYMLINK_NOFOLLOW) ||
+            !same_input(&h->model_receipts[i],&named)) return 0;
+    return 1;
+}
+
 static const char *owned(void *context) {
     SamosaVisualLifecycle *h=context;
     const SamosaVisualLifecycleConfig *c=&h->config;
@@ -90,18 +103,8 @@ static const char *owned(void *context) {
         &h->engine_receipt,&h->anchor_receipt);
     if (error) return error;
     if (!activation_input_unchanged(h->kernel,c->kernel.path,&h->kernel_receipt) ||
-        !activation_input_unchanged(h->probe,c->probe.path,&h->probe_receipt))
+        !activation_input_unchanged(h->probe,c->probe.path,&h->probe_receipt) || !model_unchanged(h))
         return "provider_artifact_changed";
-    if (c->profile==SAMOSA_VISUAL_MOLMO)
-        return temporal_package_unchanged(h->directory,c->model_directory,&h->temporal)?
-            NULL:"provider_artifact_changed";
-    struct stat held,named;
-    if (fstat(h->directory,&held) || lstat(c->model_directory,&named) ||
-        !same_input(&h->directory_receipt,&held) || !same_input(&held,&named))
-        return "provider_artifact_changed";
-    for (size_t i=0;i<VISION_FILES;++i)
-        if (fstatat(h->directory,vision_files[i],&named,AT_SYMLINK_NOFOLLOW) ||
-            !same_input(&h->model_receipts[i],&named)) return "provider_artifact_changed";
     return NULL;
 }
 
@@ -117,16 +120,22 @@ static const char *verify_bundle(void *context, int engine, int anchor) {
     if (error) return error;
     h->directory=open(c->model_directory,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
     if (h->directory<0) return "artifact_unavailable";
-    if (fstat(h->directory,&h->directory_receipt) || !private_input(&h->directory_receipt))
+    struct stat directory;
+    if (fstat(h->directory,&directory) || !private_input(&directory))
         return "unsupported_artifact";
-    if (c->profile==SAMOSA_VISUAL_MOLMO)
-        return temporal_package_verify(h->directory,c->model_directory,c->anchor.sha256,interrupted,h,&h->temporal,0);
-    for (size_t i=0;i<VISION_FILES;++i) {
-        error=verify_file(h,h->directory,vision_files[i],&c->model_files[i],UINT64_C(8589934592),
-            NULL,&h->model_receipts[i]);
-        if (error) return error;
+    if (h->model_verified && model_unchanged(h)) return NULL;
+    h->model_verified=0;
+    h->directory_receipt=directory;
+    if (c->profile==SAMOSA_VISUAL_MOLMO) {
+        error=temporal_package_verify(h->directory,c->model_directory,c->anchor.sha256,interrupted,h,&h->temporal,0);
+    } else {
+        for (size_t i=0;!error&&i<VISION_FILES;++i)
+            error=verify_file(h,h->directory,vision_files[i],&c->model_files[i],UINT64_C(8589934592),
+                NULL,&h->model_receipts[i]);
     }
-    return NULL;
+    if (!error && !model_unchanged(h)) error="artifact_changed";
+    h->model_verified=error==NULL;
+    return error;
 }
 
 static const char *launch(void *context, const char *self, const char *argv, double lifetime, size_t limit,
@@ -172,12 +181,17 @@ static const char *qualify(void *context) {
     char text[4096]={0}, detail[SAMOSA_MM_ERROR_MAX]={0};
     int generated=0, ok;
     if (c->profile==SAMOSA_VISUAL_MOLMO)
-        ok=samosa_mm_molmo2_analyze_request(h->session,h->trace,file,NULL,0,"image",
+        ok=samosa_mm_molmo2_analyze_request(h->session,NULL,file,NULL,0,"image",
             c->probe_prompt,32,0,0,1,text,sizeof(text),NULL,&generated,NULL,NULL,NULL,detail,sizeof(detail));
     else
-        ok=samosa_mm_visionpsy_inspect(h->session,h->trace,file,c->probe_prompt,1536,32,
+        ok=samosa_mm_visionpsy_inspect(h->session,NULL,file,c->probe_prompt,1536,32,
             text,sizeof(text),NULL,&generated,detail,sizeof(detail));
     mm_session_probe_control(h->session,NULL);
+    if (!ok) {
+        const char *interruption=interrupted(h);
+        if (interruption) return interruption;
+        if (now_ms()>=bounded.deadline_ms) return "multimodal_deadline_exceeded";
+    }
     if (!ok || generated<=0) return "provider_qualification_failed";
     size_t expected=strlen(c->probe_expected);
     for (const char *p=text;*p;++p)
@@ -256,7 +270,6 @@ const char *samosa_visual_lifecycle_start(SamosaVisualLifecycle *h,SamosaMmSuper
     h->supervisor=supervisor;
     h->session=session;
     h->control=control?*control:(SamosaMmControl){0};
-    h->trace=trace;
     const SamosaVisualLifecycleConfig *c=&h->config;
     char *bundle=NULL;
     size_t bytes=0;
@@ -281,16 +294,19 @@ const char *samosa_visual_lifecycle_start(SamosaVisualLifecycle *h,SamosaMmSuper
         .verify_runtime=verify_bundle,.runtime_context=h,.bundle_identity=identity,.bundle_config=bundle,
         .launch=launch,.launch_context=h,.qualify=qualify,.qualification=h};
     h->attempted=1;
+    int molmo=c->profile==SAMOSA_VISUAL_MOLMO;
+    mm_visual_trace_start(molmo,trace,c->engine.path,c->model_directory);
     const char *error=activation_start(&activation,&h->activation);
     free(bundle);
     h->control=(SamosaMmControl){0};
-    h->trace=NULL;
     if (error) {
+        mm_visual_trace_failed(molmo,trace,error);
         const char *cleanup=samosa_visual_lifecycle_stop(h);
         return cleanup?cleanup:error;
     }
     h->qualified=1;
     mm_session_set_verifier(session,owned,h);
     mm_session_publish(session);
+    mm_visual_trace_ready(molmo,trace,session->pid);
     return NULL;
 }

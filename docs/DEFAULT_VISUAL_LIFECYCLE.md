@@ -31,8 +31,17 @@ Set "SAMOSA_VISUAL_ACTUAL_RECEIPT" to the output JSON path. The existing
 source pins and native inputs are recorded in the previous turn evidence.
 [Original native turn fixture](qualification/life07n-turn-control/README.md).
 
-The Mac installer builds this owner as part of the Inference archive.
-Gateway still calls the compatibility visual launch path. Its next
-integration needs release and model pins for both default specialists,
-a verified startup probe, and the existing turn and shutdown callbacks
-wired to the shared owner. Recovery after losing a guardian stays open.
+The Mac installer builds this owner as part of the Inference archive. In a
+versioned release, Gateway passes the manifest pins for the default runtime,
+MLX kernel and startup probe to the owner. VisionPsy receives model file pins
+from the release's verified catalog. Molmo receives a pin for its local
+native package manifest, which Inference checks against the full file
+inventory. Explicit executable overrides use the compatibility path.
+[Packaged startup probes](../assets/visual/README.md).
+
+The owner keeps a model verification receipt across lower-resolution
+retries. It can reuse the receipt only while the directory and each
+input retain their verified identity and metadata. A mismatch forces
+full digest verification before launch. Gateway forwards cancellation
+during preparation and uses the same turn and shutdown callbacks.
+Recovery after losing a guardian stays open.

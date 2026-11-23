@@ -28,8 +28,9 @@ typedef struct {
 } SamosaVisualLifecycleConfig;
 
 /* The owning thread serializes operations. Start takes a zeroed or closed
- * original protocol session. The configuration, supervisor and session
- * remain valid through stop and confirmed cleanup. A supplied start control
+ * original protocol session. Configuration backing storage stays valid and
+ * immutable through destroy. Supervisor and session remain valid through
+ * stop and confirmed cleanup. A supplied start control
  * and trace are borrowed through start's synchronous return. NULL denotes
  * success in lifecycle operations. */
 const char *samosa_visual_lifecycle_create(const SamosaVisualLifecycleConfig *, SamosaVisualLifecycle **);
