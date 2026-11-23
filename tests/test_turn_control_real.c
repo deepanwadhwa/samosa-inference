@@ -2,6 +2,11 @@
 #define _DARWIN_C_SOURCE
 #include <samosa_inference/turn_control.h>
 #include "../src/json.h"
+#ifdef SAMOSA_TEST_DEFAULT_VISUAL_LIFECYCLE
+#include <samosa_inference/visual_lifecycle.h>
+#include "../src/activation.h"
+#include "../src/sha256.h"
+#endif
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -19,6 +24,9 @@ static SamosaVisualTurnControl control;
 static const char *vision_engine,*vision_model,*molmo_engine,*molmo_model;
 static int selected;
 static SamosaMmSupervisor *host_supervisor;
+#ifdef SAMOSA_TEST_DEFAULT_VISUAL_LIFECYCLE
+static SamosaVisualLifecycle *owners[2];
+#endif
 static void failed(const char *expression,int line){fprintf(stderr,"FAIL actual %d: %s\n",line,expression);if(gate.state)samosa_visual_turn_release(&control,&turn);exit(1);}
 #define CHECK(x) do{if(!(x))failed(#x,__LINE__);}while(0)
 static int available(void *context,int provider){(void)context;return selected==provider;}
@@ -31,14 +39,111 @@ static long long now(void *context){(void)context;struct timespec t;CHECK(!clock
 static void sleep_ms(void *context,long ms){(void)context;struct timespec t={ms/1000,ms%1000*1000000};nanosleep(&t,NULL);}
 static SamosaVisionResourceBudget budget(void *context,int detail){(void)context;(void)detail;return turn.budget;}
 static SamosaVisionResourceBudget wait_memory(void *context,int detail,double gb,SamosaVisionResourceBudget initial){(void)context;(void)detail;(void)gb;return initial;}
-static int start_session(void *context,int provider,SamosaMmSession *s){(void)context;return provider==2?samosa_mm_molmo2_start(host_supervisor,s,NULL,molmo_engine,molmo_model,1):samosa_mm_visionpsy_start(host_supervisor,s,NULL,vision_engine,vision_model,1);}
-static void close_session(void *context,SamosaMmSession *s){(void)context;samosa_mm_visual_close(s,NULL);}
+static int start_session(void *context,int provider,SamosaMmSession *s){
+    (void)context;
+#ifdef SAMOSA_TEST_DEFAULT_VISUAL_LIFECYCLE
+    const char *error=samosa_visual_lifecycle_start(owners[provider-1],host_supervisor,s,NULL,NULL);
+    if (error) fprintf(stderr,"default visual activation: %s\n",error);
+    return !error && !samosa_visual_lifecycle_status(owners[provider-1]);
+#else
+    return provider==2?samosa_mm_molmo2_start(host_supervisor,s,NULL,molmo_engine,molmo_model,1):samosa_mm_visionpsy_start(host_supervisor,s,NULL,vision_engine,vision_model,1);
+#endif
+}
+static void close_session(void *context,SamosaMmSession *s){
+    (void)context;
+#ifdef SAMOSA_TEST_DEFAULT_VISUAL_LIFECYCLE
+    (void)s;
+    const char *error=samosa_visual_lifecycle_stop(owners[selected-1]);
+    if (error) { fprintf(stderr,"default visual stop: %s\n",error);exit(1); }
+#else
+    samosa_mm_visual_close(s,NULL);
+#endif
+}
 static int inspect(void *context,SamosaMmSession *s,const char *image,const char *prompt,int side,int tokens,char *out,size_t capacity,int *pt,int *gt,char *error,size_t ec){(void)context;return samosa_mm_visionpsy_inspect(s,NULL,image,prompt,side,tokens,out,capacity,pt,gt,error,ec);}
 static int analyze(void *context,SamosaMmSession *s,const char *image,const char *prompt,int tokens,char *out,size_t capacity,int *pt,int *gt,char *error,size_t ec){(void)context;return samosa_mm_molmo2_analyze_request(s,NULL,image,NULL,0,"image",prompt,tokens,0,0,1,out,capacity,pt,gt,NULL,NULL,NULL,error,ec);}
 static int start_visual(int provider){selected=provider;turn=(SamosaVisualTurn){.provider=provider,.budget={.admitted=1,.max_side_len=2048}};char error[96];return samosa_visual_turn_start(&control,&turn,error,sizeof(error));}
 static int gone(pid_t pid){for(int i=0;i<300;i++){if(kill(pid,0)<0&&errno==ESRCH)return 1;struct timespec t={0,10000000};nanosleep(&t,NULL);}return 0;}
 static void closed(SamosaMmSupervisor *supervisor){pid_t pid=session.pid;samosa_visual_turn_release(&control,&turn);SamosaTurnStatus status=samosa_turn_status(&gate);CHECK(gone(pid)&&!samosa_mm_supervisor_is_active(supervisor,NULL,0)&&!status.specialist_active&&!status.generating);}
 static void copy_image(const char *source,const char *destination){int in=open(source,O_RDONLY|O_NOFOLLOW),out=open(destination,O_CREAT|O_EXCL|O_WRONLY,0600);CHECK(in>=0&&out>=0);char bytes[4096];for(;;){ssize_t n=read(in,bytes,sizeof(bytes));CHECK(n>=0);if(!n)break;size_t done=0;while(done<(size_t)n){ssize_t wrote=write(out,bytes+done,(size_t)n-done);CHECK(wrote>0);done+=(size_t)wrote;}}CHECK(!close(in)&&!close(out));}
+
+#ifdef SAMOSA_TEST_DEFAULT_VISUAL_LIFECYCLE
+typedef struct {
+    char paths[10][4096], digest[10][65], state[4096];
+    SamosaVisualInput model[6];
+    SamosaVisualLifecycleConfig config;
+} NativePins;
+
+static SamosaVisualInput pin(NativePins *pins, int index) {
+    const char *file=pins->paths[index];
+    int fd=open(file,O_RDONLY|O_NOFOLLOW);
+    struct stat st;
+    CHECK(fd>=0 && !fstat(fd,&st) && st.st_size>0);
+    Sha256 hash;
+    sha256_init(&hash);
+    unsigned char bytes[65536], digest[32];
+    for (;;) {
+        ssize_t n=read(fd,bytes,sizeof(bytes));
+        if (n<0&&errno==EINTR) continue;
+        CHECK(n>=0);
+        if (!n) break;
+        sha256_update(&hash,bytes,(size_t)n);
+    }
+    CHECK(!close(fd));
+    sha256_final(&hash,digest);
+    sha256_hex(digest,pins->digest[index]);
+    return (SamosaVisualInput){file,pins->digest[index],(uint64_t)st.st_size};
+}
+
+static void prepare(NativePins *pins, const char *root, int provider,
+                    const char *engine,const char *model,const char *probe) {
+    CHECK(snprintf(pins->state,sizeof(pins->state),"%s/activation-%d",root,provider)<(int)sizeof(pins->state));
+    CHECK(snprintf(pins->paths[0],sizeof(pins->paths[0]),"%s",engine)<(int)sizeof(pins->paths[0]));
+    const char *leaf=strrchr(engine,'/');
+    CHECK(leaf);
+    CHECK(snprintf(pins->paths[1],sizeof(pins->paths[1]),"%.*s/mlx.metallib",(int)(leaf-engine),engine)<(int)sizeof(pins->paths[1]));
+    CHECK(snprintf(pins->paths[2],sizeof(pins->paths[2]),"%s/%s",model,provider==2?"manifest.json":"config.json")<(int)sizeof(pins->paths[2]));
+    CHECK(snprintf(pins->paths[3],sizeof(pins->paths[3]),"%s/probe-%d.ppm",root,provider)<(int)sizeof(pins->paths[3]));
+    copy_image(probe,pins->paths[3]);
+    pins->config=(SamosaVisualLifecycleConfig){
+        .profile=provider,.state=pins->state,.model_directory=model,
+        .engine=pin(pins,0),.kernel=pin(pins,1),.anchor=pin(pins,2),.probe=pin(pins,3),
+        .probe_prompt=provider==2?"Describe the color.":"Read the large heading on this page. Answer briefly.",
+        .probe_expected=provider==2?"red":"hello"
+    };
+    if (provider==1) {
+        const char *names[]={"model.safetensors","tokenizer.json","preprocessor_config.json",
+            "processor_config.json","tokenizer_config.json","chat_template.jinja"};
+        for (size_t i=0;i<6;++i) {
+            CHECK(snprintf(pins->paths[i+4],sizeof(pins->paths[i+4]),"%s/%s",model,names[i])<(int)sizeof(pins->paths[i+4]));
+            pins->model[i]=pin(pins,(int)i+4);
+        }
+        pins->config.model_files=pins->model;
+        pins->config.model_file_count=6;
+    }
+    CHECK(!samosa_visual_lifecycle_create(&pins->config,&owners[provider-1]));
+    CHECK(samosa_visual_lifecycle_status(owners[provider-1]));
+}
+
+static char *last_good(const char *state) {
+    char *body=NULL;
+    size_t size=0;
+    FILE *out=open_memstream(&body,&size);
+    CHECK(out && !activation_get(state,out) && !fclose(out));
+    CHECK(strstr(body,"\"revision\":1") && strstr(body,"\"live_readiness\":\"unobserved\""));
+    return body;
+}
+
+static void close_state(NativePins *pins) {
+    const char *files[]={"activation.sqlite3","residency.lock"};
+    for (size_t i=0;i<2;++i) {
+        char file[4096];
+        CHECK(snprintf(file,sizeof(file),"%s/%s",pins->state,files[i])<(int)sizeof(file));
+        CHECK(!unlink(file));
+    }
+    CHECK(!rmdir(pins->state) && !unlink(pins->paths[3]));
+}
+#endif
+
 int main(int argc,char **argv){
 #ifndef SAMOSA_SPECIALIST_LEGACY
     int dispatch=samosa_mm_process_dispatch(argc,argv);if(dispatch>=0)return dispatch;
@@ -47,6 +152,13 @@ int main(int argc,char **argv){
     char heading[2048],red[2048],blue[2048];CHECK(snprintf(heading,sizeof(heading),"%s/hello.ppm",argv[5])<(int)sizeof(heading)&&snprintf(red,sizeof(red),"%s/red.ppm",argv[5])<(int)sizeof(red)&&snprintf(blue,sizeof(blue),"%s/blue.ppm",argv[5])<(int)sizeof(blue));
     SamosaMmSupervisor supervisor;CHECK(samosa_mm_supervisor_init(&supervisor));CHECK(samosa_turn_gate_init(&gate));host_supervisor=&supervisor;
     vision_engine=argv[1];vision_model=argv[2];molmo_engine=argv[3];molmo_model=argv[4];
+#ifdef SAMOSA_TEST_DEFAULT_VISUAL_LIFECYCLE
+    static NativePins verified[2];
+    char state[]="/tmp/samosa-default-visual-XXXXXX";
+    CHECK(mkdtemp(state));
+    prepare(&verified[0],state,1,vision_engine,vision_model,heading);
+    prepare(&verified[1],state,2,molmo_engine,molmo_model,red);
+#endif
     control=(SamosaVisualTurnControl){&gate,available,required,total,primary,stop,primary,primary,stopping,now,sleep_ms,budget,wait_memory,start_session,close_session,inspect,analyze,NULL};
     CHECK(start_visual(1));
     const char *input=heading;
@@ -64,6 +176,22 @@ int main(int argc,char **argv){
     char lower[65536];snprintf(lower,sizeof(lower),"%s",observation);for(char *p=lower;*p;p++)*p=(char)tolower((unsigned char)*p);if(tier)CHECK(strstr(lower,"hello")&&generated_tokens>0);else CHECK(observation[0]&&generated_tokens>0);
     }
     closed(&supervisor);
+#ifdef SAMOSA_TEST_DEFAULT_VISUAL_LIFECYCLE
+    char *previous_activation=last_good(verified[0].state);
+    SamosaVisualLifecycleConfig rejected=verified[0].config;
+    rejected.probe_expected="introuvable 548021";
+    SamosaVisualLifecycle *candidate=NULL;
+    SamosaMmSession candidate_session={0};
+    CHECK(!samosa_visual_lifecycle_create(&rejected,&candidate));
+    const char *rejection=samosa_visual_lifecycle_start(candidate,&supervisor,&candidate_session,NULL,NULL);
+    CHECK(rejection && !strcmp(rejection,"provider_qualification_failed"));
+    CHECK(!samosa_mm_supervisor_is_active(&supervisor,NULL,0));
+    CHECK(!samosa_visual_lifecycle_destroy(candidate));
+    char *unchanged=last_good(verified[0].state);
+    CHECK(!strcmp(unchanged,previous_activation));
+    free(unchanged);
+    free(previous_activation);
+#endif
 #ifndef SAMOSA_SPECIALIST_LEGACY
     CHECK(access(owned,F_OK)<0&&errno==ENOENT);CHECK(access(prepared,F_OK)<0&&errno==ENOENT);CHECK(!rmdir(temporary));
 #endif
@@ -81,5 +209,23 @@ int main(int argc,char **argv){
         if(i==2)CHECK(count==2);
         if(i==3)CHECK(frames>0&&frames<=2&&duration>0);
     }
-    closed(&supervisor);samosa_mm_supervisor_destroy(&supervisor);samosa_turn_gate_destroy(&gate);CHECK(fputs("}\n",record)>=0&&!fclose(record));puts("PASS actual extracted turn coordinator: native1536 heading,2048 execution, changed image/joint/native video and actual PID/group close");return 0;
+#ifdef SAMOSA_TEST_DEFAULT_VISUAL_LIFECYCLE
+    CHECK(!chmod(verified[1].paths[3],0400));
+    const char *stale=samosa_visual_lifecycle_status(owners[1]);
+    CHECK(stale && !strcmp(stale,"provider_artifact_changed"));
+    char *raw=NULL;size_t size=0;
+    CHECK(!samosa_mm_session_request(&session,"{}",2,&raw,&size,error,sizeof(error)) &&
+        !raw && !size && !strcmp(error,"provider_artifact_changed"));
+#endif
+    closed(&supervisor);samosa_mm_supervisor_destroy(&supervisor);samosa_turn_gate_destroy(&gate);CHECK(fputs("}\n",record)>=0&&!fclose(record));
+#ifdef SAMOSA_TEST_DEFAULT_VISUAL_LIFECYCLE
+    for (int i=0;i<2;++i) {
+        CHECK(samosa_visual_lifecycle_status(owners[i]));
+        CHECK(!samosa_visual_lifecycle_destroy(owners[i]));
+        close_state(&verified[i]);
+    }
+    CHECK(!rmdir(state));
+    puts("PASS both actual default visual activation paths: readiness, unchanged last good, stale refusal and stop");
+#endif
+    puts("PASS actual extracted turn coordinator: native1536 heading,2048 execution, changed image/joint/native video and actual PID/group close");return 0;
 }

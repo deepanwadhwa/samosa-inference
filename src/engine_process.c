@@ -85,7 +85,8 @@ static void server_term(pid_t child) {
     }
 }
 int engine_guardian_dispatch(int argc,char **argv) {
-    int specialist=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-specialist");
+    int leased_specialist=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-specialist-leased");
+    int specialist=leased_specialist||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-specialist"));
     int leased_command=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-command-leased");
     int command_profile=leased_command||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-command"));
     int server=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-server");
@@ -114,6 +115,7 @@ int engine_guardian_dispatch(int argc,char **argv) {
     if(server&&(argc!=7||strcmp(argv[5],argv[0])||strcmp(argv[6],"--inference-primary-backend")||
        fcntl(9,F_GETFD)<0||fcntl(9,F_SETFD,0)||!cloexec(10)||!cloexec(11)))return 2;
     if(bound&&(fcntl(5,F_GETFL)<0||(fcntl(5,F_GETFL)&O_ACCMODE)!=O_RDONLY||fcntl(5,F_SETFD,0)))return 2;
+    if(leased_specialist&&!cloexec(5))return 2;
     if(workspace&&!cloexec(6))return 2;
     if(captured){struct stat result;
         if(!cloexec(8)||fstat(8,&result)||!S_ISREG(result.st_mode)||result.st_uid!=geteuid()||
@@ -224,7 +226,7 @@ int engine_guardian_dispatch(int argc,char **argv) {
     finish_child(child);close(output[0]);if(capture[0]>=0)close(capture[0]);if(captured)close(8);close(3);
     if(workspace){clean_workspace(argv[4]);close(6);}
     if(leased)close(4);
-    if(bound)close(5);
+    if(bound||leased_specialist)close(5);
     if(!server&&!command_profile&&!specialist){fprintf(stdout,"%s\n",reason);fflush(stdout);}
     return !strcmp(reason,"stopped") || (exited&&!strcmp(reason,"completed"))?0:1;
 }
@@ -255,7 +257,7 @@ static const char *start(const char *self,const char *argv_json,double lifetime,
     char *args[39]={0};int first=sized?6:(workspace||server)?5:4,count=first;char seconds[32],bytes[32],result_bytes[32];
     snprintf(result_bytes,sizeof(result_bytes),"%zu",result_limit);
     snprintf(seconds,sizeof(seconds),"%.6f",lifetime);snprintf(bytes,sizeof(bytes),"%zu",limit);
-    args[0]=(char*)self;args[1]=transport==6?"--inference-owned-engine-workspace-uncapped":specialist?"--inference-owned-engine-specialist":command_profile?(residency>=0?"--inference-owned-engine-command-leased":"--inference-owned-engine-command"):server?"--inference-owned-engine-server":duplex?(workspace?"--inference-owned-engine-workspace-duplex":"--inference-owned-engine-duplex"):captured?"--inference-owned-engine-workspace-captured":sized?"--inference-owned-engine-protocol-sized":input>=0?"--inference-owned-engine-protocol":workspace?"--inference-owned-engine-workspace":model>=0?"--inference-owned-engine-bound":residency>=0?"--inference-owned-engine-leased":"--inference-owned-engine";args[2]=seconds;args[3]=bytes;if(workspace)args[4]=(char*)workspace;if(server)args[4]=(char*)server->marker;if(sized)args[5]=result_bytes;
+    args[0]=(char*)self;args[1]=transport==6?"--inference-owned-engine-workspace-uncapped":specialist?(model>=0?"--inference-owned-engine-specialist-leased":"--inference-owned-engine-specialist"):command_profile?(residency>=0?"--inference-owned-engine-command-leased":"--inference-owned-engine-command"):server?"--inference-owned-engine-server":duplex?(workspace?"--inference-owned-engine-workspace-duplex":"--inference-owned-engine-duplex"):captured?"--inference-owned-engine-workspace-captured":sized?"--inference-owned-engine-protocol-sized":input>=0?"--inference-owned-engine-protocol":workspace?"--inference-owned-engine-workspace":model>=0?"--inference-owned-engine-bound":residency>=0?"--inference-owned-engine-leased":"--inference-owned-engine";args[2]=seconds;args[3]=bytes;if(workspace)args[4]=(char*)workspace;if(server)args[4]=(char*)server->marker;if(sized)args[5]=result_bytes;
     const char *error=NULL;
     for(int t=1;t<j.tokens[0].next;t=j.tokens[t].next){args[count]=json_string(&j,t);
         if(!args[count]||strlen(args[count])>4096){error="invalid_engine_configuration";break;}count++;}
@@ -319,7 +321,7 @@ static const char *start(const char *self,const char *argv_json,double lifetime,
         if(now<0 || !line(p->response,reply,now+2))error="engine_exec_failed";
         else if(server||command_profile||specialist){char *end=NULL;long pid=!strncmp(reply,"started:",8)?strtol(reply+8,&end,10):0;
             if(pid<=1||pid>INT32_MAX||!end||*end){
-                if(command_profile&&residency>=0&&!strcmp(reply,"exec_failed"))
+                if(((command_profile&&residency>=0)||(specialist&&model>=0))&&!strcmp(reply,"exec_failed"))
                     snprintf(p->reason,sizeof(p->reason),"engine_failed");
                 error="engine_exec_failed";
             }else p->engine=(pid_t)pid;
@@ -409,15 +411,15 @@ const char *engine_process_start_command(const char *self,const char *argv,const
        retained.st_dev!=named.st_dev||retained.st_ino!=named.st_ino)return "invalid_engine_configuration";
     return start(self,argv,lifetime,1,residency,-1,workspace,directory,-1,-1,0,4,NULL,p);
 }
-const char *engine_process_start_specialist(const char *self,const char *argv,int input,int output,int error_fd,const char *workspace,int directory,EngineProcess *p) {
+const char *engine_process_start_specialist(const char *self,const char *argv,int input,int output,int error_fd,const char *workspace,int directory,int lease,EngineProcess *p) {
     if(!p)return "invalid_engine_configuration";
     *p=(EngineProcess){.guardian=-1,.control=-1,.response=-1};
     struct stat retained,named;
     if(!workspace||workspace[0]!='/'||directory<0||fstat(directory,&retained)||lstat(workspace,&named)||!S_ISDIR(retained.st_mode)||retained.st_uid!=geteuid()||(retained.st_mode&077)||retained.st_dev!=named.st_dev||retained.st_ino!=named.st_ino)return "invalid_engine_configuration";
     if(error_fd<0||!fifo_mode(input,O_RDONLY)||!fifo_mode(output,O_WRONLY))return "invalid_engine_configuration";
-    /* Reuse retained-descriptor plumbing: FD4 is inherited stderr in this
-     * compatibility profile, not a claim of global residency admission. */
-    return start(self,argv,0,1,error_fd,-1,workspace,directory,input,output,0,5,NULL,p);
+    /* FD4 remains inherited stderr. Managed sessions retain FD5 as the
+     * activation lease without changing the worker's original arguments. */
+    return start(self,argv,0,1,error_fd,lease,workspace,directory,input,output,0,5,NULL,p);
 }
 int engine_process_running(EngineProcess *p) {
     if(p->guardian<=0||p->terminal||p->reason[0])return 0;

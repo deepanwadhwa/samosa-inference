@@ -60,7 +60,7 @@ const char *engine_process_start_command(const char *,const char *,const char *,
  * unlimited process lifetime; caller retains existing frame/request/grace bounds.
  * Guardian reserves actual PID/group until acknowledgement and closes its spare
  * protocol descriptors. No model lease/residency policy is invented here. */
-const char *engine_process_start_specialist(const char *,const char *,int,int,int,const char *,int,EngineProcess *);
+const char *engine_process_start_specialist(const char *,const char *,int,int,int,const char *,int,int,EngineProcess *);
 /* Original self-executable discovery; caller supplies PATH_MAX bytes. */
 int engine_process_executable(char *);
 /* Nonblocking terminal observation; server identity stays reserved until stop. */

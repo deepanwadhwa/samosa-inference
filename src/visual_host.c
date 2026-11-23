@@ -31,21 +31,16 @@ static const char *assets(VisualHost *h,const InferenceConfig *cfg,int recheck) 
 static const char *owned(VisualHost *h) {
     const char *error=activation_owned_status(&h->activation,h->state,engine_path(h),h->anchor,
                                               &h->engine_before,&h->anchor_before);
+    if(error)return error;
+    if(h->temporal)return temporal_package_unchanged(h->model,model_path(h),&h->temporal_receipt)?
+        NULL:"provider_artifact_changed";
     struct stat held,named;
-    const struct stat *expected=h->temporal?&h->temporal_receipt.directory:&h->image_receipt.directory;
-    if(!error&&(fstat(h->model,&held)||lstat(model_path(h),&named)||
-       !visual_same_receipt(&held,expected)||!visual_same_receipt(&held,&named)))error="provider_artifact_changed";
-    if(!error&&h->temporal){
-        if(fstatat(h->model,"manifest.json",&named,AT_SYMLINK_NOFOLLOW)||
-           !visual_same_receipt(&named,&h->temporal_receipt.manifest))error="provider_artifact_changed";
-        for(size_t i=0;!error&&i<h->temporal_receipt.count;i++)
-            if(fstatat(h->model,h->temporal_receipt.files[i].name,&named,AT_SYMLINK_NOFOLLOW)||
-               !visual_same_receipt(&named,&h->temporal_receipt.files[i].identity))error="provider_artifact_changed";
-    }else if(!error){
-        const char *names[]={"config.json","tokenizer.json","model.safetensors"};
-        for(size_t i=0;!error&&i<3;i++)if(fstatat(h->model,names[i],&named,AT_SYMLINK_NOFOLLOW)||
-            !visual_same_receipt(&named,&h->image_receipt.files[i]))error="provider_artifact_changed";
-    }
+    if(fstat(h->model,&held)||lstat(model_path(h),&named)||
+       !visual_same_receipt(&held,&h->image_receipt.directory)||!visual_same_receipt(&held,&named))
+        return "provider_artifact_changed";
+    const char *names[]={"config.json","tokenizer.json","model.safetensors"};
+    for(size_t i=0;!error&&i<3;i++)if(fstatat(h->model,names[i],&named,AT_SYMLINK_NOFOLLOW)||
+        !visual_same_receipt(&named,&h->image_receipt.files[i]))error="provider_artifact_changed";
     return error;
 }
 const char *visual_host_status(void *context) {

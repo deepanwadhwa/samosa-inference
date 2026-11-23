@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
 #include <samosa_inference/specialist_protocol.h>
+#include "specialist_supervisor_internal.h"
 /* Reuse the existing engine's original Chat JSON parser. */
 #include "../engines/json.h"
 #include <math.h>
@@ -311,6 +312,19 @@ int samosa_mm_visionpsy_inspect(SamosaMmSession *s, const SamosaMmTrace *trace, 
 }
 
 /* Existing gateway visual launch profiles; caller supplies selection policy. */
+SamosaMmProvider mm_visual_profile(int molmo, const char *engine, const char *model) {
+    return (SamosaMmProvider){
+        .provider = molmo ? "molmo2_4b" : "visionpsy_nano_460m",
+        .executable = engine,
+        .model_dir = model,
+        .protocol = molmo ? SAMOSA_MM_PROTOCOL_JSON_FRAME_V1 : SAMOSA_MM_PROTOCOL_JSON_LINE,
+        .ready_timeout_ms = molmo ? 90000 : 20000,
+        .request_timeout_ms = molmo ? 600000 : 120000,
+        .shutdown_grace_ms = molmo ? 3000 : 2000,
+        .max_frame_bytes = molmo ? 1024 * 1024 : 65536
+    };
+}
+
 int samosa_mm_visionpsy_start(SamosaMmSupervisor *supervisor, SamosaMmSession *s,
                              const SamosaMmTrace *trace, const char *engine,
                              const char *model, int available) {
@@ -324,16 +338,7 @@ int samosa_mm_visionpsy_start(SamosaMmSupervisor *supervisor, SamosaMmSession *s
         text_add(&start_fields, ",\"model_path\":") && text_json_string(&start_fields, model))
         protocol_trace_event(trace, "visionpsy_starting", start_fields.data);
     free(start_fields.data);
-    SamosaMmProvider provider = {
-        .provider = "visionpsy_nano_460m",
-        .executable = engine,
-        .model_dir = model,
-        .protocol = SAMOSA_MM_PROTOCOL_JSON_LINE,
-        .ready_timeout_ms = 20000,
-        .request_timeout_ms = 120000,
-        .shutdown_grace_ms = 2000,
-        .max_frame_bytes = 65536
-    };
+    SamosaMmProvider provider = mm_visual_profile(0, engine, model);
     char error_code[SAMOSA_MM_ERROR_MAX] = {0};
     if (!samosa_mm_session_start(supervisor, &provider, s,
                                  error_code, sizeof(error_code))) {
@@ -356,16 +361,7 @@ int samosa_mm_molmo2_start(SamosaMmSupervisor *supervisor, SamosaMmSession *s,
                            const SamosaMmTrace *trace, const char *engine,
                            const char *model, int available) {
     if (!s || !available) return 0;
-    SamosaMmProvider provider = {
-        .provider = "molmo2_4b",
-        .executable = engine,
-        .model_dir = model,
-        .protocol = SAMOSA_MM_PROTOCOL_JSON_FRAME_V1,
-        .ready_timeout_ms = 90000,
-        .request_timeout_ms = 600000,
-        .shutdown_grace_ms = 3000,
-        .max_frame_bytes = 1024 * 1024
-    };
+    SamosaMmProvider provider = mm_visual_profile(1, engine, model);
     protocol_trace_event(trace, "molmo2_starting",
                           "\"provider\":\"molmo2_4b\",\"protocol\":\"framed_v1\"");
     char error_code[SAMOSA_MM_ERROR_MAX] = {0};

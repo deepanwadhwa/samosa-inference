@@ -20,4 +20,5 @@ const char *temporal_package_verify(int, const char *, const char *,
                                     const char *(*)(void *), void *,
                                     TemporalPackageReceipt *, int);
 void temporal_package_identity(const char *, char[65]);
+int temporal_package_unchanged(int, const char *, const TemporalPackageReceipt *);
 #endif

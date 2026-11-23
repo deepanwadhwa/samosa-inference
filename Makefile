@@ -1057,9 +1057,9 @@ sanitize-summary-process: build/fake-native-summarizer | build
 	./build/test-summary-process-sanitize $(abspath build/fake-native-summarizer)
 test: test-summary-process
 sanitize: sanitize-summary-process
-build/specialist-supervisor.o: src/specialist_supervisor.c src/engine_process.h src/json.h src/controlled_pipe.h include/samosa_inference/specialist_supervisor.h | build
+build/specialist-supervisor.o: src/specialist_supervisor.c src/specialist_supervisor_internal.h src/engine_process.h src/json.h src/controlled_pipe.h include/samosa_inference/specialist_supervisor.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
-build/specialist-protocol.o: src/specialist_protocol.c engines/json.h include/samosa_inference/specialist_protocol.h include/samosa_inference/specialist_supervisor.h | build
+build/specialist-protocol.o: src/specialist_protocol.c src/specialist_supervisor_internal.h engines/json.h include/samosa_inference/specialist_protocol.h include/samosa_inference/specialist_supervisor.h | build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -c $< -o $@
 .PHONY: test-specialist-protocol sanitize-specialist-protocol
 build/test-specialist-protocol: tests/test_specialist_protocol.c include/samosa_inference/specialist_protocol.h build/libsamosa-inference-specialist.a
@@ -1330,8 +1330,8 @@ sanitize-backend-lifecycle: build/test-backend-lifecycle-sanitize build/test-bac
 test-native: test-backend-lifecycle
 sanitize-native: sanitize-backend-lifecycle
 
-PRIMARY_HOST_SOURCES = src/whisper_activation.c src/whisper_lifecycle.c src/primary_host.c src/activation.c src/artifact.c $(LIBRARY_RUNTIME_SOURCES)
-PRIMARY_HOST_HEADERS = src/whisper_activation.h src/whisper_audio.h src/whisper_process_internal.h include/samosa_inference/whisper_lifecycle.h include/samosa_inference/whisper_process.h include/samosa_inference/primary_host.h src/backend_process_internal.h src/activation.h src/input_identity.h src/artifact.h $(LIBRARY_RUNTIME_HEADERS)
+PRIMARY_HOST_SOURCES = src/visual_lifecycle.c src/temporal_package.c src/whisper_activation.c src/whisper_lifecycle.c src/primary_host.c src/activation.c src/artifact.c $(LIBRARY_RUNTIME_SOURCES)
+PRIMARY_HOST_HEADERS = src/specialist_supervisor_internal.h src/temporal_package.h include/samosa_inference/visual_lifecycle.h src/whisper_activation.h src/whisper_audio.h src/whisper_process_internal.h include/samosa_inference/whisper_lifecycle.h include/samosa_inference/whisper_process.h include/samosa_inference/primary_host.h src/backend_process_internal.h src/activation.h src/input_identity.h src/artifact.h $(LIBRARY_RUNTIME_HEADERS)
 .PHONY: primary-host test-primary-host sanitize-primary-host
 primary-host: build/libsamosa-inference-primary.a
 PRIMARY_HOST_OBJECTS = $(patsubst src/%.c,build/primary-%.o,$(PRIMARY_HOST_SOURCES))
@@ -1352,3 +1352,8 @@ build/test-whisper-lifecycle-actual: tests/test_whisper_lifecycle.c tests/whispe
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude -Isrc $< build/libsamosa-inference-primary.a $(LIBS) -o $@
 build/test-whisper-lifecycle-actual-sanitize: tests/test_whisper_lifecycle.c tests/whisper_fixture.h $(PRIMARY_HOST_HEADERS) src/whisper_activation.c src/whisper_lifecycle.c src/whisper_process.c src/engine_process.c src/activation.c src/artifact.c src/engine_runtime.c | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $(filter %.c,$^) $(LIBS) -o $@
+
+build/test-default-visual-lifecycle-real: tests/test_turn_control_real.c $(PRIMARY_HOST_HEADERS) build/libsamosa-inference-primary.a | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -DSAMOSA_TEST_DEFAULT_VISUAL_LIFECYCLE -Iinclude -Isrc $< build/libsamosa-inference-primary.a $(LIBS) -o $@
+build/test-default-visual-lifecycle-real-sanitize: tests/test_turn_control_real.c $(PRIMARY_HOST_HEADERS) src/visual_lifecycle.c src/temporal_package.c src/activation.c src/artifact.c src/engine_runtime.c src/engine_process.c src/specialist_supervisor.c src/specialist_protocol.c src/turn_control.c src/vision_budget.c | build
+	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -DSAMOSA_TEST_DEFAULT_VISUAL_LIFECYCLE -Iinclude -Isrc -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $(filter %.c,$^) $(LIBS) -o $@

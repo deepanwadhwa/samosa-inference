@@ -2,6 +2,7 @@
 #define _DARWIN_C_SOURCE
 
 #include <samosa_inference/specialist_supervisor.h>
+#include "specialist_supervisor_internal.h"
 
 #include "controlled_pipe.h"
 #include "engine_process.h"
@@ -195,9 +196,27 @@ static void mm_supervisor_release(SamosaMmSession *session) {
     pthread_mutex_unlock(&supervisor->mutex);
 }
 
-typedef struct {EngineProcess process;int closing,directory,created;char workspace[PATH_MAX];} MmGuard;
+void mm_session_publish(SamosaMmSession *session) {
+    SamosaMmSupervisor *supervisor=session->supervisor;
+    pthread_mutex_lock(&supervisor->mutex);
+    if (supervisor->generation==session->generation) {
+        supervisor->active_pid=session->pid;
+        supervisor->active_pgid=session->pgid;
+        supervisor->reserved=0;
+    }
+    pthread_mutex_unlock(&supervisor->mutex);
+}
+
+typedef struct {
+    EngineProcess local_process, *process;
+    int closing,directory,created;
+    char workspace[PATH_MAX];
+    const char *(*verify)(void *);
+    void *verify_context;
+    SamosaMmControl probe_control;
+} MmGuard;
 static void mm_wait_engine(MmGuard *guard,long long deadline) {
-    while(mm_now_ms()<deadline&&engine_process_running(&guard->process)){
+    while(mm_now_ms()<deadline&&engine_process_running(guard->process)){
         struct timespec pause={0,20000000};nanosleep(&pause,NULL);
     }
 }
@@ -214,9 +233,9 @@ static const char *mm_guard_close(SamosaMmSession *session) {
         if(graceful)mm_wait_engine(guard,mm_now_ms()+session->shutdown_grace_ms);
         /* Guardian reserves the leader until acknowledgement. Keep the original
          * grace/TERM750ms/KILL sequence and finish helpers before releasing it. */
-        if(session->pid>1&&engine_process_running(&guard->process)){
+        if(session->pid>1&&engine_process_running(guard->process)){
             (void)kill(-session->pid,SIGTERM);mm_wait_engine(guard,mm_now_ms()+750);
-            if(engine_process_running(&guard->process))(void)kill(-session->pid,SIGKILL);
+            if(engine_process_running(guard->process))(void)kill(-session->pid,SIGKILL);
         }
         session->active=0;
         /* Withdraw signal publication while identity is still reserved, but
@@ -226,9 +245,10 @@ static const char *mm_guard_close(SamosaMmSession *session) {
         if(supervisor->generation==session->generation){supervisor->active_pid=supervisor->active_pgid=0;supervisor->reserved=1;}
         pthread_mutex_unlock(&supervisor->mutex);
     }
-    const char *error=engine_process_stop(&guard->process);
+    const char *error=engine_process_stop(guard->process);
     if(error&&!strcmp(error,"engine_shutdown_pending"))return error;
-    if(error&&!strcmp(error,"engine_guardian_failed")&&session->pid>0)return error;
+    if(error&&!strcmp(error,"engine_guardian_failed")&&
+       (session->pid>0||guard->process!=&guard->local_process))return error;
     if(guard->directory>=0){
         struct stat retained,named;
         if(guard->created&&!fstat(guard->directory,&retained)&&!lstat(guard->workspace,&named)&&
@@ -254,6 +274,7 @@ static int mm_session_start(SamosaMmSupervisor *supervisor,
                             const SamosaMmProvider *provider,
                             SamosaMmSession *session,
                             const SamosaMmLifecycle *lifecycle, const SamosaMmControl *control,
+                            EngineProcess *admitted, int lease,
                             char *error_code, size_t error_cap) {
     if (!supervisor || !provider || !session || !provider->provider ||
         !provider->executable || !provider->model_dir) {
@@ -326,7 +347,7 @@ static int mm_session_start(SamosaMmSupervisor *supervisor,
         int all[]={in_pipe[0],in_pipe[1],out_pipe[0],out_pipe[1]};int prepared=1;
         for(size_t i=0;i<4;i++)if(fcntl(all[i],F_SETFD,FD_CLOEXEC))prepared=0;
         MmGuard *guard=prepared?calloc(1,sizeof(*guard)):NULL;
-        if(guard){guard->directory=-1;
+        if(guard){guard->directory=-1;guard->process=admitted?admitted:&guard->local_process;
             snprintf(guard->workspace,sizeof(guard->workspace),"/tmp/samosa-inference-specialist-XXXXXX");
             guard->created=mkdtemp(guard->workspace)!=NULL;
             if(guard->created)guard->directory=open(guard->workspace,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
@@ -335,21 +356,22 @@ static int mm_session_start(SamosaMmSupervisor *supervisor,
         char self[PATH_MAX],*command=NULL;size_t bytes=0;
         FILE *encoded=prepared&&engine_process_executable(self)?open_memstream(&command,&bytes):NULL;
         if(encoded){fputc('[',encoded);json_quote(encoded,provider->executable,strlen(provider->executable));fputc(',',encoded);json_quote(encoded,provider->model_dir,strlen(provider->model_dir));fputc(']',encoded);prepared=!fclose(encoded);}else prepared=0;
-        if(guard)guard->process=(EngineProcess){.guardian=-1,.control=-1,.response=-1};
-        const char *error=prepared?engine_process_start_specialist(self,command,in_pipe[0],out_pipe[1],inherited_error,guard->workspace,guard->directory,&guard->process):"engine_io_failed";
+        if(guard)*guard->process=(EngineProcess){.guardian=-1,.control=-1,.response=-1};
+        const char *error=prepared?engine_process_start_specialist(self,command,in_pipe[0],out_pipe[1],
+            inherited_error,guard->workspace,guard->directory,lease,guard->process):"engine_io_failed";
         free(command);close(in_pipe[0]);close(out_pipe[1]);close(inherited_error);
         session->in_fd=in_pipe[1];session->out_fd=out_pipe[0];session->guardian=guard;
         if(error){
             if(!guard){close(session->in_fd);close(session->out_fd);session->in_fd=session->out_fd=-1;mm_supervisor_release(session);session->supervisor=NULL;}
+            else if(admitted)(void)samosa_mm_session_close_owned(session);
             else samosa_mm_session_close(session);
             mm_error(error_code,error_cap,!strcmp(error,"engine_exec_failed")?"multimodal_readiness_failed":"multimodal_fork_failed");return 0;
         }
-        session->pid=session->pgid=guard->process.engine;
+        session->pid=session->pgid=guard->process->engine;
         (void)mm_set_nonblock(session->in_fd);(void)mm_set_nonblock(session->out_fd);
-        pthread_mutex_lock(&supervisor->mutex);
-        if(supervisor->generation==session->generation){supervisor->active_pid=session->pid;supervisor->active_pgid=session->pgid;supervisor->reserved=0;}
-        pthread_mutex_unlock(&supervisor->mutex);
-
+        /* Activation can roll back and reap before its caller returns.
+         * Publish the PID only after a verified turn is committed. */
+        if (!admitted) mm_session_publish(session);
     }
 
     const char *hello = provider->protocol == SAMOSA_MM_PROTOCOL_JSON_FRAME_V1
@@ -362,7 +384,7 @@ static int mm_session_start(SamosaMmSupervisor *supervisor,
         !mm_reply_ok(reply, reply_len)) {
         free(reply);
         mm_error(error_code, error_cap, request.error ? request.error : "multimodal_readiness_failed");
-        if(lifecycle)(void)samosa_mm_session_close_owned(session);else samosa_mm_session_close(session);
+        if(lifecycle||admitted)(void)samosa_mm_session_close_owned(session);else samosa_mm_session_close(session);
         return 0;
     }
     free(reply);
@@ -374,7 +396,17 @@ static int mm_session_start(SamosaMmSupervisor *supervisor,
 int samosa_mm_session_start(SamosaMmSupervisor *supervisor,
                             const SamosaMmProvider *provider, SamosaMmSession *session,
                             char *error_code, size_t error_cap) {
-    return mm_session_start(supervisor, provider, session, NULL, NULL, error_code, error_cap);
+    return mm_session_start(supervisor, provider, session, NULL, NULL, NULL, -1, error_code, error_cap);
+}
+
+int mm_session_start_admitted(SamosaMmSupervisor *supervisor, const SamosaMmProvider *provider,
+        const SamosaMmControl *control, SamosaMmSession *session, EngineProcess *process, int lease,
+        char *error_code, size_t error_cap) {
+    if (!session || session->supervisor || session->active || session->guardian || !process || lease<0) {
+        mm_error(error_code,error_cap,"multimodal_invalid_lifecycle");
+        return 0;
+    }
+    return mm_session_start(supervisor,provider,session,NULL,control,process,lease,error_code,error_cap);
 }
 
 int samosa_mm_session_start_owned(SamosaMmSupervisor *supervisor,
@@ -387,7 +419,7 @@ int samosa_mm_session_start_owned(SamosaMmSupervisor *supervisor,
     if (session->supervisor || session->active || session->pid || session->lifecycle.close || session->guardian) {
         mm_error(error_code, error_cap, "multimodal_session_owned"); return 0;
     }
-    return mm_session_start(supervisor, provider, session, lifecycle, control, error_code, error_cap);
+    return mm_session_start(supervisor, provider, session, lifecycle, control, NULL, -1, error_code, error_cap);
 }
 
 int samosa_mm_session_request_controlled(SamosaMmSession *session,
@@ -395,15 +427,22 @@ int samosa_mm_session_request_controlled(SamosaMmSession *session,
                               const char *json, size_t json_len,
                               char **reply, size_t *reply_len,
                               char *error_code, size_t error_cap) {
-    MmRequestControl request = {.control = control};
     if (reply) *reply = NULL;
     if (reply_len) *reply_len = 0;
     if (!session || !session->active || !reply || !json || !json_len) {
         mm_error(error_code, error_cap, "multimodal_not_ready");
         return 0;
     }
+    MmGuard *guard=session->guardian;
+    MmRequestControl request = {.control = control?control:guard?&guard->probe_control:NULL};
     if (json_len > session->max_frame_bytes) {
         mm_error(error_code, error_cap, "multimodal_request_too_large");
+        return 0;
+    }
+    const char *verification = guard && guard->verify ? guard->verify(guard->verify_context) : NULL;
+    if (verification) {
+        session->active=0;
+        mm_error(error_code,error_cap,verification);
         return 0;
     }
     if (!mm_check(&request)) {
@@ -418,6 +457,15 @@ int samosa_mm_session_request_controlled(SamosaMmSession *session,
     if (!mm_receive(session, reply, reply_len, session->request_timeout_ms, &request)) {
         session->active = 0;
         mm_error(error_code, error_cap, request.error ? request.error : "multimodal_timeout_or_protocol_error");
+        return 0;
+    }
+    verification = guard && guard->verify ? guard->verify(guard->verify_context) : NULL;
+    if (verification) {
+        free(*reply);
+        *reply=NULL;
+        if (reply_len) *reply_len=0;
+        session->active=0;
+        mm_error(error_code,error_cap,verification);
         return 0;
     }
     mm_error(error_code, error_cap, "");
@@ -490,6 +538,35 @@ int samosa_mm_supervisor_is_active(SamosaMmSupervisor *supervisor,
 }
 
 int samosa_mm_process_dispatch(int argc,char **argv) {return engine_guardian_dispatch(argc,argv);}
+
+void mm_session_probe_control(SamosaMmSession *session, const SamosaMmControl *control) {
+    MmGuard *guard=session->guardian;
+    guard->probe_control=control?*control:(SamosaMmControl){0};
+}
+
+void mm_session_set_verifier(SamosaMmSession *session, const char *(*check)(void *), void *context) {
+    MmGuard *guard=session->guardian;
+    guard->verify=check;
+    guard->verify_context=context;
+}
+
+int mm_session_probe_file(SamosaMmSession *session, const void *data, size_t size, char *path, size_t capacity) {
+    MmGuard *guard=session?session->guardian:NULL;
+    if (!guard || guard->directory<0 || !data || !size || !path || !capacity ||
+        snprintf(path,capacity,"%s/input.ppm",guard->workspace)>=(int)capacity) return 0;
+    int fd=openat(guard->directory,"input.ppm",O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC,0600);
+    if (fd<0) return 0;
+    size_t offset=0;
+    while (offset<size) {
+        ssize_t count=write(fd,(const char *)data+offset,size-offset);
+        if (count<0&&errno==EINTR) continue;
+        if (count<=0) break;
+        offset+=(size_t)count;
+    }
+    int ok=!close(fd)&&offset==size;
+    if (!ok) (void)unlinkat(guard->directory,"input.ppm",0);
+    return ok;
+}
 
 int samosa_mm_session_take_temporary_image(SamosaMmSession *session,const char *source,char *out,size_t capacity) {
     if(!session||!session->active||!session->guardian||!source||!out)return 0;

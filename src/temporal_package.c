@@ -41,6 +41,17 @@ static int same(const struct stat *a, const struct stat *b) {
            a->st_ctim.tv_nsec == b->st_ctim.tv_nsec;
 #endif
 }
+int temporal_package_unchanged(int directory, const char *path, const TemporalPackageReceipt *receipt) {
+    struct stat held,named;
+    if (fstat(directory,&held) || lstat(path,&named) ||
+        !same(&held,&receipt->directory) || !same(&held,&named) ||
+        fstatat(directory,"manifest.json",&named,AT_SYMLINK_NOFOLLOW) || !same(&named,&receipt->manifest))
+        return 0;
+    for (size_t i=0;i<receipt->count;++i)
+        if (fstatat(directory,receipt->files[i].name,&named,AT_SYMLINK_NOFOLLOW) ||
+            !same(&named,&receipt->files[i].identity)) return 0;
+    return 1;
+}
 static int equal(const Json *j, int object, const char *key,
                  const char *expected) {
     char *s = json_string(j, json_get(j, object, key));
