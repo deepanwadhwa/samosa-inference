@@ -83,9 +83,12 @@ Use the Base English and short probe hashes from
 the existing [short probe evidence](qualification/life07o-whisper-lifecycle/actual-inputs.sha256)
 and [long-window evidence](qualification/life07l-whisper-guardian/README.md#life-08a-actual-audio-beyond-one-30-second-window).
 
-The macOS installer compiles and archives these controls. Gateway's voice
-status, selection and transcription callers still use the existing checked
-runner. The next integration needs trusted pins for the locally built runtime
-and packaged probe, qualification on preparation and selection, and lifecycle
-routing for recordings and attachments. Base and Tiny English both need that
-assembled Mac qualification.
+LIFE-08d connects these controls to normal Mac Gateway preparation, voice
+status and model selection. The original GPU-capable runtime bootstrap is
+owned by Inference. It records the local executable's digest and byte size.
+For legacy runtimes it can record that receipt once and leaves matching
+installations in place. Activation verifies the native loader, receipt,
+catalog weights and packaged speech sample before reporting readiness.
+The checked runner still serves explicit unpinned CLI overrides and stays
+available to legacy callers.
+[Packaged speech provenance](../assets/whisper/README.md).

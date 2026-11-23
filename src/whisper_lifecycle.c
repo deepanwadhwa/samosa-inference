@@ -4,9 +4,12 @@
 #include "whisper_activation.h"
 #include "whisper_process_internal.h"
 #include "input_identity.h"
+#include <fcntl.h>
 #include <limits.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 struct SamosaWhisperLifecycle {
     WhisperActivation owner;
@@ -16,18 +19,49 @@ struct SamosaWhisperLifecycle {
     pthread_cond_t idle;
     atomic_int stopping;
     int starting, active;
+    const SamosaWhisperProcessControl *probe_control;
+    int preserve_probe_cancel;
 };
+
+int samosa_whisper_runtime_pin_read(const char *path, SamosaWhisperRuntimePin *out) {
+    if (!path || !out) return 0;
+    int fd=open(path,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+    if (fd<0) return 0;
+    struct stat st;
+    if (fstat(fd,&st) || !S_ISREG(st.st_mode) || st.st_uid!=geteuid() ||
+        st.st_nlink!=1 || (st.st_mode&077) || st.st_size<85 || st.st_size>100) {
+        close(fd);
+        return 0;
+    }
+    FILE *file=fdopen(fd,"r");
+    if (!file) { close(fd);return 0; }
+    SamosaWhisperRuntimePin pin;
+    char line[112];
+    unsigned long long size=0;
+    int consumed=0;
+    int ok=fgets(line,sizeof(line),file) && fgetc(file)==EOF && !ferror(file) &&
+        sscanf(line,"whisper-runtime-v1\t%64[0-9a-f]\t%llu%n",pin.sha256,&size,&consumed)==2 &&
+        strlen(pin.sha256)==64 && !strcmp(line+consumed,"\n") && size>=64 && size<=67108864;
+    fclose(file);
+    if (ok) {
+        pin.size=(size_t)size;
+        *out=pin;
+    }
+    return ok;
+}
 
 static const char *probe(void *context, const unsigned char *audio, size_t bytes, char **output) {
     SamosaWhisperLifecycle *h=context;
     WhisperProcessAdmission admission={.lease=h->owner.activation.lease,.lifetime=60,
         .probe_audio=audio,.probe_bytes=bytes,.stop_requested=&h->stopping};
-    int result=whisper_process_run_admitted(&h->process,&h->owner.inputs,NULL,NULL,0,0,0,&admission,output);
+    int result=whisper_process_run_admitted(&h->process,&h->owner.inputs,h->probe_control,NULL,
+        0,h->preserve_probe_cancel,0,&admission,output);
     switch (result) {
         case SAMOSA_WHISPER_OK: return NULL;
         case SAMOSA_WHISPER_GUARDIAN_FAILED: return "engine_guardian_failed";
         case SAMOSA_WHISPER_DEADLINE_EXCEEDED: return "deadline_exceeded";
         case SAMOSA_WHISPER_CANCELLED: return "cancelled";
+        case SAMOSA_WHISPER_BUSY: return "busy";
         case SAMOSA_WHISPER_NOT_READY: return "provider_artifact_changed";
         default: return "provider_qualification_failed";
     }
@@ -67,7 +101,8 @@ const char *samosa_whisper_lifecycle_create(const SamosaWhisperLifecycleConfig *
     return NULL;
 }
 
-const char *samosa_whisper_lifecycle_start(SamosaWhisperLifecycle *h) {
+const char *samosa_whisper_lifecycle_start_controlled(SamosaWhisperLifecycle *h,
+    const SamosaWhisperProcessControl *control, int preserve_cancel) {
     if (!h) return "invalid_whisper_host_configuration";
     pthread_mutex_lock(&h->mutex);
     if (h->starting || atomic_load(&h->stopping)) {
@@ -80,14 +115,21 @@ const char *samosa_whisper_lifecycle_start(SamosaWhisperLifecycle *h) {
         return error;
     }
     h->starting=1;
+    h->probe_control=control;
+    h->preserve_probe_cancel=preserve_cancel;
     pthread_mutex_unlock(&h->mutex);
     const char *error=whisper_activation_start(&h->owner);
     pthread_mutex_lock(&h->mutex);
     if (!error && atomic_load(&h->stopping)) error="cancelled";
+    h->probe_control=NULL;
     h->starting=0;
     pthread_cond_broadcast(&h->idle);
     pthread_mutex_unlock(&h->mutex);
     return error;
+}
+
+const char *samosa_whisper_lifecycle_start(SamosaWhisperLifecycle *h) {
+    return samosa_whisper_lifecycle_start_controlled(h,NULL,0);
 }
 
 const char *samosa_whisper_lifecycle_status(SamosaWhisperLifecycle *h) {
