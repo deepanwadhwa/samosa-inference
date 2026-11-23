@@ -113,6 +113,76 @@ static void release(void *context) {
     pthread_mutex_lock(&s->mutex);s->pid=0;s->active=0;s->releases++;pthread_mutex_unlock(&s->mutex);
 }
 static int cancelled(void *context) {return atomic_load(&((State *)context)->cancel);}
+#ifndef SAMOSA_WHISPER_LEGACY
+static int pause_preparation(void *context) {
+    (void)context;
+    raise(SIGSTOP);
+    return 1;
+}
+
+static void recover_preparation(const SamosaWhisperProcessConfig *config,const char *input,const char *marker) {
+    (void)unlink(marker);
+    pid_t owner=fork();
+    assert(owner>=0);
+    if(!owner) {
+        State state={0};
+        assert(!pthread_mutex_init(&state.mutex,NULL));
+        const SamosaWhisperProcessControl control={acquire,started,reaped,release,pause_preparation,&state};
+        char *text=NULL;
+        (void)samosa_whisper_process_run(config,&control,input,0,0,&text);
+        _exit(9);
+    }
+    cleanup_host=owner;
+    int status;
+    assert(waitpid(owner,&status,WUNTRACED)==owner&&WIFSTOPPED(status));
+    assert(access(marker,F_OK)<0&&errno==ENOENT);
+    DIR *entries=opendir(config->temporary_directory);
+    assert(entries);
+    char workspace[PATH_MAX];
+    unsigned count=0;
+    for(struct dirent *entry;(entry=readdir(entries));) {
+        if(entry->d_name[0]=='.')continue;
+        assert(snprintf(workspace,sizeof(workspace),"%s/%s",config->temporary_directory,entry->d_name)<(int)sizeof(workspace));
+        count++;
+    }
+    assert(count==1&&!closedir(entries));
+
+    char foreign[PATH_MAX],link[PATH_MAX],unregistered[PATH_MAX],retained[PATH_MAX],prepared[PATH_MAX];
+    struct stat before,after;
+    assert(!stat(input,&before));
+    assert(snprintf(prepared,sizeof(prepared),"%s/input.wav",workspace)<(int)sizeof(prepared));
+    write_file(prepared,"owned temporary recording");
+    assert(snprintf(foreign,sizeof(foreign),"%s/foreign",config->temporary_directory)<(int)sizeof(foreign));
+    assert(snprintf(link,sizeof(link),"%s/whisper-A0b1C2",config->temporary_directory)<(int)sizeof(link));
+    assert(snprintf(unregistered,sizeof(unregistered),"%s/whisper-G8h9I0",config->temporary_directory)<(int)sizeof(unregistered));
+    assert(snprintf(retained,sizeof(retained),"%s/whisper-D3e4F5",config->temporary_directory)<(int)sizeof(retained));
+    write_file(foreign,"unrelated");
+    assert(!symlink(input,link));
+    assert(!mkdir(unregistered,0700)&&!mkdir(retained,0700));
+    int retained_fd=open(retained,O_RDONLY|O_DIRECTORY|O_CLOEXEC);
+    assert(retained_fd>=0);
+    int admitted=openat(retained_fd,".whisper-admitted",O_CREAT|O_EXCL|O_WRONLY|O_CLOEXEC,0600);
+    assert(admitted>=0&&!close(admitted));
+    int worker_input=openat(retained_fd,"input.wav",O_CREAT|O_EXCL|O_WRONLY|O_CLOEXEC,0600);
+    assert(worker_input>=0&&!close(worker_input));
+    char *text=NULL;
+    assert(samosa_whisper_process_run(config,NULL,input,0,0,&text)==SAMOSA_WHISPER_OK);
+    free(text);text=NULL;
+    assert(!access(workspace,F_OK)&&!access(prepared,F_OK));
+    assert(access(unregistered,F_OK)<0&&errno==ENOENT);
+    assert(!kill(owner,SIGKILL)&&waitpid(owner,&status,0)==owner&&WIFSIGNALED(status));
+    cleanup_host=0;
+    assert(samosa_whisper_process_run(config,NULL,input,0,0,&text)==SAMOSA_WHISPER_OK);
+    free(text);
+    assert(access(workspace,F_OK)<0&&errno==ENOENT);
+    assert(!stat(input,&after)&&before.st_ino==after.st_ino&&before.st_size==after.st_size);
+    assert(!access(link,F_OK)&&!access(foreign,F_OK));
+    assert(!unlinkat(retained_fd,".whisper-admitted",0)&&!unlinkat(retained_fd,"input.wav",0));
+    assert(!close(retained_fd)&&!rmdir(retained));
+    assert(!unlink(link)&&!unlink(foreign));
+    empty(config->temporary_directory);
+}
+#endif
 typedef struct {const SamosaWhisperProcessConfig *config;const SamosaWhisperProcessControl *control;const char *input;int result;char *text;atomic_int finished;int own_input;} Call;
 static void *run(void *context) {
     Call *c=context;c->result=(c->own_input?samosa_whisper_process_run_owned:samosa_whisper_process_run)(c->config,c->control,c->input,1,1,&c->text);atomic_store(&c->finished,1);return NULL;
@@ -237,6 +307,7 @@ int main(int argc,char **argv) {
         empty(temporary);assert(!state.active&&!state.pid&&state.starts==state.reaps);
     }
 #ifndef SAMOSA_WHISPER_LEGACY
+    recover_preparation(&config,input,marker);
     SamosaWhisperProcessIdentity identity;
     assert(!samosa_whisper_process_inspect(&config,1,&identity));
     /* Same-size, same-timestamp replacement evades the old evidence cache key. */

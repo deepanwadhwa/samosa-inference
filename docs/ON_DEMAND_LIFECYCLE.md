@@ -67,6 +67,14 @@ The owner reports unknown cleanup if the guardian dies after its terminal
 notice and before physical cleanup. A live host retains the fence in that
 case. Shared recovery of unknown orphan groups across host exits remains open.
 
+LIFE-08h registers new long-window workspaces under an owner-controlled
+temporary directory. A short root lock serializes registration and recovery.
+Each workspace keeps its own lock through preparation and guardian handoff.
+The guardian atomically records admission before spawning the CLI. On the
+next request, Whisper reclaims only unlocked preparations and empty
+reservations in its namespace. It preserves borrowed audio and workspaces
+marked admitted, including those awaiting confirmation after guardian loss.
+
 Native Base and Tiny English qualified from the existing 2.533-second
 `quick brown fox` WAV. For both models, text and SRT runs through the new
 owner kept the final phrase in a 33.482-second recording. The fixture also

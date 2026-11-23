@@ -54,6 +54,8 @@ const char *engine_process_start_server(const char *,const char *,int,const Engi
  * invented. stdout/stderr go to /dev/null; host validates its existing result
  * size/format while the guardian reserves PID/group/workspace until stop.
  * Caller must keep the record until stop finishes, including pending cleanup. */
+#define ENGINE_COMMAND_PREPARING ".whisper-preparing"
+#define ENGINE_COMMAND_ADMITTED ".whisper-admitted"
 const char *engine_process_start_command(const char *,const char *,const char *,int,
                                          int residency,double lifetime,EngineProcess *);
 /* Original default visual helpers: duplex kernel pipes, inherited stderr,

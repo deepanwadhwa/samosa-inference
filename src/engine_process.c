@@ -57,11 +57,20 @@ static void clean_workspace(const char *path){
     struct stat retained,current;
     if(fstat(6,&retained)||lstat(path,&current)||!S_ISDIR(retained.st_mode)||retained.st_uid!=geteuid()||(retained.st_mode&077)||retained.st_dev!=current.st_dev||retained.st_ino!=current.st_ino)return;
     (void)unlinkat(6,"input.wav",0);(void)unlinkat(6,"result.srt",0);(void)unlinkat(6,"result.txt",0);
+    (void)unlinkat(6,ENGINE_COMMAND_PREPARING,0);(void)unlinkat(6,ENGINE_COMMAND_ADMITTED,0);
     (void)unlinkat(6,"request.frame",0);(void)unlinkat(6,"result.frame",0);
     (void)unlinkat(6,"input.rgba",0);(void)unlinkat(6,"input.ppm",0);(void)unlinkat(6,"request.json",0);(void)unlinkat(6,"result.json",0);
     /* Temporal adapters create only these sixteen owned frame names. */
     for(size_t k=0;k<16;k++){char frame[32];snprintf(frame,sizeof(frame),"frame-%02zu.ppm",k);(void)unlinkat(6,frame,0);}
     (void)rmdir(path);
+}
+static int admit_command_workspace(void) {
+    struct stat marker;
+    if(!fstatat(6,ENGINE_COMMAND_ADMITTED,&marker,AT_SYMLINK_NOFOLLOW)||errno!=ENOENT)return 0;
+    if(fstatat(6,ENGINE_COMMAND_PREPARING,&marker,AT_SYMLINK_NOFOLLOW))return errno==ENOENT;
+    return S_ISREG(marker.st_mode)&&marker.st_uid==geteuid()&&marker.st_nlink==1&&
+        !(marker.st_mode&077)&&marker.st_size==0&&
+        !renameat(6,ENGINE_COMMAND_PREPARING,6,ENGINE_COMMAND_ADMITTED);
 }
 /* Called while the retained owner lock and unreaped group leader still reserve
  * this marker/identity. Never remove another PID's marker. */
@@ -165,6 +174,7 @@ int engine_guardian_dispatch(int argc,char **argv) {
     if(ok&&captured)ok=!posix_spawn_file_actions_addclose(&actions,capture[0])&&
         !posix_spawn_file_actions_addclose(&actions,capture[1]);
     int command=sized?6:(workspace||server)?5:4;
+    if(ok&&command_profile)ok=admit_command_workspace();
     if(ok)ok=posix_spawn(&child,argv[command],&actions,&attributes,argv+command,environ)==0;
     if(ar)posix_spawn_file_actions_destroy(&actions);
     if(at)posix_spawnattr_destroy(&attributes);

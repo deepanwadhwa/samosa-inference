@@ -5,7 +5,17 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-LIFE-08g, 2026-11-22. A native regression reproduced an overlapping guardian
+LIFE-08h, 2026-11-23. The file-based Whisper owner now recovers new
+preparations abandoned before guardian admission on its next request.
+The private root and individual workspace locks preserve concurrent
+requests. The guardian records admission before executing the original
+CLI, so the preparation sweep preserves workspaces with uncertain cleanup
+after launch. Native and sanitizer checks cover real owner interruption,
+reclamation of prepared audio, and preservation of borrowed, live and
+admitted inputs. The shared guardian-loss recovery requirement remains open.
+[Long-window lifecycle](ON_DEMAND_LIFECYCLE.md#long-window-owner).
+
+Previous LIFE-08g, 2026-11-22. A native regression reproduced an overlapping guardian
 launch keeping another operation's control pipe open. On macOS each guardian
 now inherits only the descriptors mapped for that launch. A second regression
 reproduced a worker starting after the owner had closed its control pipe.

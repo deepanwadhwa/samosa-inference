@@ -5,6 +5,7 @@
 #include "input_identity.h"
 #include "json.h"
 #include <time.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -13,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -33,6 +35,74 @@ static int mkdirs(const char *path) {
         *p = '/';
     }
     return !mkdir(copy, 0700) || errno == EEXIST;
+}
+
+static int recovery_name(const char *name) {
+    return !strncmp(name,"whisper-",8)&&strlen(name)==14&&
+        strspn(name+8,"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")==6;
+}
+
+static void recover_preparations(int root) {
+    int scan=openat(root,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);
+    if(scan<0)return;
+    DIR *entries=fdopendir(scan);
+    if(!entries){close(scan);return;}
+    for(struct dirent *entry;(entry=readdir(entries));){
+        if(!recovery_name(entry->d_name))continue;
+        int fd=openat(root,entry->d_name,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+        if(fd<0)continue;
+        struct stat held,named,marker;
+        if(!flock(fd,LOCK_EX|LOCK_NB)&&!fstat(fd,&held)&&held.st_uid==geteuid()&&!(held.st_mode&077)&&
+           !fstatat(root,entry->d_name,&named,AT_SYMLINK_NOFOLLOW)&&
+           held.st_dev==named.st_dev&&held.st_ino==named.st_ino&&
+           fstatat(fd,ENGINE_COMMAND_ADMITTED,&marker,AT_SYMLINK_NOFOLLOW)&&errno==ENOENT){
+            if(!fstatat(fd,ENGINE_COMMAND_PREPARING,&marker,AT_SYMLINK_NOFOLLOW)&&
+               S_ISREG(marker.st_mode)&&marker.st_uid==geteuid()&&marker.st_nlink==1&&
+               !(marker.st_mode&077)&&marker.st_size==0){
+                (void)unlinkat(fd,"input.wav",0);
+                (void)unlinkat(fd,ENGINE_COMMAND_PREPARING,0);
+            }
+            /* Without a preparation receipt only an empty reservation can go. */
+            (void)unlinkat(root,entry->d_name,AT_REMOVEDIR);
+        }
+        close(fd);
+    }
+    closedir(entries);
+}
+
+/* Serialize registration and recovery under the root directory lock. The
+ * workspace lock is retained through preparation and duplicated to the
+ * guardian with the existing directory descriptor. */
+static int prepare_workspace(const char *temporary,char workspace[PATH_MAX],int *recoverable) {
+    char absolute[PATH_MAX];
+    if(!temporary||!mkdirs(temporary)||!realpath(temporary,absolute))return -1;
+    int root=open(absolute,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+    if(root<0)return -1;
+    struct stat identity;
+    if(fstat(root,&identity)){close(root);return -1;}
+    *recoverable=identity.st_uid==geteuid()&&!(identity.st_mode&022);
+    if(*recoverable){
+        int locked;
+        do{locked=flock(root,LOCK_EX);}while(locked&&errno==EINTR);
+        if(locked){close(root);return -1;}
+        recover_preparations(root);
+    }
+    if(snprintf(workspace,PATH_MAX,"%s/%s",absolute,
+                *recoverable?"whisper-XXXXXX":"result-XXXXXX")>=PATH_MAX||!mkdtemp(workspace)){
+        close(root);
+        return -1;
+    }
+    const char *leaf=strrchr(workspace,'/')+1;
+    int directory=openat(root,leaf,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+    if(directory>=0&&*recoverable){
+        int marker=flock(directory,LOCK_EX|LOCK_NB)?-1:
+            openat(directory,ENGINE_COMMAND_PREPARING,O_CREAT|O_EXCL|O_WRONLY|O_CLOEXEC,0600);
+        if(marker>=0)close(marker);
+        else{close(directory);directory=-1;}
+    }
+    if(directory<0)(void)unlinkat(root,leaf,AT_REMOVEDIR);
+    close(root);
+    return directory;
 }
 
 static unsigned char *read_file_bytes_limit(const char *path, size_t limit, size_t *out_len) {
@@ -143,9 +213,9 @@ int whisper_process_run_admitted(const SamosaWhisperProcessConfig *config,
         return SAMOSA_WHISPER_BUSY;
     int result = SAMOSA_WHISPER_PREPARE_FAILED;
     char out_base[PATH_MAX] = "", out_path[PATH_MAX] = "";
-    char created_path[PATH_MAX]="",workspace[PATH_MAX]="",owned_input[PATH_MAX]="",self[PATH_MAX];
+    char workspace[PATH_MAX]="",owned_input[PATH_MAX]="",self[PATH_MAX];
     const char *input=wav_path;
-    int directory=-1,created=0;pid_t pid=0;
+    int directory=-1,recoverable=0;pid_t pid=0;
     EngineProcess process={.guardian=-1,.control=-1,.response=-1};
     char *command=NULL;size_t command_size=0;
     SamosaWhisperProcessIdentity observed;
@@ -156,12 +226,8 @@ int whisper_process_run_admitted(const SamosaWhisperProcessConfig *config,
             goto done;
         }
     }
-    if (!config->temporary_directory || !mkdirs(config->temporary_directory) ||
-        snprintf(created_path,sizeof(created_path),"%s/result-XXXXXX",config->temporary_directory)>=(int)sizeof(created_path))goto done;
-    if(!mkdtemp(created_path))goto done;
-    created=1;
-    if(!realpath(created_path,workspace)||!engine_process_executable(self))goto done;
-    directory=open(workspace,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+    directory=prepare_workspace(config->temporary_directory,workspace,&recoverable);
+    if(directory<0||!engine_process_executable(self))goto done;
     if(directory<0||snprintf(out_base,sizeof(out_base),"%s/result",workspace)>=(int)sizeof(out_base))goto done;
     if (snprintf(out_path, sizeof(out_path), "%s.%s", out_base,
                  timestamped ? "srt" : "txt") >= (int)sizeof(out_path))
@@ -245,11 +311,18 @@ done:
     do{stopped=engine_process_stop(&process);
         if(stopped&&!strcmp(stopped,"engine_shutdown_pending")){struct timespec delay={0,10000000};nanosleep(&delay,NULL);}
     }while(stopped&&!strcmp(stopped,"engine_shutdown_pending"));
-    if(directory>=0)close(directory);
-    if (out_base[0]) unlink(out_base);
-    if (out_path[0]) unlink(out_path);
-    if(owned_input[0])unlink(owned_input);
-    if(created)rmdir(created_path);
+    if(directory>=0){
+        if(!recoverable||!stopped||strcmp(stopped,"engine_guardian_failed")){
+            if(out_base[0])(void)unlinkat(directory,"result",0);
+            if(out_path[0])(void)unlinkat(directory,timestamped?"result.srt":"result.txt",0);
+            if(owned_input[0])(void)unlinkat(directory,"input.wav",0);
+            if(recoverable)(void)unlinkat(directory,ENGINE_COMMAND_PREPARING,0);
+            struct stat held,named;
+            if(!fstat(directory,&held)&&!lstat(workspace,&named)&&
+               held.st_dev==named.st_dev&&held.st_ino==named.st_ino)(void)rmdir(workspace);
+        }
+        close(directory);
+    }
     if (result == SAMOSA_WHISPER_OK) {
         if (stopped) result = SAMOSA_WHISPER_PROCESS_FAILED;
         else if (cancelled(control,admission)) result = SAMOSA_WHISPER_CANCELLED;

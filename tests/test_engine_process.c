@@ -100,6 +100,7 @@ static void leased_command_tests(const char *self,const char *root) {
     int directory=open(workspace,O_RDONLY|O_DIRECTORY|O_CLOEXEC);
     int residency=lease(residency_path);
     CHECK(directory>=0 && residency>=0);
+    CHECK(!flock(directory,LOCK_EX|LOCK_NB));
     EngineProcess p;
     char *cmd=command(self,"sleep",engine_path);
     CHECK(!engine_process_start_command(self,cmd,workspace,directory,residency,1,&p));
@@ -108,6 +109,10 @@ static void leased_command_tests(const char *self,const char *root) {
     terminal(&p);
     CHECK(!engine_process_running(&p) && !strcmp(p.reason,"lifetime_exceeded"));
     CHECK(!released(residency_path) && !access(workspace,F_OK));
+    int other=open(workspace,O_RDONLY|O_DIRECTORY|O_CLOEXEC);
+    CHECK(other>=0);
+    CHECK(flock(other,LOCK_EX|LOCK_NB)<0&&errno==EWOULDBLOCK);
+    CHECK(!close(other));
     expect_stop(&p,"lifetime_exceeded");
     CHECK(released(residency_path) && access(workspace,F_OK)<0 && errno==ENOENT);
     free(cmd);
@@ -117,6 +122,8 @@ static void leased_command_tests(const char *self,const char *root) {
     directory=open(workspace,O_RDONLY|O_DIRECTORY|O_CLOEXEC);
     residency=lease(residency_path);
     CHECK(directory>=0 && residency>=0);
+    int marker=openat(directory,ENGINE_COMMAND_PREPARING,O_CREAT|O_EXCL|O_WRONLY|O_CLOEXEC,0600);
+    CHECK(marker>=0&&!close(marker));
     cmd=command(self,"complete",engine_path);
     CHECK(!engine_process_start_command(self,cmd,workspace,directory,residency,0,&p));
     terminal(&p);
@@ -124,6 +131,10 @@ static void leased_command_tests(const char *self,const char *root) {
     CHECK(!kill(p.guardian,SIGKILL));
     expect_stop(&p,"engine_guardian_failed");
     CHECK(!released(residency_path));
+    struct stat admitted;
+    CHECK(!fstatat(directory,ENGINE_COMMAND_ADMITTED,&admitted,AT_SYMLINK_NOFOLLOW));
+    CHECK(fstatat(directory,ENGINE_COMMAND_PREPARING,&admitted,AT_SYMLINK_NOFOLLOW)<0&&errno==ENOENT);
+    CHECK(!unlinkat(directory,ENGINE_COMMAND_ADMITTED,0));
     CHECK(!close(directory) && !close(residency));
     CHECK(!rmdir(workspace) && !unlink(residency_path));
     free(cmd);
