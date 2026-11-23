@@ -5,7 +5,16 @@ no Python anywhere in project runtime/tooling/tests/CI; qualify natively on this
 Mac first. Do not start Docker/VMs. Linux verification is deferred and does not
 block current work. See Chat's docs/ARCHITECTURE_REBUILD_PRIORITIES.md.
 
-LIFE-08h, 2026-11-23. The file-based Whisper owner now recovers new
+LIFE-08i, 2026-11-23. The existing process owner now shares preparation
+registration, admission and recovery between the default visual specialist
+and Whisper. The visual fixture reproduces an owner's death before handoff,
+confirms recovery on the next start, and preserves live and admitted work.
+The compiled Mac Gateway still removes its prepared PDF page and owned
+processes on owner death and preserves the original PDF. Guardian loss
+after admission remains open.
+[Default visual lifecycle](DEFAULT_VISUAL_LIFECYCLE.md).
+
+Previous LIFE-08h, 2026-11-23. The file-based Whisper owner now recovers new
 preparations abandoned before guardian admission on its next request.
 The private root and individual workspace locks preserve concurrent
 requests. The guardian records admission before executing the original

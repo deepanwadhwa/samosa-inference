@@ -44,4 +44,12 @@ retries. It can reuse the receipt only while the directory and each
 input retain their verified identity and metadata. A mismatch forces
 full digest verification before launch. Gateway forwards cancellation
 during preparation and uses the same turn and shutdown callbacks.
+
+The specialist uses the shared process owner's preparation lock and
+admission receipt. The versioned deployment stages its workspace in the
+provider's Activation state directory. Compatibility launches use a private
+per-user directory under the system temporary directory. The next launch
+reclaims an abandoned preparation from that root. Live locks and admitted
+workspaces exclude them from the preparation sweep. The original guardian
+still cleans prepared pages and the workspace after it can confirm reaping.
 Recovery after losing a guardian stays open.

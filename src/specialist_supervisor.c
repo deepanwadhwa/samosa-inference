@@ -209,7 +209,7 @@ void mm_session_publish(SamosaMmSession *session) {
 
 typedef struct {
     EngineProcess local_process, *process;
-    int closing,directory,created;
+    int closing,directory;
     char workspace[PATH_MAX];
     const char *(*verify)(void *);
     void *verify_context;
@@ -250,11 +250,10 @@ static const char *mm_guard_close(SamosaMmSession *session) {
     if(error&&!strcmp(error,"engine_guardian_failed")&&
        (session->pid>0||guard->process!=&guard->local_process))return error;
     if(guard->directory>=0){
-        struct stat retained,named;
-        if(guard->created&&!fstat(guard->directory,&retained)&&!lstat(guard->workspace,&named)&&
-           retained.st_dev==named.st_dev&&retained.st_ino==named.st_ino)rmdir(guard->workspace);
+        if(!error||strcmp(error,"engine_guardian_failed"))
+            engine_workspace_discard_preparation(ENGINE_WORKSPACE_SPECIALIST,guard->directory,guard->workspace);
         close(guard->directory);
-    }else if(guard->created)rmdir(guard->workspace);
+    }
     free(guard);session->guardian=NULL;return NULL;
 }
 
@@ -274,7 +273,7 @@ static int mm_session_start(SamosaMmSupervisor *supervisor,
                             const SamosaMmProvider *provider,
                             SamosaMmSession *session,
                             const SamosaMmLifecycle *lifecycle, const SamosaMmControl *control,
-                            EngineProcess *admitted, int lease,
+                            EngineProcess *admitted, int lease, const char *workspace_root,
                             char *error_code, size_t error_cap) {
     if (!supervisor || !provider || !session || !provider->provider ||
         !provider->executable || !provider->model_dir) {
@@ -347,25 +346,28 @@ static int mm_session_start(SamosaMmSupervisor *supervisor,
         int all[]={in_pipe[0],in_pipe[1],out_pipe[0],out_pipe[1]};int prepared=1;
         for(size_t i=0;i<4;i++)if(fcntl(all[i],F_SETFD,FD_CLOEXEC))prepared=0;
         MmGuard *guard=prepared?calloc(1,sizeof(*guard)):NULL;
-        if(guard){guard->directory=-1;guard->process=admitted?admitted:&guard->local_process;
-            snprintf(guard->workspace,sizeof(guard->workspace),"/tmp/samosa-inference-specialist-XXXXXX");
-            guard->created=mkdtemp(guard->workspace)!=NULL;
-            if(guard->created)guard->directory=open(guard->workspace,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+        if(guard){
+            guard->process=admitted?admitted:&guard->local_process;
+            guard->directory=engine_workspace_prepare(workspace_root,ENGINE_WORKSPACE_SPECIALIST,
+                guard->workspace,sizeof(guard->workspace),NULL);
         }
-        if(!guard||!guard->created||guard->directory<0)prepared=0;
+        if(!guard||guard->directory<0)prepared=0;
         char self[PATH_MAX],*command=NULL;size_t bytes=0;
         FILE *encoded=prepared&&engine_process_executable(self)?open_memstream(&command,&bytes):NULL;
         if(encoded){fputc('[',encoded);json_quote(encoded,provider->executable,strlen(provider->executable));fputc(',',encoded);json_quote(encoded,provider->model_dir,strlen(provider->model_dir));fputc(']',encoded);prepared=!fclose(encoded);}else prepared=0;
         if(guard)*guard->process=(EngineProcess){.guardian=-1,.control=-1,.response=-1};
-        const char *error=prepared?engine_process_start_specialist(self,command,in_pipe[0],out_pipe[1],
-            inherited_error,guard->workspace,guard->directory,lease,guard->process):"engine_io_failed";
+        const char *error="engine_io_failed";
+        if(prepared)
+            error=mm_check(&request)?engine_process_start_specialist(self,command,in_pipe[0],out_pipe[1],
+                inherited_error,guard->workspace,guard->directory,lease,guard->process):request.error;
         free(command);close(in_pipe[0]);close(out_pipe[1]);close(inherited_error);
         session->in_fd=in_pipe[1];session->out_fd=out_pipe[0];session->guardian=guard;
         if(error){
             if(!guard){close(session->in_fd);close(session->out_fd);session->in_fd=session->out_fd=-1;mm_supervisor_release(session);session->supervisor=NULL;}
             else if(admitted)(void)samosa_mm_session_close_owned(session);
             else samosa_mm_session_close(session);
-            mm_error(error_code,error_cap,!strcmp(error,"engine_exec_failed")?"multimodal_readiness_failed":"multimodal_fork_failed");return 0;
+            mm_error(error_code,error_cap,request.error?request.error:
+                !strcmp(error,"engine_exec_failed")?"multimodal_readiness_failed":"multimodal_fork_failed");return 0;
         }
         session->pid=session->pgid=guard->process->engine;
         (void)mm_set_nonblock(session->in_fd);(void)mm_set_nonblock(session->out_fd);
@@ -396,17 +398,17 @@ static int mm_session_start(SamosaMmSupervisor *supervisor,
 int samosa_mm_session_start(SamosaMmSupervisor *supervisor,
                             const SamosaMmProvider *provider, SamosaMmSession *session,
                             char *error_code, size_t error_cap) {
-    return mm_session_start(supervisor, provider, session, NULL, NULL, NULL, -1, error_code, error_cap);
+    return mm_session_start(supervisor, provider, session, NULL, NULL, NULL, -1, NULL, error_code, error_cap);
 }
 
 int mm_session_start_admitted(SamosaMmSupervisor *supervisor, const SamosaMmProvider *provider,
         const SamosaMmControl *control, SamosaMmSession *session, EngineProcess *process, int lease,
-        char *error_code, size_t error_cap) {
+        const char *workspace_root, char *error_code, size_t error_cap) {
     if (!session || session->supervisor || session->active || session->guardian || !process || lease<0) {
         mm_error(error_code,error_cap,"multimodal_invalid_lifecycle");
         return 0;
     }
-    return mm_session_start(supervisor,provider,session,NULL,control,process,lease,error_code,error_cap);
+    return mm_session_start(supervisor,provider,session,NULL,control,process,lease,workspace_root,error_code,error_cap);
 }
 
 int samosa_mm_session_start_owned(SamosaMmSupervisor *supervisor,
@@ -419,7 +421,7 @@ int samosa_mm_session_start_owned(SamosaMmSupervisor *supervisor,
     if (session->supervisor || session->active || session->pid || session->lifecycle.close || session->guardian) {
         mm_error(error_code, error_cap, "multimodal_session_owned"); return 0;
     }
-    return mm_session_start(supervisor, provider, session, lifecycle, control, NULL, -1, error_code, error_cap);
+    return mm_session_start(supervisor, provider, session, lifecycle, control, NULL, -1, NULL, error_code, error_cap);
 }
 
 int samosa_mm_session_request_controlled(SamosaMmSession *session,

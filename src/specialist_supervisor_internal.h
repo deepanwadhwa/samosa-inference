@@ -5,7 +5,8 @@
 #include "engine_process.h"
 
 int mm_session_start_admitted(SamosaMmSupervisor *, const SamosaMmProvider *,
-    const SamosaMmControl *, SamosaMmSession *, EngineProcess *, int lease, char *, size_t);
+    const SamosaMmControl *, SamosaMmSession *, EngineProcess *, int lease,
+    const char *workspace_root, char *, size_t);
 void mm_session_publish(SamosaMmSession *);
 int mm_session_probe_file(SamosaMmSession *, const void *, size_t, char *, size_t);
 void mm_session_probe_control(SamosaMmSession *, const SamosaMmControl *);

@@ -1,6 +1,10 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
 #include <samosa_inference/specialist_protocol.h>
+#ifndef SAMOSA_SPECIALIST_LEGACY
+#include "../src/specialist_supervisor_internal.h"
+#include <dirent.h>
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -102,6 +106,73 @@ static void closed_diagnostics(const char *engine,const char *model,const char *
 
 #ifndef SAMOSA_SPECIALIST_LEGACY
 static void prepared_file(const char *path){int fd=open(path,O_CREAT|O_EXCL|O_WRONLY,0644);CHECK(fd>=0&&write(fd,"prepared pixels\n",16)==16&&!close(fd));}
+
+static const char *pause_before_handoff(void *unused) {
+    (void)unused;
+    raise(SIGSTOP);
+    return "test_cancellation";
+}
+
+static void prehandoff_recovery(const char *engine,const char *model,const char *identity_file,
+                               const char *helper_file,const char *root) {
+    char state[1024],lease_path[1024],abandoned[1024],admitted[1024],marker[1024];
+    CHECK(snprintf(state,sizeof(state),"%s/visual-state",root)<(int)sizeof(state));
+    CHECK(snprintf(lease_path,sizeof(lease_path),"%s/test-lease",root)<(int)sizeof(lease_path));
+    CHECK(!mkdir(state,0700));
+    int lease=open(lease_path,O_CREAT|O_EXCL|O_RDWR|O_CLOEXEC,0600);
+    CHECK(lease>=0);
+    (void)unlink(identity_file);
+    frame_mode(0);
+    SamosaMmProvider provider=mm_visual_profile(0,engine,model);
+    SamosaMmSupervisor supervisor;CHECK(samosa_mm_supervisor_init(&supervisor));
+    host=fork();CHECK(host>=0);
+    if(!host){
+        SamosaMmSession session={0};EngineProcess process;char error[96];
+        SamosaMmControl control={.check=pause_before_handoff};
+        (void)mm_session_start_admitted(&supervisor,&provider,&control,&session,&process,lease,
+                                        state,error,sizeof(error));
+        _exit(2);
+    }
+    int status;CHECK(waitpid(host,&status,WUNTRACED)==host&&WIFSTOPPED(status));
+    CHECK(access(identity_file,F_OK)<0&&errno==ENOENT);
+    DIR *entries=opendir(state);CHECK(entries);
+    unsigned count=0;
+    for(struct dirent *entry;(entry=readdir(entries));){
+        if(entry->d_name[0]=='.')continue;
+        CHECK(snprintf(abandoned,sizeof(abandoned),"%s/%s",state,entry->d_name)<(int)sizeof(abandoned));
+        count++;
+    }
+    CHECK(count==1&&!closedir(entries));
+    CHECK(snprintf(admitted,sizeof(admitted),"%s/specialist-a1B2c3",state)<(int)sizeof(admitted));
+    CHECK(snprintf(marker,sizeof(marker),"%s/.specialist-admitted",admitted)<(int)sizeof(marker));
+    CHECK(!mkdir(admitted,0700));
+    int fd=open(marker,O_CREAT|O_EXCL|O_WRONLY|O_CLOEXEC,0600);
+    CHECK(fd>=0&&!close(fd));
+
+    SamosaMmSession session={0};EngineProcess process;char error[96];
+    CHECK(mm_session_start_admitted(&supervisor,&provider,NULL,&session,&process,lease,state,error,sizeof(error)));
+    pid_t worker,guardian;identity(identity_file,&worker,&guardian);pid_t helper=pid_file(helper_file);
+    CHECK(!access(abandoned,F_OK)&&!access(marker,F_OK));
+    char image[1024],active_marker[1024];
+    CHECK(mm_session_probe_file(&session,"pixels",6,image,sizeof(image)));
+    const char *leaf=strrchr(image,'/');CHECK(leaf);
+    CHECK(snprintf(active_marker,sizeof(active_marker),"%.*s/.specialist-admitted",
+                   (int)(leaf-image),image)<(int)sizeof(active_marker));
+    CHECK(!access(active_marker,F_OK));
+    CHECK(!samosa_mm_session_close_owned(&session));cleaned(&supervisor,&session,worker,helper,guardian);
+    CHECK(access(image,F_OK)<0&&errno==ENOENT);
+    CHECK(access(active_marker,F_OK)<0&&errno==ENOENT);
+    CHECK(!kill(host,SIGKILL)&&waitpid(host,&status,0)==host&&WIFSIGNALED(status));host=0;
+    CHECK(mm_session_start_admitted(&supervisor,&provider,NULL,&session,&process,lease,state,error,sizeof(error)));
+    identity(identity_file,&worker,&guardian);helper=pid_file(helper_file);
+    CHECK(access(abandoned,F_OK)<0&&errno==ENOENT);CHECK(!access(marker,F_OK));
+    CHECK(!samosa_mm_session_close_owned(&session));cleaned(&supervisor,&session,worker,helper,guardian);
+
+    samosa_mm_supervisor_destroy(&supervisor);
+    CHECK(!close(lease)&&!unlink(lease_path)&&!unlink(marker)&&!rmdir(admitted)&&!rmdir(state));
+    CHECK(!kill(peer,0));
+}
+
 static void image_handoff(const char *engine,const char *model,const char *identity_file,const char *helper_file,const char *root){
     char source[1024],owned[1024],link_path[1024];CHECK(snprintf(source,sizeof(source),"%s/prepared-page",root)<(int)sizeof(source)&&snprintf(link_path,sizeof(link_path),"%s/prepared-link",root)<(int)sizeof(link_path));
     frame_mode(0);SamosaMmSupervisor supervisor;CHECK(samosa_mm_supervisor_init(&supervisor));SamosaMmSession session={0};CHECK(start(0,&supervisor,&session,engine,model));pid_t worker,guardian;identity(identity_file,&worker,&guardian);pid_t helper=pid_file(helper_file);
@@ -147,6 +218,7 @@ int main(int argc,char **argv){
     if(argc==2&&ok&&getenv("SAMOSA_SPECIALIST_CLOSED_ONLY")){puts("BEGIN closed diagnostics");fflush(stdout);closed_diagnostics(argv[1],model,identity_file,helper_file);puts("END closed diagnostics");}
     if(argc==2&&ok&&!getenv("SAMOSA_SPECIALIST_CLOSED_ONLY")){boundary_cases(argv[1],model,identity_file,helper_file);grace_cases(argv[1],model,identity_file,helper_file);pending_case(argv[1],model,identity_file,helper_file);failure_cases(argv[1],model,identity_file,helper_file,root);inherited_diagnostics(argv[1],model,identity_file,helper_file,root);closed_diagnostics(argv[1],model,identity_file,helper_file);
 #ifndef SAMOSA_SPECIALIST_LEGACY
+    prehandoff_recovery(argv[1],model,identity_file,helper_file,root);
     image_handoff(argv[1],model,identity_file,helper_file,root);
 #endif
     parent_death(argv[1],model,identity_file,helper_file,ready,0);parent_death(argv[1],model,identity_file,helper_file,ready,1);}

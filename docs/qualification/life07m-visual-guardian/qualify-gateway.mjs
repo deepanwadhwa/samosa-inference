@@ -34,7 +34,13 @@ try{
   const request=fetch(`http://127.0.0.1:${publicPort}/v1/chat/completions`,{method:'POST',headers:{'X-Samosa-Token':token,'Content-Type':'application/json'},body:JSON.stringify({attachment_ids:[attachment.id],stream:false,messages:[{role:'user',content:'Describe every chart across the entire document.'}]}),signal:AbortSignal.timeout(20000)}).then(async response=>({status:response.status,body:await response.text()})).catch(error=>({error:error.name}));
   let active=false;for(let i=0;i<600;i++){if(fs.existsSync(ready)){active=true;break;}await delay(20);}if(!active){receipt.request=await request;throw Error('Visual request never became active: '+JSON.stringify(receipt.request));}
   const ids=fs.readFileSync(identity,'utf8').trim().split(' ').map(Number);[worker,,]=ids;helper=Number(fs.readFileSync(helperFile,'utf8').trim());const guardian=ids[1];assert(ids.length===3&&ids.every(n=>Number.isSafeInteger(n)&&n>1)&&ids[0]===ids[2]&&helper>1);
-  const calls=fs.readFileSync(requests,'utf8').trim().split('\n').map(line=>JSON.parse(line)),call=calls.find(item=>item.command==='inspect'||item.command==='analyze');assert(call);const prepared=call.image_path||call.media_path;assert(prepared.startsWith('/tmp/samosa-inference-specialist-'));assert(fs.statSync(prepared).size>0&&!(fs.statSync(prepared).mode&0o077));
+  const calls=fs.readFileSync(requests,'utf8').trim().split('\n').map(line=>JSON.parse(line)),call=calls.find(item=>item.command==='inspect'||item.command==='analyze');assert(call);
+  const prepared=call.image_path||call.media_path;
+  const workspace=path.dirname(prepared);
+  const privateRoot=path.join(fs.realpathSync('/tmp'),'samosa-inference-'+process.geteuid());
+  assert(prepared.startsWith('/tmp/samosa-inference-specialist-')||
+    (path.dirname(workspace)===privateRoot&&/^specialist-[a-z0-9]{6}$/i.test(path.basename(workspace))));
+  assert(fs.statSync(prepared).size>0&&!(fs.statSync(prepared).mode&0o077));
   Object.assign(receipt,{primary,worker,helper,guardian,prepared,workspace:path.dirname(prepared)});
   assert(child.kill('SIGKILL'));const result=await ended;assert(result[1]==='SIGKILL');receipt.workerGone=await gone(worker);receipt.helperGone=await gone(helper);receipt.guardianGone=await gone(guardian);receipt.primaryGone=await gone(primary);worker=receipt.workerGone?0:worker;helper=receipt.helperGone?0:helper;
   receipt.preparedGone=!fs.existsSync(prepared);receipt.workspaceGone=!fs.existsSync(path.dirname(prepared));receipt.callerPagesGone=!fs.readdirSync(home).some(name=>name.startsWith('vision-page-'));receipt.peerSurvives=peer.exitCode===null&&peer.signalCode===null;process.kill(peer.pid,0);

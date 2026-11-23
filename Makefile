@@ -1270,7 +1270,7 @@ sanitize: sanitize-specialist-owned
 .PHONY: test-specialist-guardian sanitize-specialist-guardian
 build/test-specialist-guardian: tests/test_specialist_guardian.c include/samosa_inference/specialist_supervisor.h build/libsamosa-inference-specialist.a
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) -pthread -Iinclude $< build/libsamosa-inference-specialist.a -o $@
-build/test-specialist-guardian-sanitize: tests/test_specialist_guardian.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c src/engine_process.h src/json.h include/samosa_inference/specialist_supervisor.h | build
+build/test-specialist-guardian-sanitize: tests/test_specialist_guardian.c src/specialist_supervisor.c src/specialist_supervisor_internal.h src/specialist_protocol.c src/engine_process.c src/engine_process.h src/json.h include/samosa_inference/specialist_supervisor.h | build
 	$(CC) $(CPPFLAGS) -O1 -g $(WARN) -pthread -Iinclude -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/test_specialist_guardian.c src/specialist_supervisor.c src/specialist_protocol.c src/engine_process.c -o $@
 test-specialist-guardian: build/test-specialist-guardian build/fake-multimodal-helper
 	$(abspath build/test-specialist-guardian) $(abspath build/fake-multimodal-helper)

@@ -144,7 +144,7 @@ static const char *launch(void *context, const char *self, const char *argv, dou
     SamosaVisualLifecycle *h=context;
     const SamosaVisualLifecycleConfig *c=&h->config;
     SamosaMmProvider provider=mm_visual_profile(c->profile==SAMOSA_VISUAL_MOLMO,c->engine.path,c->model_directory);
-    if (mm_session_start_admitted(h->supervisor,&provider,&h->control,h->session,process,lease,
+    if (mm_session_start_admitted(h->supervisor,&provider,&h->control,h->session,process,lease,c->state,
         h->launch_error,sizeof(h->launch_error))) return NULL;
     if (process->terminal && !strcmp(process->reason,"engine_guardian_failed")) return "engine_guardian_failed";
     return h->launch_error;

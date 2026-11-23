@@ -50,12 +50,22 @@ const char *engine_process_start_bound_protocol_sized(const char *,const char *,
  * Startup identifies the actual worker; it does not establish model readiness. */
 typedef struct {int configuration,output,error;const char *marker;} EngineServer;
 const char *engine_process_start_server(const char *,const char *,int,const EngineServer *,EngineProcess *);
+#define ENGINE_COMMAND_PREPARING ".whisper-preparing"
+#define ENGINE_COMMAND_ADMITTED ".whisper-admitted"
+typedef enum {
+    ENGINE_WORKSPACE_WHISPER,
+    ENGINE_WORKSPACE_SPECIALIST
+} EngineWorkspaceKind;
+/* The caller retains the returned directory and its preparation lock until
+ * shutdown. Pass a null root for the compatibility specialist's private temp
+ * directory. The command profile also accepts an unregistered caller root. */
+int engine_workspace_prepare(const char *root,EngineWorkspaceKind,char *path,size_t path_size,
+                             int *registered);
+void engine_workspace_discard_preparation(EngineWorkspaceKind,int directory,const char *path);
 /* Original on-demand CLI compatibility: no clip/lifetime/file/log cap is
  * invented. stdout/stderr go to /dev/null; host validates its existing result
  * size/format while the guardian reserves PID/group/workspace until stop.
  * Caller must keep the record until stop finishes, including pending cleanup. */
-#define ENGINE_COMMAND_PREPARING ".whisper-preparing"
-#define ENGINE_COMMAND_ADMITTED ".whisper-admitted"
 const char *engine_process_start_command(const char *,const char *,const char *,int,
                                          int residency,double lifetime,EngineProcess *);
 /* Original default visual helpers: duplex kernel pipes, inherited stderr,

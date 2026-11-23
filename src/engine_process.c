@@ -2,6 +2,7 @@
 #define _DARWIN_C_SOURCE
 #include "engine_process.h"
 #include "json.h"
+#include <dirent.h>
 #include <spawn.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -10,6 +11,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <errno.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/resource.h>
 #include <limits.h>
@@ -53,24 +55,127 @@ static void finish_child(pid_t child) {
     (void)kill(-child,SIGKILL);
     int status;while(waitpid(child,&status,0)<0 && errno==EINTR){}
 }
-static void clean_workspace(const char *path){
+typedef struct {
+    const char *prefix,*preparing,*admitted,*prepared_input;
+} WorkspacePreparation;
+static const WorkspacePreparation whisper_preparation={
+    "whisper-",ENGINE_COMMAND_PREPARING,ENGINE_COMMAND_ADMITTED,"input.wav"
+};
+static const WorkspacePreparation specialist_preparation={
+    "specialist-",".specialist-preparing",".specialist-admitted",NULL
+};
+
+static int valid_preparation(const struct stat *marker) {
+    return S_ISREG(marker->st_mode)&&marker->st_uid==geteuid()&&marker->st_nlink==1&&
+        !(marker->st_mode&077)&&marker->st_size==0;
+}
+
+static int same_directory(int fd,int parent,const char *name) {
     struct stat retained,current;
-    if(fstat(6,&retained)||lstat(path,&current)||!S_ISDIR(retained.st_mode)||retained.st_uid!=geteuid()||(retained.st_mode&077)||retained.st_dev!=current.st_dev||retained.st_ino!=current.st_ino)return;
+    return !fstat(fd,&retained)&&S_ISDIR(retained.st_mode)&&retained.st_uid==geteuid()&&
+        !(retained.st_mode&077)&&!fstatat(parent,name,&current,AT_SYMLINK_NOFOLLOW)&&
+        retained.st_dev==current.st_dev&&retained.st_ino==current.st_ino;
+}
+
+static void recover_preparations(int root,const WorkspacePreparation *preparation) {
+    int scan=openat(root,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);
+    if(scan<0)return;
+    DIR *entries=fdopendir(scan);
+    if(!entries){close(scan);return;}
+    size_t length=strlen(preparation->prefix);
+    for(struct dirent *entry;(entry=readdir(entries));){
+        const char *name=entry->d_name;
+        if(strncmp(name,preparation->prefix,length)||strlen(name)!=length+6||
+           strspn(name+length,"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")!=6)continue;
+        int fd=openat(root,name,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+        if(fd<0)continue;
+        struct stat marker;
+        if(!flock(fd,LOCK_EX|LOCK_NB)&&same_directory(fd,root,name)&&
+           fstatat(fd,preparation->admitted,&marker,AT_SYMLINK_NOFOLLOW)&&errno==ENOENT){
+            if(!fstatat(fd,preparation->preparing,&marker,AT_SYMLINK_NOFOLLOW)&&valid_preparation(&marker)){
+                if(preparation->prepared_input)(void)unlinkat(fd,preparation->prepared_input,0);
+                (void)unlinkat(fd,preparation->preparing,0);
+            }
+            /* Without a preparation receipt only an empty reservation can go. */
+            (void)unlinkat(root,name,AT_REMOVEDIR);
+        }
+        close(fd);
+    }
+    closedir(entries);
+}
+
+int engine_workspace_prepare(const char *root,EngineWorkspaceKind kind,char *path,size_t capacity,
+                             int *registered) {
+    const WorkspacePreparation *preparation=kind==ENGINE_WORKSPACE_WHISPER?
+        &whisper_preparation:&specialist_preparation;
+    char compatibility_root[128],absolute[PATH_MAX];
+    if(!root&&kind==ENGINE_WORKSPACE_SPECIALIST){
+        snprintf(compatibility_root,sizeof(compatibility_root),"/tmp/samosa-inference-%lu",(unsigned long)geteuid());
+        if(mkdir(compatibility_root,0700)&&errno!=EEXIST)return -1;
+        struct stat local;
+        if(lstat(compatibility_root,&local)||!S_ISDIR(local.st_mode)||
+           local.st_uid!=geteuid()||(local.st_mode&077))return -1;
+        root=compatibility_root;
+    }
+    struct stat opened,named;
+    if(!root||!realpath(root,absolute))return -1;
+    int fd=open(absolute,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+    if(fd<0)return -1;
+    if(fstat(fd,&opened)||stat(root,&named)||opened.st_dev!=named.st_dev||opened.st_ino!=named.st_ino){
+        close(fd);return -1;
+    }
+    int recoverable=opened.st_uid==geteuid()&&!(opened.st_mode&022);
+    if(kind==ENGINE_WORKSPACE_SPECIALIST&&!recoverable){close(fd);return -1;}
+    if(registered)*registered=recoverable;
+    if(recoverable){
+        /* Register and recover under the same root lock. Keep the individual
+         * workspace lock through preparation and the guardian's descriptor handoff. */
+        int locked;
+        do{locked=flock(fd,LOCK_EX);}while(locked&&errno==EINTR);
+        if(locked){close(fd);return -1;}
+        recover_preparations(fd,preparation);
+    }
+    int len=snprintf(path,capacity,"%s/%sXXXXXX",absolute,recoverable?preparation->prefix:"result-");
+    if(len<0||(size_t)len>=capacity||!mkdtemp(path)){close(fd);return -1;}
+    const char *leaf=strrchr(path,'/')+1;
+    int directory=openat(fd,leaf,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+    if(directory>=0&&recoverable){
+        int marker=flock(directory,LOCK_EX|LOCK_NB)?-1:
+            openat(directory,preparation->preparing,O_CREAT|O_EXCL|O_WRONLY|O_CLOEXEC,0600);
+        if(marker>=0)close(marker);
+        else{close(directory);directory=-1;}
+    }
+    if(directory<0)(void)unlinkat(fd,leaf,AT_REMOVEDIR);
+    close(fd);
+    return directory;
+}
+
+void engine_workspace_discard_preparation(EngineWorkspaceKind kind,int directory,const char *path) {
+    if(!same_directory(directory,AT_FDCWD,path))return;
+    const WorkspacePreparation *preparation=kind==ENGINE_WORKSPACE_WHISPER?
+        &whisper_preparation:&specialist_preparation;
+    (void)unlinkat(directory,preparation->preparing,0);
+    (void)rmdir(path);
+}
+
+static void clean_workspace(const char *path,const WorkspacePreparation *preparation){
+    if(!same_directory(6,AT_FDCWD,path))return;
     (void)unlinkat(6,"input.wav",0);(void)unlinkat(6,"result.srt",0);(void)unlinkat(6,"result.txt",0);
-    (void)unlinkat(6,ENGINE_COMMAND_PREPARING,0);(void)unlinkat(6,ENGINE_COMMAND_ADMITTED,0);
+    if(preparation){
+        (void)unlinkat(6,preparation->preparing,0);
+        (void)unlinkat(6,preparation->admitted,0);
+    }
     (void)unlinkat(6,"request.frame",0);(void)unlinkat(6,"result.frame",0);
     (void)unlinkat(6,"input.rgba",0);(void)unlinkat(6,"input.ppm",0);(void)unlinkat(6,"request.json",0);(void)unlinkat(6,"result.json",0);
     /* Temporal adapters create only these sixteen owned frame names. */
     for(size_t k=0;k<16;k++){char frame[32];snprintf(frame,sizeof(frame),"frame-%02zu.ppm",k);(void)unlinkat(6,frame,0);}
     (void)rmdir(path);
 }
-static int admit_command_workspace(void) {
+static int admit_workspace(const WorkspacePreparation *preparation) {
     struct stat marker;
-    if(!fstatat(6,ENGINE_COMMAND_ADMITTED,&marker,AT_SYMLINK_NOFOLLOW)||errno!=ENOENT)return 0;
-    if(fstatat(6,ENGINE_COMMAND_PREPARING,&marker,AT_SYMLINK_NOFOLLOW))return errno==ENOENT;
-    return S_ISREG(marker.st_mode)&&marker.st_uid==geteuid()&&marker.st_nlink==1&&
-        !(marker.st_mode&077)&&marker.st_size==0&&
-        !renameat(6,ENGINE_COMMAND_PREPARING,6,ENGINE_COMMAND_ADMITTED);
+    if(!fstatat(6,preparation->admitted,&marker,AT_SYMLINK_NOFOLLOW)||errno!=ENOENT)return 0;
+    if(fstatat(6,preparation->preparing,&marker,AT_SYMLINK_NOFOLLOW))return errno==ENOENT;
+    return valid_preparation(&marker)&&!renameat(6,preparation->preparing,6,preparation->admitted);
 }
 /* Called while the retained owner lock and unreaped group leader still reserve
  * this marker/identity. Never remove another PID's marker. */
@@ -98,6 +203,8 @@ int engine_guardian_dispatch(int argc,char **argv) {
     int specialist=leased_specialist||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-specialist"));
     int leased_command=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-command-leased");
     int command_profile=leased_command||(argc>=2&&!strcmp(argv[1],"--inference-owned-engine-command"));
+    const WorkspacePreparation *preparation=command_profile?&whisper_preparation:
+        specialist?&specialist_preparation:NULL;
     int server=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-server");
     int workspace_duplex=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace-duplex");
     int uncapped=argc>=2&&!strcmp(argv[1],"--inference-owned-engine-workspace-uncapped");
@@ -153,7 +260,7 @@ int engine_guardian_dispatch(int argc,char **argv) {
     int admission;
     do{admission=poll(&lifeline,1,0);}while(admission<0&&errno==EINTR);
     if(admission){
-        if(workspace)clean_workspace(argv[4]);
+        if(workspace)clean_workspace(argv[4],preparation);
         fputs(admission<0?"poll_failed\n":"stopped\n",stdout);
         return admission<0;
     }
@@ -174,7 +281,7 @@ int engine_guardian_dispatch(int argc,char **argv) {
     if(ok&&captured)ok=!posix_spawn_file_actions_addclose(&actions,capture[0])&&
         !posix_spawn_file_actions_addclose(&actions,capture[1]);
     int command=sized?6:(workspace||server)?5:4;
-    if(ok&&command_profile)ok=admit_command_workspace();
+    if(ok&&preparation)ok=admit_workspace(preparation);
     if(ok)ok=posix_spawn(&child,argv[command],&actions,&attributes,argv+command,environ)==0;
     if(ar)posix_spawn_file_actions_destroy(&actions);
     if(at)posix_spawnattr_destroy(&attributes);
@@ -182,8 +289,8 @@ int engine_guardian_dispatch(int argc,char **argv) {
     /* Never keep a spare protocol reader/writer in the guardian. EOF and a
      * lost caller must reach the resident worker and host independently. */
     if(duplex){close(7);close(8);}
-    if(!ok){close(output[0]);if(capture[0]>=0)close(capture[0]);if(workspace)clean_workspace(argv[4]);fputs("exec_failed\n",stdout);fflush(stdout);return 2;}
-    if(((server||command_profile||specialist)?fprintf(stdout,"started:%ld\n",(long)child):fputs("started\n",stdout))<0 || fflush(stdout)){finish_child(child);close(output[0]);if(capture[0]>=0)close(capture[0]);if(workspace)clean_workspace(argv[4]);return 2;}
+    if(!ok){close(output[0]);if(capture[0]>=0)close(capture[0]);if(workspace)clean_workspace(argv[4],preparation);fputs("exec_failed\n",stdout);fflush(stdout);return 2;}
+    if(((server||command_profile||specialist)?fprintf(stdout,"started:%ld\n",(long)child):fputs("started\n",stdout))<0 || fflush(stdout)){finish_child(child);close(output[0]);if(capture[0]>=0)close(capture[0]);if(workspace)clean_workspace(argv[4],preparation);return 2;}
     if(server){close(9);close(10);close(11);}
     if(server||command_profile||specialist){close(output[0]);output[0]=-1;}
     double start=monotonic(),deadline=start+lifetime;const char *reason="stopped";
@@ -245,7 +352,7 @@ int engine_guardian_dispatch(int argc,char **argv) {
         if(server)clean_server_marker(argv[4],child);
     }
     finish_child(child);close(output[0]);if(capture[0]>=0)close(capture[0]);if(captured)close(8);close(3);
-    if(workspace){clean_workspace(argv[4]);close(6);}
+    if(workspace){clean_workspace(argv[4],preparation);close(6);}
     if(leased)close(4);
     if(bound||leased_specialist)close(5);
     if(!server&&!command_profile&&!specialist){fprintf(stdout,"%s\n",reason);fflush(stdout);}
